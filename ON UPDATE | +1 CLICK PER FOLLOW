@@ -1,0 +1,327 @@
+local repo = "https://raw.githubusercontent.com/deividcomsono/Obsidian/main/"
+local Library = loadstring(game:HttpGet(repo .. "Library.lua"))()
+local ThemeManager = loadstring(game:HttpGet(repo .. "addons/ThemeManager.lua"))()
+local SaveManager = loadstring(game:HttpGet(repo .. "addons/SaveManager.lua"))()
+
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+
+local CONFIG = {
+	AutoClickFollowers = false,
+	AutoBattleTap = false,
+	AutoWins = false,
+	AutoWinsWorld2 = false,
+	AutoRebirth = false,
+	AutoUpgradeAll = false,
+	AutoBuyEgg = false,
+}
+
+local Window = Library:CreateWindow({
+	Title = "AntiGod | +1 Followers Per Click",
+	Footer = "Version: 1.0 - YouTube: AntiGodHub",
+	Icon = nil,
+	NotifySide = "Right",
+	ShowCustomCursor = false,
+})
+
+local Tabs = {
+	Main = Window:AddTab("Main", "star"),
+	Player = Window:AddTab("Player", "user"),
+	Settings = Window:AddTab("Settings", "settings"),
+}
+
+--==================================================
+-- AUTO FARMING
+--==================================================
+
+local FarmingGroup = Tabs.Main:AddLeftGroupbox("Auto Farming", "cpu")
+
+FarmingGroup:AddToggle("AutoClickFollowers", {
+	Text = "Auto Click Followers",
+	Default = false,
+	Callback = function(Value)
+		CONFIG.AutoClickFollowers = Value
+		if Value then
+			task.spawn(function()
+				while CONFIG.AutoClickFollowers do
+					pcall(function()
+						local Event = game:GetService("ReplicatedStorage").Remotes.Events.ClickRemote
+						Event:FireServer()
+					end)
+					task.wait(0.001)
+				end
+			end)
+		end
+	end,
+})
+
+FarmingGroup:AddToggle("AutoBattleTap", {
+	Text = "Auto Battle Tap",
+	Default = false,
+	Callback = function(Value)
+		CONFIG.AutoBattleTap = Value
+		if Value then
+			task.spawn(function()
+				while CONFIG.AutoBattleTap do
+					pcall(function()
+						local Event = game:GetService("ReplicatedStorage").Remotes.Events.BattleTap
+						Event:FireServer()
+					end)
+					task.wait(0.001)
+				end
+			end)
+		end
+	end,
+})
+
+FarmingGroup:AddToggle("AutoWins", {
+	Text = "Auto Wins",
+	Default = false,
+	Callback = function(Value)
+		CONFIG.AutoWins = Value
+		if Value then
+			task.spawn(function()
+				while CONFIG.AutoWins do
+					pcall(function()
+						firetouchinterest(workspace.Worlds.World1.Map.Win.Lane21.WinPart, Character.HumanoidRootPart, 0)
+						task.wait(0.001)
+						firetouchinterest(workspace.Worlds.World1.Map.Win.Lane21.WinPart, Character.HumanoidRootPart, 1)
+					end)
+					task.wait(0.01)
+				end
+			end)
+		end
+	end,
+})
+
+FarmingGroup:AddToggle("AutoWinsWorld2", {
+	Text = "Auto Wins [World 2]",
+	Default = false,
+	Callback = function(Value)
+		CONFIG.AutoWinsWorld2 = Value
+		if Value then
+			task.spawn(function()
+				while CONFIG.AutoWinsWorld2 do
+					pcall(function()
+						firetouchinterest(workspace.Worlds.World2.Map.Win.Lane21.WinPart, Character.HumanoidRootPart, 0)
+						task.wait(0.001)
+						firetouchinterest(workspace.Worlds.World2.Map.Win.Lane21.WinPart, Character.HumanoidRootPart, 1)
+					end)
+					task.wait(0.01)
+				end
+			end)
+		end
+	end,
+})
+
+--==================================================
+-- AUTO UPGRADES
+--==================================================
+
+local UpgradeGroup = Tabs.Main:AddRightGroupbox("Auto Upgrades", "star")
+
+UpgradeGroup:AddToggle("AutoRebirth", {
+	Text = "Auto Rebirth",
+	Default = false,
+	Callback = function(Value)
+		CONFIG.AutoRebirth = Value
+		if Value then
+			task.spawn(function()
+				while CONFIG.AutoRebirth do
+					pcall(function()
+						local Event = game:GetService("ReplicatedStorage").Remotes.Events.RebirthRemote
+						Event:FireServer()
+					end)
+					task.wait(0.5)
+				end
+			end)
+		end
+	end,
+})
+
+UpgradeGroup:AddToggle("AutoUpgradeAll", {
+	Text = "Auto Upgrade All",
+	Default = false,
+	Callback = function(Value)
+		CONFIG.AutoUpgradeAll = Value
+		if Value then
+			task.spawn(function()
+				while CONFIG.AutoUpgradeAll do
+					pcall(function()
+						local Event = game:GetService("ReplicatedStorage").Remotes.Events.BuyUpgrade
+						Event:FireServer("Aura Luck", "Win")
+						Event:FireServer("Walk Speed", "Win")
+					end)
+					task.wait(0.1)
+				end
+			end)
+		end
+	end,
+})
+
+UpgradeGroup:AddToggle("AutoBuyEgg", {
+	Text = "Auto Buy Best Egg",
+	Default = false,
+	Callback = function(Value)
+		CONFIG.AutoBuyEgg = Value
+		if Value then
+			task.spawn(function()
+				while CONFIG.AutoBuyEgg do
+					pcall(function()
+						local Event = game:GetService("ReplicatedStorage").Remotes.HatchPet
+						Event:FireServer("Farm", 1, {})
+					end)
+					task.wait(0.3)
+				end
+			end)
+		end
+	end,
+})
+
+--==================================================
+-- SCRIPT INFO
+--==================================================
+
+local InfoGroup = Tabs.Main:AddLeftGroupbox("Script Info", "book")
+
+InfoGroup:AddLabel("Game Name : +1 Followers Per Click")
+InfoGroup:AddLabel("Developer : LuaU")
+InfoGroup:AddLabel("Last Updated : 7/21/2026")
+InfoGroup:AddDivider()
+InfoGroup:AddLabel("YouTube : AntiGodHub")
+
+--==================================================
+-- FEATURES
+--==================================================
+
+local FeaturesGroup = Tabs.Main:AddLeftGroupbox("Features", "star")
+
+FeaturesGroup:AddLabel("✓ Auto Click Followers")
+FeaturesGroup:AddLabel("✓ Auto Battle Tap")
+FeaturesGroup:AddLabel("✓ Auto Wins")
+FeaturesGroup:AddLabel("✓ Auto Wins World 2")
+FeaturesGroup:AddLabel("✓ Auto Rebirth")
+FeaturesGroup:AddLabel("✓ Auto Upgrade All")
+FeaturesGroup:AddLabel("✓ Auto Buy Eggs")
+
+--==================================================
+-- PLAYER TAB
+--==================================================
+
+local PlayerInfoGroup = Tabs.Player:AddLeftGroupbox("Player Information", "user")
+
+PlayerInfoGroup:AddLabel("Username : " .. LocalPlayer.Name)
+PlayerInfoGroup:AddLabel("User ID : " .. LocalPlayer.UserId)
+PlayerInfoGroup:AddLabel("Premium : " .. (LocalPlayer.MembershipType == Enum.MembershipType.Premium and "Yes Premium" or "No Premium"))
+
+local DiscordGroup = Tabs.Player:AddRightGroupbox("Community Support", "users")
+
+DiscordGroup:AddLabel("Join our Discord server for support!", true)
+DiscordGroup:AddDivider()
+
+DiscordGroup:AddButton({
+	Text = "Copy Discord Link",
+	Func = function()
+		setclipboard("https://discord.gg/jdJvZm6VdK")
+	end,
+})
+
+DiscordGroup:AddLabel("discord.gg/jdJvZm6VdK", true)
+DiscordGroup:AddDivider()
+DiscordGroup:AddLabel("✓ Get Support", true)
+DiscordGroup:AddLabel("✓ Script Updates", true)
+DiscordGroup:AddLabel("✓ Feature Requests", true)
+DiscordGroup:AddLabel("✓ Community Tips", true)
+
+--==================================================
+-- SETTINGS TAB
+--==================================================
+
+local MenuGroup = Tabs.Settings:AddLeftGroupbox("Menu", "wrench")
+
+MenuGroup:AddToggle("KeybindMenuOpen", {
+	Default = Library.KeybindFrame.Visible,
+	Text = "Open Keybind Menu",
+	Callback = function(value)
+		Library.KeybindFrame.Visible = value
+	end,
+})
+
+MenuGroup:AddToggle("ShowCustomCursor", {
+	Text = "Custom Cursor",
+	Default = Library.ShowCustomCursor,
+	Callback = function(Value)
+		Library.ShowCustomCursor = Value
+	end,
+})
+
+MenuGroup:AddDropdown("NotificationSide", {
+	Values = {"Left", "Right"},
+	Default = "Right",
+	Text = "Notification Side",
+	Callback = function(Value)
+		Library:SetNotifySide(Value)
+	end,
+})
+
+MenuGroup:AddDropdown("DPIDropdown", {
+	Values = {"50%", "75%", "100%", "125%", "150%", "175%", "200%"},
+	Default = "100%",
+	Text = "DPI Scale",
+	Callback = function(Value)
+		Value = Value:gsub("%%", "")
+		local DPI = tonumber(Value)
+		Library:SetDPIScale(DPI)
+	end,
+})
+
+MenuGroup:AddSlider("UICornerSlider", {
+	Text = "Corner Radius",
+	Default = 10,
+	Min = 0,
+	Max = 20,
+	Rounding = 0,
+	Callback = function(value)
+		Window:SetCornerRadius(value)
+	end
+})
+
+MenuGroup:AddDivider()
+MenuGroup:AddLabel("Menu Keybind"):AddKeyPicker("MenuKeybind", {
+	Default = "RightShift",
+	NoUI = true,
+	Text = "Menu Keybind"
+})
+
+MenuGroup:AddButton({
+	Text = "Unload Script",
+	Func = function()
+		Library:Unload()
+	end,
+	Tooltip = "Unload the entire script"
+})
+
+ThemeManager:SetLibrary(Library)
+SaveManager:SetLibrary(Library)
+SaveManager:IgnoreThemeSettings()
+SaveManager:SetIgnoreIndexes({"MenuKeybind"})
+ThemeManager:SetFolder("AntiGodHub")
+SaveManager:SetFolder("AntiGodHub/FollowersPerClick")
+SaveManager:BuildConfigSection(Tabs.Settings)
+ThemeManager:ApplyToTab(Tabs.Settings)
+
+--==================================================
+-- RESET ON CHARACTER DEATH
+--==================================================
+
+LocalPlayer.CharacterAdded:Connect(function(newChar)
+	Character = newChar
+	CONFIG.AutoClickFollowers = false
+	CONFIG.AutoBattleTap = false
+	CONFIG.AutoWins = false
+	CONFIG.AutoWinsWorld2 = false
+	CONFIG.AutoRebirth = false
+	CONFIG.AutoUpgradeAll = false
+	CONFIG.AutoBuyEgg = false
+end)
