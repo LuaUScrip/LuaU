@@ -70,19 +70,18 @@ end
 local function GetTrainPosition()
 	local rebirthCount = GetRebirth()
 	
-	if rebirthCount == 0 then
-		return TrainPositions[0]
-	elseif rebirthCount == 1 then
-		return TrainPositions[1]
-	elseif rebirthCount == 3 then
-		return TrainPositions[3]
-	elseif rebirthCount == 5 then
-		return TrainPositions[5]
-	elseif rebirthCount >= 8 then
+	-- Use >= checks in reverse order to fall back to previous tier
+	if rebirthCount >= 8 then
 		return TrainPositions[8]
+	elseif rebirthCount >= 5 then
+		return TrainPositions[5]
+	elseif rebirthCount >= 3 then
+		return TrainPositions[3]
+	elseif rebirthCount >= 1 then
+		return TrainPositions[1]
+	else
+		return TrainPositions[0]
 	end
-	
-	return TrainPositions[0]
 end
 
 local function GetPremiumStatus()
@@ -99,7 +98,7 @@ task.spawn(function()
 			pcall(function()
 				if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
 					LocalPlayer.Character.HumanoidRootPart.CFrame = FARM_WINS_CFRAME
-					LocalPlayer.Character.HumanoidRootPart.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
+					LocalPlayer.Character.HumanoidRootPart.AssemblyLinearVelocity = Vector3.new(0, 4, 0)
 				end
 			end)
 		end
@@ -211,7 +210,7 @@ FarmingGroup:AddToggle("AutoBuyTrail", {
 local InfoGroup = Tabs.Main:AddRightGroupbox("Script Info", "book")
 
 InfoGroup:AddLabel("Game Name : +1 Pull Per Step")
-InfoGroup:AddLabel("Developer : LuaU")
+InfoGroup:AddLabel("Developer : AntiGod")
 InfoGroup:AddLabel("Last Updated : 8/6/2026")
 InfoGroup:AddDivider()
 InfoGroup:AddLabel("YouTube : AntiGodHub")
