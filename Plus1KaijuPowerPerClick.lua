@@ -70,31 +70,11 @@ FarmingGroup:AddToggle("AutoFarmWins", {
 		if Value then
 			task.spawn(function()
 				while CONFIG.AutoFarmWins do
-					local connection
-					connection = RunService.Heartbeat:Connect(function()
-						if not CONFIG.AutoFarmWins then
-							connection:Disconnect()
-							return
+					pcall(function()
+						local humanoidRootPart = player.Character:FindFirstChild("HumanoidRootPart")
+						if humanoidRootPart then
+							humanoidRootPart.CFrame = CFrame.new(14.684351, 1.35249388, -2488.14941, 1, 0, 0, 0, 1, 0, 0, 0, 1)
 						end
-						pcall(function()
-							local part = workspace:FindFirstChild("Dynamic")
-							if part then
-								part = part:FindFirstChild("Trophy")
-								if part then
-									part = part:FindFirstChild("RT20")
-									if part then
-										part = part:FindFirstChild("Part")
-										if part then
-											local humanoidRootPart = player.Character:FindFirstChild("HumanoidRootPart")
-											if humanoidRootPart then
-												humanoidRootPart.CFrame = part.CFrame
-												part:FindFirstChildOfClass("TouchTransmitter"):Fire()
-											end
-										end
-									end
-								end
-							end
-						end)
 					end)
 					task.wait(0.05)
 				end
