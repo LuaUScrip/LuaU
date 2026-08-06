@@ -20,7 +20,7 @@ local CONFIG = {
 
 local Window = Library:CreateWindow({
 	Title = "AntiGodHub",
-	Footer = "Version: 2.0 - YouTube: AntiGodHub",
+	Footer = "Version: 2.0 - YouTube AntiGodHub Subscribe",
 	Icon = nil,
 	NotifySide = "Right",
 	ShowCustomCursor = false,
