@@ -223,7 +223,7 @@ TrailGroup:AddToggle("AutoBuyTrail", {
 local InfoGroup = Tabs.Main:AddLeftGroupbox("Script Info", "book")
 
 InfoGroup:AddLabel("Game Name : +1 Kaiju Evolution")
-InfoGroup:AddLabel("Developer : AntiGod")
+InfoGroup:AddLabel("Developer : LuaU")
 InfoGroup:AddLabel("Last Updated : 8/6/2026")
 InfoGroup:AddDivider()
 InfoGroup:AddLabel("YouTube : AntiGodHub", true)
