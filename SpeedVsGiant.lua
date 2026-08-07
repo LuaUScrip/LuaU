@@ -65,7 +65,7 @@ task.spawn(function()
 end)
 
 task.spawn(function()
-	while task.wait(0.0000001) do
+	while task.wait(0.0000000001) do
 		if CONFIG.AutoUpgradeSpeed then
 			pcall(function()
 				local Event = game:GetService("ReplicatedStorage"):FindFirstChild("RemoteEvents")
@@ -134,7 +134,7 @@ FarmingGroup:AddInput("CustomMoneyValue", {
 	Default = "PUT AMOUNT",
 	Numeric = true,
 	Finished = true,
-	Text = "Money Amount",
+	Text = "",
 	Tooltip = "Enter custom money value",
 	Callback = function(Value)
 		CONFIG.CustomMoneyValue = tonumber(Value) or 100
