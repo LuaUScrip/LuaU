@@ -21,7 +21,6 @@ local CONFIG = {
 	AutoRebirth = false,
 	AutoEvolve = false,
 	AutoBuyTrail = false,
-	SelectedTrain = "Train 1",
 }
 
 -- Trail List
@@ -33,25 +32,38 @@ local TrailList = {
 	"Robux"
 }
 
--- Train Locations
+-- Train Locations based on Rebirths
 local TrainLocations = {
-	["Train 1"] = function()
-		local part = workspace.Map.Treadmills:GetChildren()[6]:GetChildren()[3]
-		return part and part.Position or nil
-	end,
-	["Train 2"] = function()
-		local part = workspace.Map.Treadmills.Red.Part
-		return part and part.Position or nil
-	end,
-	["Train 3"] = function()
-		local part = workspace.Map.Treadmills.Green:GetChildren()[3]
-		return part and part.Position or nil
-	end,
-	["Train 4"] = function()
-		local part = workspace.Map.Treadmills.Blue:GetChildren()[2]
-		return part and part.Position or nil
-	end,
+	[0] = CFrame.new(391, 8, -205),
+	[1] = CFrame.new(392, 8, -225),
+	[3] = CFrame.new(392, 8, -245),
+	[4] = CFrame.new(392, 8, -265),
 }
+
+local function GetRebirths()
+	local leaderstats = player:FindFirstChild("leaderstats")
+	if leaderstats then
+		local rebirths = leaderstats:FindFirstChild("Rebirths")
+		if rebirths then
+			return rebirths.Value
+		end
+	end
+	return 0
+end
+
+local function GetTrainCFrame()
+	local rebirthCount = GetRebirths()
+	
+	if rebirthCount >= 4 then
+		return TrainLocations[4]
+	elseif rebirthCount >= 3 then
+		return TrainLocations[3]
+	elseif rebirthCount >= 1 then
+		return TrainLocations[1]
+	else
+		return TrainLocations[0]
+	end
+end
 
 -- Bypass Gameplay Pause
 task.spawn(function()
@@ -95,6 +107,7 @@ FarmingGroup:AddToggle("AutoFarmWins", {
 						local humanoidRootPart = player.Character:FindFirstChild("HumanoidRootPart")
 						if humanoidRootPart then
 							humanoidRootPart.CFrame = CFrame.new(-225.24942, 17.3000069, 2757.70532, -1.1920929e-07, -0, -1.00000012, 0, 1, -0, 1.00000012, 0, -1.1920929e-07)
+							humanoidRootPart.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
 						end
 					end)
 					task.wait(0.1)
@@ -104,35 +117,21 @@ FarmingGroup:AddToggle("AutoFarmWins", {
 	end,
 })
 
-FarmingGroup:AddDropdown("TrainSelect", {
-	Values = {"Train 1", "Train 2", "Train 3", "Train 4"},
-	Default = 1,
-	Text = "Select Train",
-	Tooltip = "Choose which train to use",
-	Searchable = false,
-	Callback = function(Value)
-		CONFIG.SelectedTrain = Value
-	end,
-})
-
 FarmingGroup:AddToggle("AutoTrain", {
 	Text = "Auto Train",
 	Default = false,
-	Tooltip = "Automatically train at selected location",
+	Tooltip = "Automatically train based on Rebirths",
 	Callback = function(Value)
 		CONFIG.AutoTrain = Value
 		if Value then
 			task.spawn(function()
 				while CONFIG.AutoTrain do
 					pcall(function()
-						local getPos = TrainLocations[CONFIG.SelectedTrain]
-						if getPos then
-							local pos = getPos()
-							if pos then
-								local humanoidRootPart = player.Character:FindFirstChild("HumanoidRootPart")
-								if humanoidRootPart then
-									humanoidRootPart.CFrame = CFrame.new(pos)
-								end
+						if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+							local trainCFrame = GetTrainCFrame()
+							if trainCFrame then
+								player.Character.HumanoidRootPart.CFrame = trainCFrame
+								player.Character.HumanoidRootPart.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
 							end
 						end
 					end)
@@ -224,8 +223,8 @@ TrailGroup:AddToggle("AutoBuyTrail", {
 local InfoGroup = Tabs.Main:AddLeftGroupbox("Script Info", "book")
 
 InfoGroup:AddLabel("Game Name : +1 Kaiju Evolution")
-InfoGroup:AddLabel("Developer : LuaU")
-InfoGroup:AddLabel("Last Updated : 8/3/2026")
+InfoGroup:AddLabel("Developer : AntiGod")
+InfoGroup:AddLabel("Last Updated : 8/6/2026")
 InfoGroup:AddDivider()
 InfoGroup:AddLabel("YouTube : AntiGodHub", true)
 
@@ -233,10 +232,10 @@ InfoGroup:AddLabel("YouTube : AntiGodHub", true)
 local FeaturesGroup = Tabs.Main:AddRightGroupbox("Features", "star")
 
 FeaturesGroup:AddLabel("✓ Auto Farm Wins")
-FeaturesGroup:AddLabel("✓ Auto Train (4 Locations)")
+FeaturesGroup:AddLabel("✓ Auto Train")
 FeaturesGroup:AddLabel("✓ Auto Rebirth")
 FeaturesGroup:AddLabel("✓ Auto Evolve")
-FeaturesGroup:AddLabel("✓ Auto Buy Trail (5 Trails)")
+FeaturesGroup:AddLabel("✓ Auto Buy Trail")
 
 -- Player Tab - Player Information
 local PlayerInfoGroup = Tabs.Player:AddLeftGroupbox("Player Information", "user")
