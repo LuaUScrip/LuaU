@@ -54,7 +54,7 @@ local TrainTreadmills = {
 local function GetRebirths()
 	local leaderstats = player:FindFirstChild("leaderstats")
 	if leaderstats then
-		local rebirths = leaderstats:FindFirstChild("Rebirths")
+		local rebirths = leaderstats:FindFirstChild("\240\159\148\132 Rebirth")
 		if rebirths then
 			return rebirths.Value
 		end
@@ -158,7 +158,7 @@ FarmingGroup:AddToggle("AutoTrain", {
 							Event:FireServer(true, trainTreadmill, false)
 						end
 					end)
-					task.wait(0.00001)
+					task.wait(0.0000000001)
 				end
 			end)
 		end
@@ -180,7 +180,7 @@ FarmingGroup:AddToggle("AutoRebirth", {
 							Event:InvokeServer()
 						end
 					end)
-					task.wait(0.5)
+					task.wait(0.1)
 				end
 			end)
 		end
@@ -219,8 +219,8 @@ TitleGroup:AddToggle("AutoBuyTitle", {
 local InfoGroup = Tabs.Main:AddLeftGroupbox("Script Info", "book")
 
 InfoGroup:AddLabel("Game Name : Cars Vs Tape")
-InfoGroup:AddLabel("Developer : AntiGod")
-InfoGroup:AddLabel("Last Updated : 8/7/2026")
+InfoGroup:AddLabel("Developer : LuaU")
+InfoGroup:AddLabel("Last Updated : 8/8/2026")
 InfoGroup:AddDivider()
 InfoGroup:AddLabel("YouTube : AntiGodHub", true)
 
