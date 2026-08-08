@@ -21,7 +21,7 @@ local CONFIG = {
 	AutoBuyTrail = false,
 	AutoBuyBestEgg = false,
 	AutoEquipBestPet = false,
-	SelectedEgg = "[WORLD 1] legendary_egg",
+	SelectedEgg = "[WORLD 1]",
 }
 
 -- Win Positions
@@ -232,7 +232,7 @@ UpgradeGroup:AddToggle("AutoEquipBestPet", {
 							Event:InvokeServer("EquipBest")
 						end
 					end)
-					task.wait(0.5)
+					task.wait(1)
 				end
 			end)
 		end
@@ -242,9 +242,9 @@ UpgradeGroup:AddToggle("AutoEquipBestPet", {
 -- Main Tab - Script Info (Left Bottom)
 local InfoGroup = Tabs.Main:AddLeftGroupbox("Script Info", "book")
 
-InfoGroup:AddLabel("Game Name : +1 Double Jump Bike Escape")
-InfoGroup:AddLabel("Developer : AntiGod")
-InfoGroup:AddLabel("Last Updated : 8/6/2026")
+InfoGroup:AddLabel("Game Name : +1 Slime Keyboard Escape")
+InfoGroup:AddLabel("Developer : LuaU")
+InfoGroup:AddLabel("Last Updated : 8/8/2026")
 InfoGroup:AddDivider()
 InfoGroup:AddLabel("YouTube : AntiGodHub", true)
 
