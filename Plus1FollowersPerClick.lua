@@ -146,7 +146,7 @@ FarmingGroup:AddToggle("AutoBattleTap", {
 						local Event = game:GetService("ReplicatedStorage").Remotes.Events.BattleTap
 						Event:FireServer()
 					end)
-					task.wait(0.001)
+					task.wait(0.0000000001)
 				end
 			end)
 		end
@@ -172,7 +172,7 @@ FarmingGroup:AddToggle("AutoWins", {
 							end
 						end
 					end)
-					task.wait(0.000001)
+					task.wait(0.0000001)
 				end
 			end)
 		end
@@ -204,7 +204,7 @@ FarmingGroup:AddToggle("AutoTrain", {
 								-- Freeze position
 								HRP.Velocity = Vector3.new(0, 0, 0)
 								HRP.AssemblyVelocity = Vector3.new(0, 0, 0)
-								task.wait(0.01)
+								task.wait(0.1)
 								
 								-- Fire click event
 								pcall(function()
@@ -266,7 +266,7 @@ UpgradeGroup:AddToggle("AutoRebirth", {
 })
 
 UpgradeGroup:AddToggle("AutoUpgradeAll", {
-	Text = "Auto Upgrade All",
+	Text = "Auto Upgrade",
 	Default = false,
 	Callback = function(Value)
 		CONFIG.AutoUpgradeAll = Value
@@ -298,7 +298,7 @@ UpgradeGroup:AddToggle("AutoRollTitle", {
 						local Event = game:GetService("ReplicatedStorage").Remotes.Events.TitleRoll
 						Event:FireServer("Normal")
 					end)
-					task.wait(0.000001)
+					task.wait(0.000000001)
 				end
 			end)
 		end
