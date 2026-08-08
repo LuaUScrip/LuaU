@@ -242,7 +242,7 @@ UpgradeGroup:AddToggle("AutoEquipBestPet", {
 -- Main Tab - Script Info (Left Bottom)
 local InfoGroup = Tabs.Main:AddLeftGroupbox("Script Info", "book")
 
-InfoGroup:AddLabel("Game Name : +1 Slime Keyboard Escape")
+InfoGroup:AddLabel("Game Name : +1 Speed Slime Keyboard Escape")
 InfoGroup:AddLabel("Developer : LuaU")
 InfoGroup:AddLabel("Last Updated : 8/8/2026")
 InfoGroup:AddDivider()
