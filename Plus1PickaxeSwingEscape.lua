@@ -146,7 +146,7 @@ local Tabs = {
 local FarmingGroup = Tabs.Main:AddLeftGroupbox("Auto Farming", "cpu")
 
 FarmingGroup:AddToggle("AutoWins", {
-	Text = "Auto Wins",
+	Text = "Auto Farm Wins",
 	Default = false,
 	Tooltip = "Automatically farm wins based on CurrentWorld attribute",
 	Callback = function(Value)
@@ -161,7 +161,7 @@ FarmingGroup:AddToggle("AutoWins", {
 							local winsPos = WinsPositions[currentWorld]
 							
 							if winsPos then
-								char.HumanoidRootPart.CFrame = winsPos * CFrame.new(0, 6, 0)
+								char.HumanoidRootPart.CFrame = winsPos * CFrame.new(0, 5, 0)
 							end
 						end
 					end)
@@ -260,7 +260,7 @@ FarmingGroup:AddToggle("AutoSpinAura", {
 							CONFIG.AutoSpinAura = false
 						end
 					end)
-					task.wait(0.0001)
+					task.wait(0.00000001)
 				end
 			end)
 		end
