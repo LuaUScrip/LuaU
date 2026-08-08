@@ -8,18 +8,115 @@ local LocalPlayer = Players.LocalPlayer
 local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
 
 local CONFIG = {
-	AutoClickFollowers = false,
 	AutoBattleTap = false,
 	AutoWins = false,
-	AutoWinsWorld2 = false,
+	AutoTrain = false,
 	AutoRebirth = false,
 	AutoUpgradeAll = false,
-	AutoBuyEgg = false,
+	AutoRollTitle = false,
 }
 
+-- Train Positions by World & Rebirth
+local TrainPositions = {
+	[1] = {
+		[0] = Vector3.new(1622, 20, 2888),
+		[1] = Vector3.new(1622, 20, 2913),
+		[2] = Vector3.new(1622, 20, 2937),
+		[8] = Vector3.new(1648, 22, 2922),
+	},
+	[2] = {
+		[6] = Vector3.new(3913, 20, 2871),
+		[8] = Vector3.new(3913, 20, 2895),
+		[10] = Vector3.new(3913, 20, 2920),
+		[12] = Vector3.new(3913, 20, 2943),
+		[15] = Vector3.new(3913, 20, 2967),
+		[18] = Vector3.new(3913, 20, 2991),
+	},
+	[3] = {
+		[12] = Vector3.new(6372, 20, 2871),
+		[15] = Vector3.new(6372, 29, 2895),
+		[18] = Vector3.new(6372, 20, 2920),
+		[20] = Vector3.new(6372, 20, 2943),
+		[23] = Vector3.new(6372, 20, 2967),
+		[26] = Vector3.new(6372, 20, 2991),
+	},
+}
+
+-- Function to get the correct WinPart based on World attribute
+local function GetWinPart()
+	if not LocalPlayer then return nil end
+	
+	local currentWorld = LocalPlayer:GetAttributes().World or 1
+	local winParts = {
+		[1] = workspace.Worlds.World1.Map.Win.Lane21.WinPart,
+		[2] = workspace.Worlds.World2.Map.Win.Lane21.WinPart,
+		[3] = workspace.Worlds.World3.Map.Win.Lane21.WinPart,
+	}
+	
+	return winParts[currentWorld]
+end
+
+-- Function to get closest train position based on World & Rebirth
+local function GetClosestTrainPosition()
+	local success, result = pcall(function()
+		if not LocalPlayer then return nil end
+		
+		-- Get current world from attributes
+		local currentWorld = LocalPlayer:GetAttributes().World
+		if not currentWorld or currentWorld == 0 then
+			currentWorld = 1
+		end
+		
+		-- Get current rebirth from nRebirth
+		local currentRebirths = 0
+		if LocalPlayer:FindFirstChild("nRebirth") then
+			currentRebirths = LocalPlayer.nRebirth.Value
+		end
+		
+		if not TrainPositions[currentWorld] then
+			return nil
+		end
+		
+		local worldPositions = TrainPositions[currentWorld]
+		local closestRebirth = nil
+		local closestPos = nil
+		local highestRebirth = nil
+		local highestPos = nil
+		
+		-- Find closest rebirth tier <= current rebirths AND track highest tier available
+		for rebirth, pos in pairs(worldPositions) do
+			-- Track highest rebirth tier in this world
+			if highestRebirth == nil or rebirth > highestRebirth then
+				highestRebirth = rebirth
+				highestPos = pos
+			end
+			
+			-- Find closest tier to your rebirths
+			if rebirth <= currentRebirths then
+				if closestRebirth == nil or rebirth > closestRebirth then
+					closestRebirth = rebirth
+					closestPos = pos
+				end
+			end
+		end
+		
+		-- If current rebirths exceeds all tiers, use the highest tier in this world
+		if closestPos == nil then
+			return highestPos
+		end
+		
+		return closestPos
+	end)
+	
+	if success then
+		return result
+	end
+	return nil
+end
+
 local Window = Library:CreateWindow({
-	Title = "AntiGod | +1 Followers Per Click",
-	Footer = "Version: 1.0 - YouTube: AntiGodHub",
+	Title = "AntiGodHub",
+	Footer = "Version: 2.0 - YouTube AntiGodHub Subscribe",
 	Icon = nil,
 	NotifySide = "Right",
 	ShowCustomCursor = false,
@@ -36,25 +133,6 @@ local Tabs = {
 --==================================================
 
 local FarmingGroup = Tabs.Main:AddLeftGroupbox("Auto Farming", "cpu")
-
-FarmingGroup:AddToggle("AutoClickFollowers", {
-	Text = "Auto Click Followers",
-	Default = false,
-	Callback = function(Value)
-		CONFIG.AutoClickFollowers = Value
-		if Value then
-			task.spawn(function()
-				while CONFIG.AutoClickFollowers do
-					pcall(function()
-						local Event = game:GetService("ReplicatedStorage").Remotes.Events.ClickRemote
-						Event:FireServer()
-					end)
-					task.wait(0.001)
-				end
-			end)
-		end
-	end,
-})
 
 FarmingGroup:AddToggle("AutoBattleTap", {
 	Text = "Auto Battle Tap",
@@ -84,31 +162,78 @@ FarmingGroup:AddToggle("AutoWins", {
 			task.spawn(function()
 				while CONFIG.AutoWins do
 					pcall(function()
-						firetouchinterest(workspace.Worlds.World1.Map.Win.Lane21.WinPart, Character.HumanoidRootPart, 0)
-						task.wait(0.001)
-						firetouchinterest(workspace.Worlds.World1.Map.Win.Lane21.WinPart, Character.HumanoidRootPart, 1)
+						local winPart = GetWinPart()
+						if winPart then
+							local currentChar = LocalPlayer.Character
+							if currentChar and currentChar:FindFirstChild("HumanoidRootPart") then
+								firetouchinterest(winPart, currentChar.HumanoidRootPart, 0)
+								task.wait(0.001)
+								firetouchinterest(winPart, currentChar.HumanoidRootPart, 1)
+							end
+						end
 					end)
-					task.wait(0.01)
+					task.wait(0.000001)
 				end
 			end)
 		end
 	end,
 })
 
-FarmingGroup:AddToggle("AutoWinsWorld2", {
-	Text = "Auto Wins [World 2]",
+FarmingGroup:AddToggle("AutoTrain", {
+	Text = "Auto Train",
 	Default = false,
 	Callback = function(Value)
-		CONFIG.AutoWinsWorld2 = Value
+		CONFIG.AutoTrain = Value
 		if Value then
 			task.spawn(function()
-				while CONFIG.AutoWinsWorld2 do
+				while CONFIG.AutoTrain do
 					pcall(function()
-						firetouchinterest(workspace.Worlds.World2.Map.Win.Lane21.WinPart, Character.HumanoidRootPart, 0)
-						task.wait(0.001)
-						firetouchinterest(workspace.Worlds.World2.Map.Win.Lane21.WinPart, Character.HumanoidRootPart, 1)
+						local currentChar = LocalPlayer.Character
+						if not currentChar then
+							return
+						end
+						
+						local HRP = currentChar:FindFirstChild("HumanoidRootPart")
+						if HRP then
+							local trainPos = GetClosestTrainPosition()
+							if trainPos then
+								-- Teleport to train position
+								HRP.CFrame = CFrame.new(trainPos)
+								task.wait(0.1)
+								
+								-- Freeze position
+								HRP.Velocity = Vector3.new(0, 0, 0)
+								HRP.AssemblyVelocity = Vector3.new(0, 0, 0)
+								task.wait(0.01)
+								
+								-- Fire click event
+								pcall(function()
+									local remotes = game:GetService("ReplicatedStorage"):FindFirstChild("Remotes")
+									if remotes then
+										local events = remotes:FindFirstChild("Events")
+										if events then
+											local clickRemote = events:FindFirstChild("ClickRemote")
+											if clickRemote then
+												clickRemote:FireServer()
+											end
+										end
+									end
+								end)
+							end
+						end
 					end)
-					task.wait(0.01)
+					task.wait(0.000000001)
+				end
+			end)
+		else
+			-- Unfreeze when toggled off
+			pcall(function()
+				local currentChar = LocalPlayer.Character
+				if currentChar then
+					local HRP = currentChar:FindFirstChild("HumanoidRootPart")
+					if HRP then
+						HRP.AssemblyVelocity = Vector3.new(0, 0, 0)
+					end
 				end
 			end)
 		end
@@ -152,6 +277,7 @@ UpgradeGroup:AddToggle("AutoUpgradeAll", {
 						local Event = game:GetService("ReplicatedStorage").Remotes.Events.BuyUpgrade
 						Event:FireServer("Aura Luck", "Win")
 						Event:FireServer("Walk Speed", "Win")
+						Event:FireServer("Title Luck", "Win")
 					end)
 					task.wait(0.1)
 				end
@@ -160,19 +286,19 @@ UpgradeGroup:AddToggle("AutoUpgradeAll", {
 	end,
 })
 
-UpgradeGroup:AddToggle("AutoBuyEgg", {
-	Text = "Auto Buy Best Egg",
+UpgradeGroup:AddToggle("AutoRollTitle", {
+	Text = "Auto Roll Title",
 	Default = false,
 	Callback = function(Value)
-		CONFIG.AutoBuyEgg = Value
+		CONFIG.AutoRollTitle = Value
 		if Value then
 			task.spawn(function()
-				while CONFIG.AutoBuyEgg do
+				while CONFIG.AutoRollTitle do
 					pcall(function()
-						local Event = game:GetService("ReplicatedStorage").Remotes.HatchPet
-						Event:FireServer("Farm", 1, {})
+						local Event = game:GetService("ReplicatedStorage").Remotes.Events.TitleRoll
+						Event:FireServer("Normal")
 					end)
-					task.wait(0.3)
+					task.wait(0.000001)
 				end
 			end)
 		end
@@ -187,7 +313,7 @@ local InfoGroup = Tabs.Main:AddLeftGroupbox("Script Info", "book")
 
 InfoGroup:AddLabel("Game Name : +1 Followers Per Click")
 InfoGroup:AddLabel("Developer : LuaU")
-InfoGroup:AddLabel("Last Updated : 7/21/2026")
+InfoGroup:AddLabel("Last Updated : 8/9/2026")
 InfoGroup:AddDivider()
 InfoGroup:AddLabel("YouTube : AntiGodHub")
 
@@ -195,15 +321,14 @@ InfoGroup:AddLabel("YouTube : AntiGodHub")
 -- FEATURES
 --==================================================
 
-local FeaturesGroup = Tabs.Main:AddLeftGroupbox("Features", "star")
+local FeaturesGroup = Tabs.Main:AddRightGroupbox("Features", "star")
 
-FeaturesGroup:AddLabel("✓ Auto Click Followers")
 FeaturesGroup:AddLabel("✓ Auto Battle Tap")
 FeaturesGroup:AddLabel("✓ Auto Wins")
-FeaturesGroup:AddLabel("✓ Auto Wins World 2")
+FeaturesGroup:AddLabel("✓ Auto Train")
 FeaturesGroup:AddLabel("✓ Auto Rebirth")
-FeaturesGroup:AddLabel("✓ Auto Upgrade All")
-FeaturesGroup:AddLabel("✓ Auto Buy Eggs")
+FeaturesGroup:AddLabel("✓ Auto Upgrade")
+FeaturesGroup:AddLabel("✓ Auto Roll Title")
 
 --==================================================
 -- PLAYER TAB
@@ -317,11 +442,10 @@ ThemeManager:ApplyToTab(Tabs.Settings)
 
 LocalPlayer.CharacterAdded:Connect(function(newChar)
 	Character = newChar
-	CONFIG.AutoClickFollowers = false
 	CONFIG.AutoBattleTap = false
 	CONFIG.AutoWins = false
-	CONFIG.AutoWinsWorld2 = false
+	CONFIG.AutoTrain = false
 	CONFIG.AutoRebirth = false
 	CONFIG.AutoUpgradeAll = false
-	CONFIG.AutoBuyEgg = false
+	CONFIG.AutoRollTitle = false
 end)
