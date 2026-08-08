@@ -125,7 +125,7 @@ FarmingGroup:AddToggle("AutoFarmWins", {
 							end
 						end
 					end)
-					task.wait(0.1)
+					task.wait(0.5)
 				end
 			end)
 		end
@@ -145,11 +145,11 @@ FarmingGroup:AddToggle("AutoTrain", {
 						local Event = ReplicatedStorage:FindFirstChild("Remotes"):FindFirstChild("UpdateSpeed")
 						if Event then
 							Event:FireServer("Walking")
-							task.wait(0.1)
+							task.wait(0.01)
 							Event:FireServer("Treadmill")
 						end
 					end)
-					task.wait(0.001)
+					task.wait(0.00001)
 				end
 			end)
 		end
@@ -246,7 +246,7 @@ UpgradeGroup:AddToggle("AutoBuyBestItems", {
 							Event:FireServer("BuyWins", "Mysterious")
 						end
 					end)
-					task.wait(0.1)
+					task.wait(0.5)
 				end
 			end)
 		end
