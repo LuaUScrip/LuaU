@@ -1,9 +1,9 @@
 -- AntiGod UI Library v1.0.0
--- GitHub: https://github.com/yourusername/antigod-ui-lua
+-- GitHub: https://github.com/LuaUScrip/LuaU
 -- For use with loadstring on GitHub
 -- 
 -- Usage:
--- local UI = loadstring(game:HttpGet("https://raw.githubusercontent.com/yourusername/antigod-ui-lua/main/lib.lua"))()
+-- local UI = loadstring(game:HttpGet("https://raw.githubusercontent.com/LuaUScrip/LuaU/refs/heads/main/lib.lua"))()
 -- local window = UI:CreateWindow("AntiGodHub")
 
 local AntiGodUI = {}
