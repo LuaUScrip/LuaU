@@ -1,4 +1,4 @@
--- +1 Pickaxe Swing Escape | Obsidian UI (Clean)
+-- +1 Pickaxe Swing Escape | Obsidian UI (Clean) - FIXED
 local repo = "https://raw.githubusercontent.com/deividcomsono/Obsidian/main/"
 local Library = loadstring(game:HttpGet(repo .. "Library.lua"))()
 local ThemeManager = loadstring(game:HttpGet(repo .. "addons/ThemeManager.lua"))()
@@ -13,7 +13,13 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
 local VirtualUser = game:GetService("VirtualUser")
 
-local player = Players.LocalPlayer
+-- Check LocalPlayer
+local player = Players:WaitForChild("LocalPlayer", 5) or Players.LocalPlayer
+if not player then
+	warn("LocalPlayer not found!")
+	return
+end
+
 local character = player.Character or player.CharacterAdded:Wait()
 
 -- Anti-AFK
@@ -37,35 +43,89 @@ end)
 -- Configuration
 local CONFIG = {
 	AutoWins = false,
-	SelectedWorld = "World 1",
-	AutoFarmPickaxe = false,
-	SelectedFarm = "Dummy 1",
 	AutoBuyTrail = false,
 	AutoRebirth = false,
+	AutoTrain = false,
+	AutoSpinAura = false,
+	AutoBuyEgg = false,
+	AutoSpinWheel = false,
 }
 
 local TrailList = {"Orange", "Green", "Blue", "Purple", "White", "Black", "Rainbow", "Lava", "Inferno"}
 
-local WorldPositions = {
-	["World 1"] = Vector3.new(1208, 6, 163),
-	["World 2"] = Vector3.new(1472, 6, 490),
-	["World 3"] = Vector3.new(687, 6, 849)
+-- Auto Wins CFrame Positions (World 1-4)
+local WinsPositions = {
+	[1] = CFrame.new(1207.4928, 2.3514998, 162.360077, 0, 0, -1, 0, 1, 0, 1, 0, 0),
+	[2] = CFrame.new(1471.84619, 2.32284594, 489.527283, 0, 0, -1, 0, 1, 0, 1, 0, 0),
+	[3] = CFrame.new(1769.15625, 2.32284594, 847.527283, 0, 0, -1, 0, 1, 0, 1, 0, 0),
+	[4] = CFrame.new(1769.20007, 5.47183275, 1221.01465, 0, 0, -1, 0, 1, 0, 1, 0, 0),
 }
 
-local FarmData = {
-	["Dummy 1"] = {
-		position = Vector3.new(-54, 6, 237),
-		hitbox = "Workspace.Dummy1.Starter.Hitbox"
+-- Auto Train Positions by World & Rebirths
+local TrainPositions = {
+	[1] = {
+		[0] = Vector3.new(-55, 6, 237),
+		[1] = Vector3.new(-55, 6, 227),
+		[3] = Vector3.new(-55, 6, 213),
 	},
-	["Dummy 2"] = {
-		position = Vector3.new(-54, 6, 564),
-		hitbox = "Workspace.Dummy2.Starter.Hitbox"
+	[2] = {
+		[3] = Vector3.new(-55, 6, 565),
+		[5] = Vector3.new(-55, 6, 555),
+		[7] = Vector3.new(-55, 6, 540),
 	},
-	["Dummy 3"] = {
-		position = Vector3.new(-54, 6, 922),
-		hitbox = "Workspace.Dummy3.Starter.Hitbox"
-	}
+	[3] = {
+		[7] = Vector3.new(-55, 6, 922),
+		[12] = Vector3.new(-55, 6, 910),
+		[18] = Vector3.new(-55, 6, 897),
+	},
+	[4] = {
+		[12] = Vector3.new(-55, 6, 1295),
+		[16] = Vector3.new(-55, 6, 1284),
+		[22] = Vector3.new(-55, 6, 1271),
+	},
 }
+
+-- Function to get closest train position based on CurrentWorld & Rebirths
+local function GetClosestTrainPosition()
+	if not player then return nil end
+	
+	local currentWorld = player:GetAttributes().CurrentWorld or 1
+	local currentRebirths = player:GetAttributes().Rebirths or 0
+	
+	if not TrainPositions[currentWorld] then
+		return nil
+	end
+	
+	local worldPositions = TrainPositions[currentWorld]
+	local closestRebirth = nil
+	local closestPos = nil
+	local highestRebirth = nil
+	local highestPos = nil
+	
+	-- Find closest rebirth tier <= current rebirths AND track highest tier available
+	for rebirth, pos in pairs(worldPositions) do
+		-- Track highest rebirth tier in this world
+		if highestRebirth == nil or rebirth > highestRebirth then
+			highestRebirth = rebirth
+			highestPos = pos
+		end
+		
+		-- Find closest tier to your rebirths
+		if rebirth <= currentRebirths then
+			if closestRebirth == nil or rebirth > closestRebirth then
+				closestRebirth = rebirth
+				closestPos = pos
+			end
+		end
+	end
+	
+	-- If current rebirths exceeds all tiers, use the highest tier in this world
+	if closestPos == nil then
+		return highestPos
+	end
+	
+	return closestPos
+end
 
 -- UI Creation
 local Window = Library:CreateWindow({
@@ -82,24 +142,13 @@ local Tabs = {
 	Settings = Window:AddTab("UI Settings", "settings"),
 }
 
--- Main Tab - Left Side (Auto Wins & Farm)
+-- Main Tab - Left Side (Auto Wins)
 local FarmingGroup = Tabs.Main:AddLeftGroupbox("Auto Farming", "cpu")
-
-FarmingGroup:AddDropdown("WorldSelect", {
-	Values = {"World 1", "World 2", "World 3"},
-	Default = 1,
-	Text = "Select World",
-	Tooltip = "Choose which world to farm",
-	Searchable = false,
-	Callback = function(Value)
-		CONFIG.SelectedWorld = Value
-	end,
-})
 
 FarmingGroup:AddToggle("AutoWins", {
 	Text = "Auto Wins",
 	Default = false,
-	Tooltip = "Automatically farm wins",
+	Tooltip = "Automatically farm wins based on CurrentWorld attribute",
 	Callback = function(Value)
 		CONFIG.AutoWins = Value
 		if Value then
@@ -108,71 +157,48 @@ FarmingGroup:AddToggle("AutoWins", {
 					pcall(function()
 						local char = player.Character
 						if char and char:FindFirstChild("HumanoidRootPart") then
-							local pos = WorldPositions[CONFIG.SelectedWorld]
-							local rootPart = char.HumanoidRootPart
+							local currentWorld = player:GetAttributes().CurrentWorld or 1
+							local winsPos = WinsPositions[currentWorld]
 							
-							rootPart.CFrame = CFrame.new(pos)
-							task.wait(0.2)
-							
-							rootPart.CFrame = CFrame.new(pos) * CFrame.new(rootPart.CFrame.LookVector * 10)
-							task.wait(0.2)
-							
-							rootPart.CFrame = CFrame.new(pos)
+							if winsPos then
+								char.HumanoidRootPart.CFrame = winsPos * CFrame.new(0, 6, 0)
+							end
 						end
 					end)
-					task.wait(0.5)
+					task.wait(0.01)
 				end
 			end)
 		end
 	end,
 })
 
-FarmingGroup:AddDivider()
 
-FarmingGroup:AddDropdown("FarmSelect", {
-	Values = {"Dummy 1", "Dummy 2", "Dummy 3"},
-	Default = 1,
-	Text = "Select Farm",
-	Tooltip = "Choose which dummy to farm",
-	Searchable = false,
-	Callback = function(Value)
-		CONFIG.SelectedFarm = Value
-	end,
-})
-
-FarmingGroup:AddToggle("AutoFarmPickaxe", {
-	Text = "Auto Farm Pickaxe",
+FarmingGroup:AddToggle("AutoTrain", {
+	Text = "Auto Train",
 	Default = false,
-	Tooltip = "Automatically farm pickaxe",
+	Tooltip = "Auto train in current world at closest rebirth tier",
 	Callback = function(Value)
-		CONFIG.AutoFarmPickaxe = Value
+		CONFIG.AutoTrain = Value
 		if Value then
 			task.spawn(function()
-				while CONFIG.AutoFarmPickaxe do
+				while CONFIG.AutoTrain do
 					pcall(function()
 						local char = player.Character
 						if char and char:FindFirstChild("HumanoidRootPart") then
-							local farmData = FarmData[CONFIG.SelectedFarm]
-							char.HumanoidRootPart.CFrame = CFrame.new(farmData.position)
+							local trainPos = GetClosestTrainPosition()
+							if trainPos then
+								char.HumanoidRootPart.CFrame = CFrame.new(trainPos)
+							end
 						end
-						
-						local dummyNum = string.match(CONFIG.SelectedFarm, "%d+")
-						local hitbox = Workspace["Dummy" .. dummyNum].Starter.Hitbox
-						
-						local Event = ReplicatedStorage.Remotes.DamageBlock
-						Event:InvokeServer(hitbox)
 					end)
-					task.wait(0.000001)
+					task.wait(0.05)
 				end
 			end)
 		end
 	end,
 })
 
--- Main Tab - Right Side (Upgrades & Info)
-local UpgradeGroup = Tabs.Main:AddRightGroupbox("Auto Upgrade", "star")
-
-UpgradeGroup:AddToggle("AutoBuyTrail", {
+FarmingGroup:AddToggle("AutoBuyTrail", {
 	Text = "Auto Buy Trail",
 	Default = false,
 	Tooltip = "Automatically buy all trails",
@@ -196,7 +222,7 @@ UpgradeGroup:AddToggle("AutoBuyTrail", {
 	end,
 })
 
-UpgradeGroup:AddToggle("AutoRebirth", {
+FarmingGroup:AddToggle("AutoRebirth", {
 	Text = "Auto Rebirth",
 	Default = false,
 	Tooltip = "Automatically rebirth",
@@ -216,24 +242,91 @@ UpgradeGroup:AddToggle("AutoRebirth", {
 	end,
 })
 
--- Main Tab - Script Info (Left Bottom)
-local InfoGroup = Tabs.Main:AddLeftGroupbox("Script Info", "book")
+FarmingGroup:AddToggle("AutoSpinAura", {
+	Text = "Auto Spin Aura [OP]",
+	Default = false,
+	Tooltip = "Spin until MythicPityRolls = 999",
+	Callback = function(Value)
+		CONFIG.AutoSpinAura = Value
+		if Value then
+			task.spawn(function()
+				while CONFIG.AutoSpinAura do
+					pcall(function()
+						local mythicPity = player:GetAttributes().MythicPityRolls or 0
+						if mythicPity < 999 then
+							local Event = ReplicatedStorage.Remotes.SpinAura
+							Event:InvokeServer(false)
+						else
+							CONFIG.AutoSpinAura = false
+						end
+					end)
+					task.wait(0.0001)
+				end
+			end)
+		end
+	end,
+})
+
+FarmingGroup:AddToggle("AutoBuyEgg", {
+	Text = "Auto Buy Egg [W4]",
+	Default = false,
+	Tooltip = "Automatically buy Lucky Eggs",
+	Callback = function(Value)
+		CONFIG.AutoBuyEgg = Value
+		if Value then
+			task.spawn(function()
+				while CONFIG.AutoBuyEgg do
+					pcall(function()
+						local Event = ReplicatedStorage.Remotes.Hatch
+						Event:InvokeServer("Lucky Egg", "One")
+					end)
+					task.wait(0.5)
+				end
+			end)
+		end
+	end,
+})
+
+FarmingGroup:AddToggle("AutoSpinWheel", {
+	Text = "Auto Spin Wheel",
+	Default = false,
+	Tooltip = "Automatically spin wheel",
+	Callback = function(Value)
+		CONFIG.AutoSpinWheel = Value
+		if Value then
+			task.spawn(function()
+				while CONFIG.AutoSpinWheel do
+					pcall(function()
+						local Event = ReplicatedStorage.Remotes.SpinRequest
+						Event:InvokeServer()
+					end)
+					task.wait(0.5)
+				end
+			end)
+		end
+	end,
+})
+
+-- Main Tab - Right Side (Script Info & Features)
+local InfoGroup = Tabs.Main:AddRightGroupbox("Script Info", "book")
 
 InfoGroup:AddLabel("Game Name : +1 Pickaxe Swing Escape")
 InfoGroup:AddLabel("Developer : LuaU")
-InfoGroup:AddLabel("Last Updated : 8/7/2026")
+InfoGroup:AddLabel("Last Updated : 8/9/2026")
 InfoGroup:AddDivider()
 InfoGroup:AddLabel("YouTube : AntiGodHub", true)
 
--- Main Tab - Features (Right Bottom)
+-- Main Tab - Features
 local FeaturesGroup = Tabs.Main:AddRightGroupbox("Features", "star")
 
 FeaturesGroup:AddLabel("✓ Auto Wins")
-FeaturesGroup:AddLabel("✓ Auto Farm Pickaxe")
+FeaturesGroup:AddLabel("✓ Auto Train")
 FeaturesGroup:AddLabel("✓ Auto Buy Trail")
 FeaturesGroup:AddLabel("✓ Auto Rebirth")
-FeaturesGroup:AddLabel("✓ Multi-World Support")
-FeaturesGroup:AddLabel("✓ Anti-AFK Protection")
+FeaturesGroup:AddLabel("✓ Auto Spin Aura")
+FeaturesGroup:AddLabel("✓ Auto Buy Egg")
+FeaturesGroup:AddLabel("✓ Auto Spin Wheel")
+FeaturesGroup:AddLabel("✓ Anti AFK")
 
 -- Player Tab - Player Information
 local PlayerInfoGroup = Tabs.Player:AddLeftGroupbox("Player Information", "user")
