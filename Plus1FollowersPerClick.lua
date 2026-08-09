@@ -50,7 +50,7 @@ local function GetWinPart()
 	local winParts = {
 		[1] = workspace.Worlds.World1.Map.Win.Lane21.WinPart,
 		[2] = workspace.Worlds.World2.Map.Win.Lane21.WinPart,
-		[3] = workspace.Worlds.World3.Map.Win.Lane21.WinPart,
+		[3] = workspace.Worlds.World3.Map.Win.Lane11.WinPart,
 	}
 	
 	return winParts[currentWorld]
