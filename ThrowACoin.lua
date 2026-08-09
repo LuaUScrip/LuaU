@@ -40,7 +40,7 @@ local CoinList = {
 	"Eclipse Coin", "Mirage Coin", "Obsidia Coin", "Tempest Coin", "Soul Coin",
 	"Paradox Coin", "Miracle Coin", "Nexus Coin", "Apex Coin", "Infinity Coin",
 	"Grace Coin", "Dominion Coin", "Empyrean Coin", "Atlas Coin", "Judgement Coin",
-	"Hercules Coin", "Helios Coin", "Nyx Coin", "Titan Coin", "Zeus Coin",
+	"Hercules Coin", "Helios Coin", "Nyx Coin", "Titan Coin", "Zeus Coin", "Runic Coin", "Amethyst Coin", "Merlin Coin", "Eldritch Coin", "Avalon Coin", "Dragonheart Coin", "Phoenix Coin",
 }
 
 local function GetJobID()
@@ -227,7 +227,7 @@ BetaFeaturesGroup:AddToggle("FastThrow", {
 	Callback = function(Value)
 		CONFIG.FastThrow = Value
 		if Value then
-			SetPlayerAttribute("ThrowSpeedLevel", 30)
+			SetPlayerAttribute("ThrowSpeedLevel", 999)
 		else
 			SetPlayerAttribute("ThrowSpeedLevel", 0)
 		end
@@ -305,7 +305,7 @@ local InfoGroup = Tabs.Main:AddLeftGroupbox("Script Info", "book")
 
 InfoGroup:AddLabel("Game Name : Throw A Coin")
 InfoGroup:AddLabel("Developer : LuaU")
-InfoGroup:AddLabel("Last Updated : 8/3/2026")
+InfoGroup:AddLabel("Last Updated : 8/9/2026")
 InfoGroup:AddDivider()
 InfoGroup:AddLabel("YouTube : AntiGodHub")
 
