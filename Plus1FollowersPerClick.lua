@@ -298,7 +298,7 @@ UpgradeGroup:AddToggle("AutoRollTitle", {
 						local Event = game:GetService("ReplicatedStorage").Remotes.Events.TitleRoll
 						Event:FireServer("Normal")
 					end)
-					task.wait(0.000000001)
+					task.wait(0.0000000001)
 				end
 			end)
 		end
