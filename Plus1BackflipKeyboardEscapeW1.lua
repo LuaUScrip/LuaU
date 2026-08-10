@@ -23,13 +23,13 @@ local CONFIG = {
 }
 
 -- Win Position
-local WinPosition = CFrame.new(-6510.71289, 266.467041, -15756.5098, 0, 0, 1, 0, 1, -0, -1, 0, 0) + Vector3.new(0, 3, 0)
+local WinPosition = CFrame.new(-6510.71289, 266.467041, -15756.5098, 0, 0, 1, 0, 1, -0, -1, 0, 0) + Vector3.new(0, 2, 0)
 
 -- Train Positions based on Rebirths
 local TrainPositions = {
-	[0] = CFrame.new(74.4850082, 2.64596319, -46.2890091, 0, 0, 1, 0, 1, -0, -1, 0, 0) * CFrame.Angles(0, math.pi, 0) + Vector3.new(0, 3, 0),
-	[1] = CFrame.new(74.6633606, 2.64596415, -32.2890091, 0, 0, 1, 0, 1, -0, -1, 0, 0) * CFrame.Angles(0, math.pi, 0) + Vector3.new(0, 3, 0),
-	[3] = CFrame.new(74.6633606, 2.64596415, -18.2890091, 0, 0, 1, 0, 1, -0, -1, 0, 0) * CFrame.Angles(0, math.pi, 0) + Vector3.new(0, 3, 0),
+	[0] = CFrame.new(74.4850082, 2.64596319, -46.2890091, 0, 0, 1, 0, 1, -0, -1, 0, 0) * CFrame.Angles(0, math.pi, 0) + Vector3.new(0, 2, 0),
+	[1] = CFrame.new(74.6633606, 2.64596415, -32.2890091, 0, 0, 1, 0, 1, -0, -1, 0, 0) * CFrame.Angles(0, math.pi, 0) + Vector3.new(0, 2, 0),
+	[3] = CFrame.new(74.6633606, 2.64596415, -18.2890091, 0, 0, 1, 0, 1, -0, -1, 0, 0) * CFrame.Angles(0, math.pi, 0) + Vector3.new(0, 2, 0),
 }
 
 -- Trail List
@@ -158,7 +158,7 @@ FarmingGroup:AddToggle("AutoFarmWins", {
 							end
 						end
 					end)
-					task.wait(0.01)
+					task.wait(0.3)
 				end
 			end)
 		end
