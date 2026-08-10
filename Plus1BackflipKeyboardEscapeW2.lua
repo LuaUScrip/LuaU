@@ -23,7 +23,7 @@ local CONFIG = {
 }
 
 -- Win Position
-local WinPosition = CFrame.new(-32654.9492, -1762.86194, 50200.6875, 0, 0, -1, 0, 1, 0, 1, 0, 0) * CFrame.Angles(0, math.pi, 0) + Vector3.new(0, 3, 0)
+local WinPosition = CFrame.new(-32654.9492, -1762.86194, 50200.6875, 0, 0, -1, 0, 1, 0, 1, 0, 0) * CFrame.Angles(0, math.pi, 0) + Vector3.new(0, 2, 0)
 
 -- Train Positions based on Rebirths
 local TrainPositions = {
@@ -158,7 +158,7 @@ FarmingGroup:AddToggle("AutoFarmWins", {
 							end
 						end
 					end)
-					task.wait(0.01)
+					task.wait(0.3)
 				end
 			end)
 		end
