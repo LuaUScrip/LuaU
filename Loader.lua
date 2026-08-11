@@ -45,7 +45,7 @@ local SupportedGames = {
 	{name = "+1 Backflip Keyboard Escape", placeIds = {102553576537621}, url = "https://raw.githubusercontent.com/LuaUScrip/LuaU/refs/heads/main/Plus1BackflipKeyboardEscapeW1.lua"},
 	{name = "+1 Backflip Keyboard Escape", placeIds = {77764718018334}, url = "https://raw.githubusercontent.com/LuaUScrip/LuaU/refs/heads/main/Plus1BackflipKeyboardEscapeW2.lua"},
 	{name = "Web Swing For Lucky Blocks", placeIds = {86455914125987}, url = "https://raw.githubusercontent.com/LuaUScrip/LuaU/refs/heads/main/WebSwingForLuckyBlock.lua"},
-	{name = "+1 Fire Per Click", placeIds = {70970180473702}, url = nil},
+	{name = "+1 Fire Per Click", placeIds = {70970180473702}, url = "https://raw.githubusercontent.com/LuaUScrip/LuaU/refs/heads/main/Plus1FirePerClick.lua"},
 	{name = "Script 37", placeIds = {0}, url = nil},
 	{name = "Script 38", placeIds = {0}, url = nil},
 	{name = "Script 39", placeIds = {0}, url = nil},
