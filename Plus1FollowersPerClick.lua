@@ -50,7 +50,7 @@ local function GetWinPart()
 	local winParts = {
 		[1] = workspace.Worlds.World1.Map.Win.Lane21.WinPart,
 		[2] = workspace.Worlds.World2.Map.Win.Lane21.WinPart,
-		[3] = workspace.Worlds.World3.Map.Win.Lane11.WinPart,
+		[3] = workspace.Worlds.World3.Map.Win.Lane20.WinPart,
 	}
 	
 	return winParts[currentWorld]
@@ -172,7 +172,7 @@ FarmingGroup:AddToggle("AutoWins", {
 							end
 						end
 					end)
-					task.wait(0.0000001)
+					task.wait(0.00000001)
 				end
 			end)
 		end
@@ -313,7 +313,7 @@ local InfoGroup = Tabs.Main:AddLeftGroupbox("Script Info", "book")
 
 InfoGroup:AddLabel("Game Name : +1 Followers Per Click")
 InfoGroup:AddLabel("Developer : LuaU")
-InfoGroup:AddLabel("Last Updated : 8/9/2026")
+InfoGroup:AddLabel("Last Updated : 8/14/2026")
 InfoGroup:AddDivider()
 InfoGroup:AddLabel("YouTube : AntiGodHub")
 
