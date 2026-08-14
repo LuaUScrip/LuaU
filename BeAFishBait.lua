@@ -30,13 +30,11 @@ end)
 
 local CONFIG = {
 	AutoFishFast = false,
-	AutoTrainFast = false,
 	AutoUpgradeAquarium = false,
 	AutoRebirth = false,
 	AutoCollectCash = false,
 	AutoClaimLuckyBlock = false,
-	AutoEventFrostWyrm = false,
-	TrainCounter = 1,
+	AutoEquipBestFish = false,
 }
 
 local function GetPremiumStatus()
@@ -49,7 +47,7 @@ end
 
 -- Auto Fish Fast - All events fire together
 task.spawn(function()
-	while task.wait(0.1) do
+	while task.wait(0.3) do
 		if CONFIG.AutoFishFast then
 			pcall(function()
 				local castEvent = ReplicatedStorage["shared/network@globalEvents"].castFishingHook
@@ -80,19 +78,6 @@ task.spawn(function()
 	end
 end)
 
--- Auto Train Fast - Single fire
-task.spawn(function()
-	while task.wait(0.01) do
-		if CONFIG.AutoTrainFast then
-			pcall(function()
-				local Event = ReplicatedStorage["shared/network@globalFunctions"].trainingSkillcheckBonus
-				Event:FireServer(CONFIG.TrainCounter)
-				CONFIG.TrainCounter = CONFIG.TrainCounter + 1
-			end)
-		end
-	end
-end)
-
 -- Auto Upgrade Aquarium - All events fire together
 task.spawn(function()
 	while task.wait(1) do
@@ -110,7 +95,7 @@ end)
 
 -- Auto Rebirth - Single fire
 task.spawn(function()
-	while task.wait(1) do
+	while task.wait(0.5) do
 		if CONFIG.AutoRebirth then
 			pcall(function()
 				local Event = ReplicatedStorage["shared/network@globalFunctions"].performRebirth
@@ -122,7 +107,7 @@ end)
 
 -- Auto Collect Cash - Single fire
 task.spawn(function()
-	while task.wait(1) do
+	while task.wait(0.1) do
 		if CONFIG.AutoCollectCash then
 			pcall(function()
 				local Event = ReplicatedStorage["shared/network@globalFunctions"].collectPlotMoney
@@ -132,9 +117,9 @@ task.spawn(function()
 	end
 end)
 
--- Auto Claim Lucky Block - Single fire
+-- Auto Claim Lucky Block - Set HoldDuration to 0 and fire prompt
 task.spawn(function()
-	while task.wait(1) do
+	while task.wait(0.1) do
 		if CONFIG.AutoClaimLuckyBlock then
 			pcall(function()
 				local luckyBlock = Workspace:FindFirstChild("LuckyBlock")
@@ -142,8 +127,12 @@ task.spawn(function()
 					if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
 						LocalPlayer.Character.HumanoidRootPart.CFrame = luckyBlock.CFrame + Vector3.new(0, 3, 0)
 						
-						local proximityPrompt = luckyBlock:FindFirstChildOfClass("ProximityPrompt")
+						local proximityPrompt = luckyBlock:FindFirstChild("LuckyBlockClaimPrompt")
 						if proximityPrompt then
+							-- Set HoldDuration to 0
+							proximityPrompt.HoldDuration = 0
+							
+							-- Fire the prompt
 							proximityPrompt:InputHoldBegin()
 							proximityPrompt:InputHoldEnd()
 						end
@@ -154,16 +143,13 @@ task.spawn(function()
 	end
 end)
 
--- Auto Event Frost Wyrm - All events fire together
+-- Auto Equip Best Fish - Single fire
 task.spawn(function()
-	while task.wait(0.001) do
-		if CONFIG.AutoEventFrostWyrm then
+	while task.wait(1) do
+		if CONFIG.AutoEquipBestFish then
 			pcall(function()
-				local slapEvent = ReplicatedStorage["shared/network@globalEvents"].analyticsApexSlapSuccess
-				slapEvent:FireServer()
-				
-				local dragEvent = ReplicatedStorage["shared/network@globalEvents"].analyticsApexHoldDragSuccess
-				dragEvent:FireServer()
+				local Event = ReplicatedStorage["shared/network@globalFunctions"].equipBestAquariumFish
+				Event:FireServer(9999)
 			end)
 		end
 	end
@@ -176,6 +162,8 @@ local Window = Library:CreateWindow({
 	NotifySide = "Right",
 	ShowCustomCursor = false,
 })
+
+Window:SetCornerRadius(20)
 
 local Tabs = {
 	Main = Window:AddTab("Main", "star"),
@@ -191,15 +179,6 @@ FarmingGroup:AddToggle("AutoFishFast", {
 	Tooltip = "Automatically fish fast",
 	Callback = function(Value)
 		CONFIG.AutoFishFast = Value
-	end,
-})
-
-FarmingGroup:AddToggle("AutoTrainFast", {
-	Text = "Auto Train Fast",
-	Default = false,
-	Tooltip = "Automatically train fast (incremental)",
-	Callback = function(Value)
-		CONFIG.AutoTrainFast = Value
 	end,
 })
 
@@ -241,12 +220,12 @@ UpgradeGroup:AddToggle("AutoClaimLuckyBlock", {
 	end,
 })
 
-UpgradeGroup:AddToggle("AutoEventFrostWyrm", {
-	Text = "Auto Event Frost Wyrm",
+UpgradeGroup:AddToggle("AutoEquipBestFish", {
+	Text = "Auto Equip Best Fish",
 	Default = false,
-	Tooltip = "Automatically farm frost wyrm event",
+	Tooltip = "Automatically equip best fish",
 	Callback = function(Value)
-		CONFIG.AutoEventFrostWyrm = Value
+		CONFIG.AutoEquipBestFish = Value
 	end,
 })
 
@@ -254,27 +233,25 @@ local InfoGroup = Tabs.Main:AddLeftGroupbox("Script Info", "book")
 
 InfoGroup:AddLabel("Game Name : Be A Fish Bait")
 InfoGroup:AddLabel("Developer : LuaU")
-InfoGroup:AddLabel("Last Updated : 8/5/2026")
+InfoGroup:AddLabel("Last Updated : 8/14/2026")
 InfoGroup:AddDivider()
 InfoGroup:AddLabel("YouTube : AntiGodHub")
 
 local FeaturesGroup = Tabs.Main:AddRightGroupbox("Features", "star")
 
 FeaturesGroup:AddLabel("✓ Auto Fish Fast")
-FeaturesGroup:AddLabel("✓ Auto Train Fast")
 FeaturesGroup:AddLabel("✓ Auto Upgrade Aquarium")
 FeaturesGroup:AddLabel("✓ Auto Rebirth")
 FeaturesGroup:AddLabel("✓ Auto Collect Cash")
 FeaturesGroup:AddLabel("✓ Auto Claim Lucky Block")
-FeaturesGroup:AddLabel("✓ Auto Event Frost Wyrm")
-FeaturesGroup:AddLabel("✓ Anti-AFK Protection")
+FeaturesGroup:AddLabel("✓ Auto Equip Best Fish")
+FeaturesGroup:AddLabel("✓ Anti-AFK")
 
 local PlayerInfoGroup = Tabs.Player:AddLeftGroupbox("Player Information", "user")
 
 PlayerInfoGroup:AddLabel("Username : " .. LocalPlayer.Name)
 PlayerInfoGroup:AddLabel("User ID : " .. LocalPlayer.UserId)
 PlayerInfoGroup:AddLabel("Premium : " .. GetPremiumStatus())
-PlayerInfoGroup:AddLabel("Train Counter : " .. CONFIG.TrainCounter)
 
 local DiscordGroup = Tabs.Player:AddRightGroupbox("Community Support", "users")
 
@@ -334,17 +311,6 @@ MenuGroup:AddDropdown("DPIDropdown", {
 	end,
 })
 
-MenuGroup:AddSlider("UICornerSlider", {
-	Text = "Corner Radius",
-	Default = 20,
-	Min = 20,
-	Max = 20,
-	Rounding = 0,
-	Callback = function(value)
-		Window:SetCornerRadius(20)
-	end
-})
-
 MenuGroup:AddDivider()
 MenuGroup:AddLabel("Menu Keybind"):AddKeyPicker("MenuKeybind", {
 	Default = "RightShift",
@@ -352,7 +318,40 @@ MenuGroup:AddLabel("Menu Keybind"):AddKeyPicker("MenuKeybind", {
 	Text = "Menu Keybind"
 })
 
-MenuGroup:AddButton({
+local UtilityGroup = Tabs.Settings:AddRightGroupbox("Utility", "tools")
+
+UtilityGroup:AddButton({
+	Text = "Fix Camera",
+	Func = function()
+		pcall(function()
+			if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Head") then
+				local camera = Workspace.CurrentCamera
+				camera.CFrame = LocalPlayer.Character.Head.CFrame + LocalPlayer.Character.Head.CFrame.LookVector * 5
+				camera.Focus = LocalPlayer.Character.Head.CFrame
+			end
+		end)
+	end,
+	Tooltip = "Restore and fix camera position"
+})
+
+UtilityGroup:AddButton({
+	Text = "Force Respawn",
+	Func = function()
+		pcall(function()
+			if LocalPlayer.Character then
+				local humanoid = LocalPlayer.Character:FindFirstChild("Humanoid")
+				if humanoid then
+					humanoid.Health = 0
+				end
+			end
+		end)
+	end,
+	Tooltip = "Force reset and respawn character"
+})
+
+UtilityGroup:AddDivider()
+
+UtilityGroup:AddButton({
 	Text = "Unload Script",
 	Func = function()
 		Library:Unload()
