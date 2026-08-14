@@ -105,13 +105,13 @@ task.spawn(function()
 	end
 end)
 
--- Auto Collect Cash - Single fire
+-- Auto Collect Cash - Single fire (FIXED: Uses LocalPlayer.UserId)
 task.spawn(function()
 	while task.wait(0.1) do
 		if CONFIG.AutoCollectCash then
 			pcall(function()
 				local Event = ReplicatedStorage["shared/network@globalFunctions"].collectPlotMoney
-				Event:FireServer(999999, "11196979266")
+				Event:FireServer(999999, tostring(LocalPlayer.UserId))
 			end)
 		end
 	end
