@@ -1715,4 +1715,4 @@ task.delay(1, function()
     RunAutoExecute()
 end)
 
-Notify("HUB", "Script loaded", "Success")
+Notify("AntiGodHub", "Script loaded", "Success")
