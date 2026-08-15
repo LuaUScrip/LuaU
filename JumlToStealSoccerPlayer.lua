@@ -51,7 +51,7 @@ local Config = {
     AntiAfk = false,
     NoGameplayPaused = false,
     ThemeName = "Emerald Green",
-    FontName = "Code",
+    FontName = "Cartoon",
     MenuBind = "G",
     CustomColors = {
         AccentColor = Color3.fromRGB(96, 216, 118),
@@ -1388,7 +1388,6 @@ local FontDropdown = ThemeBox:AddDropdown("Font", {
 })
 SettingsRefs.FontDropdown = FontDropdown
 
-ThemeBox:AddDivider()
 
 local FontPresetDropdown = ThemeBox:AddDropdown("FontPreset", {
     Text = "Font Color Preset",
@@ -1414,7 +1413,6 @@ local FontPresetDropdown = ThemeBox:AddDropdown("FontPreset", {
 })
 SettingsRefs.FontPresetDropdown = FontPresetDropdown
 
-ThemeBox:AddDivider()
 
 ThemeBox:AddButton({
     Text = "Reset Theme",
@@ -1717,4 +1715,4 @@ task.delay(1, function()
     RunAutoExecute()
 end)
 
-Notify("AntiGodHub", "Script loaded", "Success")
+Notify("HUB", "Script loaded", "Success")
