@@ -48,7 +48,7 @@ local SupportedGames = {
 	{name = "+1 Fire Per Click", placeIds = {70970180473702}, url = "https://raw.githubusercontent.com/LuaUScrip/LuaU/refs/heads/main/Plus1FirePerClick.lua"},
 	{name = "Be A Fish Bait", placeIds = {99702578544768}, url = "https://raw.githubusercontent.com/LuaUScrip/LuaU/refs/heads/main/BeAFishBait.lua"},
 	{name = "+1 Stand Power Evolution", placeIds = {82598548574073}, url = "https://raw.githubusercontent.com/LuaUScrip/LuaU/refs/heads/main/Plus1StandPowerEvolution.lua"},
-	{name = "Script 39", placeIds = {0}, url = nil},
+	{name = "Jump To Steal Soccer Player", placeIds = {133294838637122}, url = "https://raw.githubusercontent.com/LuaUScrip/LuaU/refs/heads/main/JumpToStealPlayer.lua"},
 	{name = "Script 40", placeIds = {0}, url = nil},
 	{name = "Script 41", placeIds = {0}, url = nil},
 	{name = "Script 42", placeIds = {0}, url = nil},
