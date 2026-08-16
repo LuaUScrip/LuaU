@@ -41,7 +41,7 @@ local Config = {
     AutoBuyGear = false,
     AutoBuyAllGear = false,
     SelectedLuckyBlocks = {"Galaxy Lucky Block"},
-    SelectedUpgrades = {"Speed", "Carry Limit"},
+    SelectedUpgrades = {"Jump"},
     SelectedSlimes = {"Slime 1"},
     SelectedGear = {"Gear 1"},
     AntiAfk = false,
@@ -215,7 +215,7 @@ local function AutoFarmLuckyBlocksLoop()
                         FirePrompt(stealPrompt)
                     end
 
-                    task.wait(0.01)
+                    task.wait(0.1)
 
                     -- Teleport back home
                     Teleport(Config.HomePosition)
@@ -823,6 +823,12 @@ LoadConfig = function(Name, Silent)
     end
     if type(Data.SelectedUpgrades) == "table" then
         Config.SelectedUpgrades = ValueToArray(Data.SelectedUpgrades)
+        -- Rename old "Speed" entries to the new "Jump" name
+        for i, Name in ipairs(Config.SelectedUpgrades) do
+            if Name == "Speed" then
+                Config.SelectedUpgrades[i] = "Jump"
+            end
+        end
     end
     if type(Data.SelectedSlimes) == "table" then
         Config.SelectedSlimes = ValueToArray(Data.SelectedSlimes)
@@ -926,7 +932,7 @@ local Tabs = {
 local MainTabs = {
     Farming = Tabs.Main:AddSubTab({ Name = "Farming", Icon = "star" }),
     Upgrades = Tabs.Main:AddSubTab({ Name = "Upgrades", Icon = "trending-up" }),
-    Shop = Tabs.Main:AddSubTab({ Name = "Shop", Icon = "shopping-car" }),
+    Shop = Tabs.Main:AddSubTab({ Name = "Shop", Icon = "shopping-bag" }),
 }
 
 -- INFO TAB
@@ -972,7 +978,7 @@ local SessionLabel = StatusBox:AddLabel({ Text = 'SESSION - <font color="#60d888
 -- Updates Box
 local UpdatesBox = Tabs.Info:AddLeftGroupbox("Updates", "rotate-ccw")
 UpdatesBox:AddLabel({ Text = '<font color="#60d888">● Up to date</font>' })
-UpdatesBox:AddLabel({ Text = '<font color="#8a8a8a"> Last Updated 8/16/2026</font>' })
+UpdatesBox:AddLabel({ Text = '<font color="#8a8a8a"> Last Updated 8/15/2026</font>' })
 
 -- Game Info Box
 local InfoGameBox = Tabs.Info:AddRightGroupbox("Game Info", "gamepad-2")
