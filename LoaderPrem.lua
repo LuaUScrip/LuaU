@@ -51,7 +51,7 @@ local SupportedGames = {
 	{name = "+1 Stand Power Evolution", placeIds = {82598548574073}, url = "https://raw.githubusercontent.com/LuaUScrip/LuaU/refs/heads/main/Plus1StandPowerEvolution.lua"},
 	{name = "Jump To Steal Soccer Player", placeIds = {133294838637122}, url = "https://raw.githubusercontent.com/LuaUScrip/LuaU/refs/heads/main/JumpToStealPlayer.lua"},
 	{name = "Jump To Steal Slime", placeIds = {131776241538171}, url = "https://raw.githubusercontent.com/LuaUScrip/LuaU/refs/heads/main/JumpToStealSlime.lua"},
-	{name = "Script 42", placeIds = {0}, url = nil},
+	{name = "+1 Roller For Needoh", placeIds = {81700526542690}, url = "https://raw.githubusercontent.com/LuaUScrip/LuaU/refs/heads/main/Plus1RollerForNeedoh.lua"},
 	{name = "Script 43", placeIds = {0}, url = nil},
 	{name = "Script 44", placeIds = {0}, url = nil},
 	{name = "Script 45", placeIds = {0}, url = nil},
