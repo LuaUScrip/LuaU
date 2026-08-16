@@ -68,7 +68,7 @@ local CoinList = {
     "Eclipse Coin", "Mirage Coin", "Obsidia Coin", "Tempest Coin", "Soul Coin",
     "Paradox Coin", "Miracle Coin", "Nexus Coin", "Apex Coin", "Infinity Coin",
     "Grace Coin", "Dominion Coin", "Empyrean Coin", "Atlas Coin", "Judgement Coin",
-    "Hercules Coin", "Helios Coin", "Nyx Coin", "Titan Coin", "Zeus Coin", "Runic Coin", "Amethyst Coin", "Merlin Coin", "Eldritch Coin", "Avalon Coin", "Dragonheart Coin", "Phoenix Coin",
+    "Hercules Coin", "Helios Coin", "Nyx Coin", "Titan Coin", "Zeus Coin", "Runic Coin", "Amethyst Coin", "Merlin Coin", "Eldritch Coin", "Avalon Coin", "Dragonheart Coin", "Phoenix Coin", "Immortal Coin", "Fate Coin", "Leviathan Coin",
 }
 
 -- Upgrade list
@@ -720,7 +720,7 @@ local SessionLabel = StatusBox:AddLabel({ Text = 'SESSION - <font color="#60d888
 -- Updates Box
 local UpdatesBox = Tabs.Info:AddLeftGroupbox("Updates", "rotate-ccw")
 UpdatesBox:AddLabel({ Text = '<font color="#60d888">● Up to date</font>' })
-UpdatesBox:AddLabel({ Text = '<font color="#8a8a8a"> Last Updated 8/15/2026</font>' })
+UpdatesBox:AddLabel({ Text = '<font color="#8a8a8a"> Last Updated 8/17/2026</font>' })
 
 -- Game Info Box
 local InfoGameBox = Tabs.Info:AddRightGroupbox("Game Info", "gamepad-2")
