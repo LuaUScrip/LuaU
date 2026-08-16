@@ -186,7 +186,7 @@ local function FarmBestArea()
 				Teleport(Torso.Position)
 				task.wait(0.5)
 				FirePrompt(Torso:FindFirstChild("ProximityPrompt"))
-				task.wait(0.01)
+				task.wait(0.5)
 				Teleport(Vector3.new(1, 3, 8))
 			end
 		end
