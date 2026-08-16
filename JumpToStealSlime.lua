@@ -215,7 +215,7 @@ local function AutoFarmLuckyBlocksLoop()
                         FirePrompt(stealPrompt)
                     end
 
-                    task.wait(0.1)
+                    task.wait(0.01)
 
                     -- Teleport back home
                     Teleport(Config.HomePosition)
@@ -932,7 +932,7 @@ local Tabs = {
 local MainTabs = {
     Farming = Tabs.Main:AddSubTab({ Name = "Farming", Icon = "star" }),
     Upgrades = Tabs.Main:AddSubTab({ Name = "Upgrades", Icon = "trending-up" }),
-    Shop = Tabs.Main:AddSubTab({ Name = "Shop", Icon = "shopping-bag" }),
+    Shop = Tabs.Main:AddSubTab({ Name = "Shop", Icon = "shopping-cart" }),
 }
 
 -- INFO TAB
