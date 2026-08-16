@@ -176,7 +176,7 @@ end
 local function FarmBestArea()
 	pcall(function()
 		Teleport(Vector3.new(0, 3297, 2290))
-		task.wait(0.5)
+		task.wait(1)
 
 		local ItemSpawns = Workspace:FindFirstChild("ItemSpawns")
 		local ItemSpawn = ItemSpawns and ItemSpawns:FindFirstChild("11")
@@ -184,9 +184,9 @@ local function FarmBestArea()
 			local Torso = ItemSpawn.SpawnedItem:FindFirstChild("Torso")
 			if Torso then
 				Teleport(Torso.Position)
-				task.wait(0.5)
+				task.wait(1)
 				FirePrompt(Torso:FindFirstChild("ProximityPrompt"))
-				task.wait(0.5)
+				task.wait(1)
 				Teleport(Vector3.new(1, 3, 8))
 			end
 		end
