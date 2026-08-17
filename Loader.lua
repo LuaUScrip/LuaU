@@ -52,7 +52,7 @@ local SupportedGames = {
 	{name = "Jump To Steal Slime", placeIds = {131776241538171}, url = "https://raw.githubusercontent.com/LuaUScrip/LuaU/refs/heads/main/JumpToStealSlime.lua"},
 	{name = "+1 Roller For Needoh ", placeIds = {81700526542690}, url = "https://raw.githubusercontent.com/LuaUScrip/LuaU/refs/heads/main/Plus1RollerForNeedoh.lua"},
 	{name = "+1 High Jump Power Escape", placeIds = {83388257263676}, url = "https://raw.githubusercontent.com/LuaUScrip/LuaU/refs/heads/main/Plus1HighJumpPowerEscape.lua"},
-	{name = "Murderers VS Sheriffs", placeIds = {12355337193}, url = nil},
+	{name = "Murderers VS Sheriffs", placeIds = {12355337193}, url = "https://raw.githubusercontent.com/LuaUScrip/LuaU/refs/heads/main/MurderVsSherif.lua"},
 	{name = "Script 44", placeIds = {0}, url = nil},
 	{name = "Script 45", placeIds = {0}, url = nil},
 	{name = "Script 46", placeIds = {0}, url = nil},
