@@ -26,9 +26,18 @@ Player.CharacterAdded:Connect(function(newCharacter)
     HumanoidRootPart = Character:WaitForChild("HumanoidRootPart")
 end)
 
+-- Lucky Blocks List
+local LuckyBlocksList = {
+    "OG Lucky Block",
+    "Champions Lucky Block",
+    "Spain Lucky Block",
+    "Icons Lucky Block",
+}
+
 -- Configuration
 local Config = {
     HomePosition = Vector3.new(198, 3, 280),
+    SelectedLuckyBlock = {},
     FarmActive = false,
     BuyUpgradesActive = false,
     BuySelectedUpgradesActive = false,
@@ -107,12 +116,17 @@ local function Notify(Title, Description, Type)
     end)
 end
 
--- Helper: Get OG Lucky Block
-local function GetOGLuckyBlock()
+-- Helper: Get Lucky Block by name
+local function GetLuckyBlock(BlockName)
     local success, result = pcall(function()
-        return Workspace.Live.Slimes["OG Lucky Block"].RootPart
+        return Workspace.Live.Slimes[BlockName].RootPart
     end)
     return success and result or nil
+end
+
+-- Helper: Get selected Lucky Block
+local function GetSelectedLuckyBlock()
+    return GetLuckyBlock(Config.SelectedLuckyBlock)
 end
 
 -- Helper: Teleport with safety
@@ -140,28 +154,29 @@ local function FirePrompt(Prompt)
 end
 
 -- FARM FUNCTION: Teleport -> Fire -> Teleport Back
-local function FarmOGLuckyBlock()
+local function FarmLuckyBlock()
     if not HumanoidRootPart or not HumanoidRootPart.Parent then
         return
     end
 
     pcall(function()
-        local OGBlock = GetOGLuckyBlock()
-        if not OGBlock then
-            return
+        -- Farm all selected lucky blocks
+        for _, BlockName in Config.SelectedLuckyBlock do
+            local LuckyBlock = GetLuckyBlock(BlockName)
+            if LuckyBlock then
+                -- Teleport to block
+                Teleport(LuckyBlock.Position)
+                RunService.RenderStepped:Wait(2)
+
+                -- Fire proximity prompt
+                local Prompt = LuckyBlock:FindFirstChild("StealPrompt")
+                if Prompt then
+                    FirePrompt(Prompt)
+                end
+
+                RunService.RenderStepped:Wait(3)
+            end
         end
-
-        -- Teleport to block
-        Teleport(OGBlock.Position)
-        RunService.RenderStepped:Wait(2)
-
-        -- Fire proximity prompt
-        local Prompt = OGBlock:FindFirstChild("StealPrompt")
-        if Prompt then
-            FirePrompt(Prompt)
-        end
-
-        RunService.RenderStepped:Wait(3)
 
         -- Teleport back home
         Teleport(Config.HomePosition)
@@ -470,7 +485,10 @@ local function SaveConfigData(Name)
             FontName = Config.FontName,
             FontPreset = Config.FontPreset,
             MenuBind = Config.MenuBind,
-            SoccerSlots = Config.SoccerSlots,
+            SelectedLuckyBlock = Config.SelectedLuckyBlock or {},
+            SelectedUpgrades = Config.SelectedUpgrades or {},
+            SelectedGears = Config.SelectedGears or {},
+            SoccerSlots = Config.SoccerSlots or {},
             Colors = {},
         }
         for Key, Color in Config.CustomColors do
@@ -634,6 +652,27 @@ LoadConfig = function(Name, Silent)
         Config.MenuBind = Data.MenuBind
     end
 
+    -- Selected Lucky Blocks (multi-select)
+    if type(Data.SelectedLuckyBlock) == "table" then
+        local Valid = {}
+        for _, Block in Data.SelectedLuckyBlock do
+            if table.find(LuckyBlocksList, Block) then
+                table.insert(Valid, Block)
+            end
+        end
+        Config.SelectedLuckyBlock = Valid
+    end
+
+    -- Selected Upgrades (multi-select)
+    if type(Data.SelectedUpgrades) == "table" then
+        Config.SelectedUpgrades = Data.SelectedUpgrades
+    end
+
+    -- Selected Gears (multi-select)
+    if type(Data.SelectedGears) == "table" then
+        Config.SelectedGears = Data.SelectedGears
+    end
+
     -- Soccer slots (multi-select)
     if type(Data.SoccerSlots) == "table" then
         local Valid = {}
@@ -665,15 +704,21 @@ LoadConfig = function(Name, Silent)
     if SettingsRefs.FontPresetDropdown then
         SettingsRefs.FontPresetDropdown:SetValue(Config.FontPreset)
     end
+    if SettingsRefs.LuckyBlockDropdown then
+        SettingsRefs.LuckyBlockDropdown:SetValue(Config.SelectedLuckyBlock or {})
+    end
     SyncColorPickers()
     if SettingsRefs.MenuBindPicker then
         SettingsRefs.MenuBindPicker:SetValue({ Config.MenuBind, "Press" })
     end
     if SettingsRefs.SoccerSlotDropdown then
-        SettingsRefs.SoccerSlotDropdown:SetValue(Config.SoccerSlots)
+        SettingsRefs.SoccerSlotDropdown:SetValue(Config.SoccerSlots or {})
     end
     if SettingsRefs.UpgradeDropdown then
-        SettingsRefs.UpgradeDropdown:SetValue(Config.SelectedUpgrades)
+        SettingsRefs.UpgradeDropdown:SetValue(Config.SelectedUpgrades or {})
+    end
+    if SettingsRefs.GearDropdown then
+        SettingsRefs.GearDropdown:SetValue(Config.SelectedGears or {})
     end
 
     SuppressUI = false
@@ -789,7 +834,7 @@ local Window = Library:CreateWindow({
     Title = "AntiGodHub",
     Icon = 125265885440515,
     Footer = {
-        { Text = Config.DiscordLink, Copyable = true },
+        { Text = "Discord", Copyable = true, OnClick = function() CopyToClipboard(Config.DiscordLink) end },
         { Text = " | " },
         { Text = "AntiGodHub", Copyable = true },
     },
@@ -888,7 +933,7 @@ local SessionLabel = StatusBox:AddLabel({ Text = 'SESSION - <font color="#60d888
 local UpdatesBox = Tabs.Info:AddLeftGroupbox("Updates", "rotate-ccw")
 
 UpdatesBox:AddLabel({ Text = '<font color="#60d888">● Up to date</font>' })
-UpdatesBox:AddLabel({ Text = '<font color="#8a8a8a"> Last Updated 8/15/2026</font>' })
+UpdatesBox:AddLabel({ Text = '<font color="#8a8a8a"> Last Updated 8/18/2026</font>' })
 
 -- Game Info Box
 local InfoGameBox = Tabs.Info:AddRightGroupbox("Game Info", "gamepad-2")
@@ -985,7 +1030,7 @@ SocialsBox:AddButton({
 -- Features Box (below Socials, simple feature list)
 local FeaturesBox = Tabs.Info:AddRightGroupbox("Features", "list")
 
-FeaturesBox:AddLabel({ Text = '<font color="#60d888">Auto Farm OG Lucky Blocks</font>' })
+FeaturesBox:AddLabel({ Text = '<font color="#60d888">Auto Farm Lucky Blocks</font>' })
 FeaturesBox:AddLabel({ Text = '<font color="#60d888">Auto Collect Cash</font>' })
 FeaturesBox:AddLabel({ Text = '<font color="#60d888">Auto Rebirth</font>' })
 FeaturesBox:AddLabel({ Text = '<font color="#60d888">Auto Sell All</font>' })
@@ -1008,8 +1053,31 @@ FeaturesBox:AddLabel({ Text = '<font color="#60d888">No Gameplay Paused</font>' 
 -- MAIN > FARMING TAB
 local FarmBox = MainTabs.Eggs:AddLeftGroupbox("Auto Farm", "star")
 
+-- Lucky Block Selection Dropdown
+local LuckyBlockDropdown = FarmBox:AddDropdown("LuckyBlockSelect", {
+    Text = "Select LuckyBlock",
+    Values = LuckyBlocksList,
+    Multi = true,
+    Default = Config.SelectedLuckyBlock,
+    MaxVisibleDropdownItems = 8,
+    Callback = function(Selected)
+        Config.SelectedLuckyBlock = {}
+        for Block, Active in Selected do
+            if Active then
+                table.insert(Config.SelectedLuckyBlock, Block)
+            end
+        end
+        if not SuppressUI then
+            ScheduleSave()
+        end
+    end,
+})
+SettingsRefs.LuckyBlockDropdown = LuckyBlockDropdown
+
+FarmBox:AddDivider()
+
 AddFeatureToggle(FarmBox, "AutoFarm", {
-    Text = "Auto Farm OG",
+    Text = "Auto Farm",
     Tooltip = "Auto Farm Loop",
     Notify = true,
 }, function(Value)
@@ -1017,7 +1085,7 @@ AddFeatureToggle(FarmBox, "AutoFarm", {
     if Value then
         task.spawn(function()
             while Config.FarmActive do
-                FarmOGLuckyBlock()
+                FarmLuckyBlock()
                 RunService.RenderStepped:Wait(90)
             end
         end)
@@ -1126,7 +1194,7 @@ QuickBox:AddButton({
 local UpgradeBox = MainTabs.Slimes:AddLeftGroupbox("Upgrades", "zap")
 
 local UpgradeDropdown = UpgradeBox:AddDropdown("UpgradeList", {
-    Text = "Upgrade List (multi-select)",
+    Text = "Select Upgrade",
     Values = { "Jump", "Carry" },
     Multi = true,
     Default = Config.SelectedUpgrades,
@@ -1180,7 +1248,7 @@ end)
 local FloorsSoccerBox = MainTabs.Slimes:AddRightGroupbox("Floors & Soccer", "zap")
 
 local SoccerSlotDropdown = FloorsSoccerBox:AddDropdown("SoccerSlot", {
-    Text = "Soccer List (multi-select)",
+    Text = "Select Soccer",
     Values = SoccerSlotOptions,
     Multi = true,
     Default = Config.SoccerSlots,
@@ -1246,7 +1314,7 @@ for i = 1, 25 do
 end
 
 local GearDropdown = GearBox:AddDropdown("GearList", {
-    Text = "Gear List (multi-select)",
+    Text = "Select Gear",
     Values = GearOptions,
     Multi = true,
     Default = Config.SelectedGears,
