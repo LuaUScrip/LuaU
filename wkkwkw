@@ -1,10 +1,3 @@
---[[
-	AntiGodHub — Gun Script
-	Logic: Auto Shoot (prediction) / Auto Equip / ESP / Aimbot / Silent Aim / Movement.
-	Same structure as the original. Shoot remote lives under ReplicatedStorage.Remotes.ShootGun.
---]]
-
--- ===== Load Obsidian GUI Library =====
 local LibraryURL = "https://raw.githubusercontent.com/yudhiprb1-afk/LIB/refs/heads/main/Library.lua"
 local Library
 
@@ -17,75 +10,31 @@ if not Library then
 	return
 end
 
--- ===== Services =====
+local Toggles = Library.Toggles
+local Options = Library.Options
+
 local Players = game:GetService("Players")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local Workspace = game:GetService("Workspace")
 local RunService = game:GetService("RunService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local UserInputService = game:GetService("UserInputService")
 local HttpService = game:GetService("HttpService")
 local TeleportService = game:GetService("TeleportService")
 local VirtualUser = game:GetService("VirtualUser")
-local UserInputService = game:GetService("UserInputService")
-local VirtualInputManager = game:GetService("VirtualInputManager")
+local MarketplaceService = game:GetService("MarketplaceService")
 
-local Player = Players.LocalPlayer
-local Character = Player.Character or Player.CharacterAdded:Wait()
-local HumanoidRootPart = Character:WaitForChild("HumanoidRootPart")
-
--- Track character respawns
-Player.CharacterAdded:Connect(function(NewCharacter)
-	Character = NewCharacter
-	HumanoidRootPart = Character:WaitForChild("HumanoidRootPart")
-	task.wait(0.5)
-	local Humanoid = Character:FindFirstChild("Humanoid")
-	if Humanoid then
-		OriginalWalkspeed = Humanoid.WalkSpeed
-		OriginalJumpPower = Humanoid.JumpPower
-	end
-end)
-
--- Session timer
+local LocalPlayer = Players.LocalPlayer
 local SessionStart = tick()
 
--- ===== Configuration =====
 local Config = {
-	AutoShoot = false,
-	AutoEquip = false,
-	MaxDistance = 500,
-	PredRate = 0.135,
-	ESPEnabled = false,
-	BoxESP = false,
-	NameESP = false,
-	DistanceESP = false,
-	HealthESP = false,
-	TracerESP = false,
-	TeamCheck = false,
-	AimbotEnabled = false,
-	AimbotFOV = 100,
-	AimbotTarget = "Head",
-	AimbotKey = "E",
-	UseKeybind = true,
-	UseFOVCircle = true,
-	SilentAimEnabled = false,
-	SilentAimFOV = 80,
-	HeadshotChance = 80,
-	HitChance = 100,
-	SilentPrediction = true,
-	SilentVisibility = true,
+	WinPosition = CFrame.new(13139.7939, 253.489624, 702.684814),
 	WalkspeedEnabled = false,
 	WalkspeedValue = 16,
 	JumpPowerEnabled = false,
 	JumpPowerValue = 50,
 	NoclipEnabled = false,
-	AutoSave = false,
-	AutoExecute = false,
-	AutoReconnect = false,
-	AutoHideUi = false,
-	AntiAfk = false,
-	NoGameplayPaused = false,
+	InfiniteJumpEnabled = false,
 	ThemeName = "Emerald Green",
 	FontName = "Cartoon",
-	FontPreset = "White + Emerald",
 	MenuBind = "G",
 	CustomColors = {
 		AccentColor = Color3.fromRGB(96, 216, 118),
@@ -94,6 +43,11 @@ local Config = {
 		MainColor = Color3.fromRGB(16, 28, 20),
 		OutlineColor = Color3.fromRGB(30, 58, 40),
 	},
+	AutoSave = false,
+	AutoExecute = false,
+	AutoReconnect = false,
+	AutoHideUi = false,
+	AntiAfk = false,
 	DiscordLink = "https://discord.gg/jdJvZm6VdK",
 	YouTubeLink = "https://youtube.com/@antigodhub",
 	TikTokLink = "https://tiktok.com/@antigodhub",
@@ -101,8 +55,14 @@ local Config = {
 
 local SettingsRefs = {}
 local SuppressUI = false
+local CurrentConfig = nil
+local SaveQueued = false
 
--- ===== Executor Detection =====
+local ApplyTheme, ApplyColorOverride, CloneColors, SyncColorPickers
+local SanitizeConfigName, ConfigPath, GetConfigList, ConfigExists, SaveConfigData
+local GetAutoloadName, SetAutoload, ClearAutoload, LoadConfig
+local RunAutoExecute, AutoReconnectLoop, AutoHideUiLoop, AntiAfkLoop
+
 local ExecutorName = "Unknown"
 local ExecutorVersion = "Unknown"
 
@@ -114,15 +74,11 @@ pcall(function()
 			ExecutorVersion = tostring(Name[2] or Name.Version or "Unknown")
 		else
 			ExecutorName = tostring(Name)
-			if Version ~= nil then
-				ExecutorVersion = tostring(Version)
-			end
+			if Version ~= nil then ExecutorVersion = tostring(Version) end
 		end
 	elseif getexecutorname then
 		ExecutorName = tostring(getexecutorname())
-		if getexecutorversion then
-			ExecutorVersion = tostring(getexecutorversion())
-		end
+		if getexecutorversion then ExecutorVersion = tostring(getexecutorversion()) end
 	end
 end)
 
@@ -131,12 +87,9 @@ if ExecutorVersion ~= "Unknown" and ExecutorVersion ~= "" then
 	ExecutorDisplay = ExecutorName .. " " .. ExecutorVersion
 end
 
--- ===== Utility Functions =====
 local function CopyToClipboard(Text)
 	local Success = pcall(setclipboard, Text)
-	if not Success then
-		Success = pcall(toclipboard, Text)
-	end
+	if not Success then Success = pcall(toclipboard, Text) end
 	return Success
 end
 
@@ -148,819 +101,24 @@ local NotifyColors = {
 
 local function Notify(Title, Description, Type)
 	pcall(function()
-		if type(Title) == "string" and #Title > 60 then
-			Title = Title:sub(1, 57) .. "..."
-		end
-		if Description == nil or Description == "" then
-			Description = " "
-		elseif type(Description) == "string" and #Description > 60 then
-			Description = Description:sub(1, 57) .. "..."
-		end
+		if type(Title) == "string" and #Title > 60 then Title = Title:sub(1, 57) .. "..." end
+		if Description == nil or Description == "" then Description = " "
+		elseif type(Description) == "string" and #Description > 60 then Description = Description:sub(1, 57) .. "..." end
 		Type = Type or "Info"
-		Library:Notify({
-			Title = Title,
-			Description = Description,
-			Time = 4,
-			Type = Type,
-			DescriptionColor = NotifyColors[Type],
-		})
+		Library:Notify({ Title = Title, Description = Description, Time = 4, Type = Type, DescriptionColor = NotifyColors[Type] })
 	end)
 end
 
--- ===== Combat (Auto Shoot / Auto Equip) =====
-local FIRE_RATE_COOLDOWN = 0.11
-local EQUIP_COOLDOWN = 0.5
-
-local function GetShootRemote()
-	local RemotesFolder = ReplicatedStorage:FindFirstChild("Remotes")
-	return RemotesFolder and RemotesFolder:FindFirstChild("ShootGun")
-end
-
-local function GetNearestTarget()
-	local MyChar = Player.Character
-	local MyRoot = MyChar and MyChar:FindFirstChild("HumanoidRootPart")
-	if not MyRoot then return nil, nil end
-
-	local NearestPlayer, MinDist = nil, math.huge
-	local TargetVelocity = Vector3.new(0, 0, 0)
-
-	for _, OtherPlayer in pairs(Players:GetPlayers()) do
-		if OtherPlayer ~= Player and OtherPlayer.Character and OtherPlayer.Character:FindFirstChild("HumanoidRootPart") then
-			local Hum = OtherPlayer.Character:FindFirstChildOfClass("Humanoid")
-			if Hum and Hum.Health > 0 and Hum:GetState() ~= Enum.HumanoidStateType.Dead and OtherPlayer.Character.Parent == Workspace then
-				if not OtherPlayer.Team or not Player.Team or OtherPlayer.Team ~= Player.Team then
-					local EnemyRoot = OtherPlayer.Character.HumanoidRootPart
-					local Dist = (EnemyRoot.Position - MyRoot.Position).Magnitude
-
-					local Velocity = EnemyRoot.AssemblyLinearVelocity
-					if Dist < MinDist and Dist <= Config.MaxDistance and Velocity.Y > -100 then
-						MinDist = Dist
-						NearestPlayer = EnemyRoot
-						TargetVelocity = Velocity
-					end
-				end
-			end
-		end
-	end
-
-	if NearestPlayer then
-		local PredictedPos = NearestPlayer.Position + (TargetVelocity * Config.PredRate)
-		return NearestPlayer, PredictedPos
-	end
-	return nil, nil
-end
-
-local function ShootLoop()
-	task.spawn(function()
-		local LastFireTime = 0
-		local LastEquipTime = 0
-		while Config.AutoShoot or Config.AutoEquip do
-			RunService.Heartbeat:Wait()
-			pcall(function()
-				local Char = Player.Character
-				if not Char then return end
-
-				-- Auto Equip (key 2)
-				if Config.AutoEquip and not Char:FindFirstChildOfClass("Tool") then
-					local CurrentTime = os.clock()
-					if (CurrentTime - LastEquipTime) >= EQUIP_COOLDOWN then
-						LastEquipTime = CurrentTime
-						VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.Two, false, game)
-						task.wait(0.05)
-						VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.Two, false, game)
-					end
-				end
-
-				if not Config.AutoShoot then return end
-
-				local CurrentTime = os.clock()
-				if (CurrentTime - LastFireTime) < FIRE_RATE_COOLDOWN then
-					return
-				end
-
-				local ShootRemote = GetShootRemote()
-				if not ShootRemote then return end
-
-				local GunModel = Char:FindFirstChild("Gun_Equip") or Char:FindFirstChildOfClass("Tool")
-				local Muzzle = GunModel and GunModel:FindFirstChild("Muzzle", true)
-				if not Muzzle then return end
-
-				local TargetInstance, PredictedPosition = GetNearestTarget()
-				if TargetInstance and PredictedPosition then
-					LastFireTime = CurrentTime
-					ShootRemote:FireServer(Muzzle.WorldPosition, PredictedPosition, TargetInstance, PredictedPosition)
-				end
-			end)
-		end
-	end)
-end
-
--- ===== ESP & Aimbot =====
-local Camera = Workspace.CurrentCamera
-local ESPObjects = {}
-local FOVCircle = nil
-local SilentAimFOVCircle = nil
-local OriginalWalkspeed = 16
-local OriginalJumpPower = 50
-
-local function GetCharacterPart(Character, PartName)
-	if PartName == "Head" then
-		return Character:FindFirstChild("Head")
-	elseif PartName == "Torso" then
-		return Character:FindFirstChild("Torso") or Character:FindFirstChild("UpperTorso")
-	elseif PartName == "HumanoidRootPart" then
-		return Character:FindFirstChild("HumanoidRootPart")
-	end
-	return nil
-end
-
-local function IsTeamMate(OtherPlayer)
-	if not Config.TeamCheck then return false end
-	if not Player.Team then return false end
-	return OtherPlayer.Team == Player.Team
-end
-
-local function IsVisible(TargetPart)
-	if not Config.SilentVisibility then return true end
-
-	local RaycastParams = RaycastParams.new()
-	RaycastParams.FilterDescendantsInstances = { Player.Character, Camera }
-	RaycastParams.FilterType = Enum.RaycastFilterType.Blacklist
-
-	local RaycastResult = Workspace:Raycast(Camera.CFrame.Position, (TargetPart.Position - Camera.CFrame.Position), RaycastParams)
-	if RaycastResult then
-		local HitPart = RaycastResult.Instance
-		if HitPart:IsDescendantOf(TargetPart.Parent) then
-			return true
-		end
-		return false
-	end
-	return true
-end
-
-local function CreateFOVCircle()
-	if FOVCircle then FOVCircle:Remove() end
-	FOVCircle = Drawing.new("Circle")
-	FOVCircle.Thickness = 2
-	FOVCircle.NumSides = 50
-	FOVCircle.Radius = Config.AimbotFOV
-	FOVCircle.Color = Color3.fromRGB(255, 255, 255)
-	FOVCircle.Transparency = 1
-	FOVCircle.Visible = false
-	FOVCircle.Filled = false
-end
-
-local function CreateSilentFOVCircle()
-	if SilentAimFOVCircle then SilentAimFOVCircle:Remove() end
-	SilentAimFOVCircle = Drawing.new("Circle")
-	SilentAimFOVCircle.Thickness = 2
-	SilentAimFOVCircle.NumSides = 50
-	SilentAimFOVCircle.Radius = Config.SilentAimFOV
-	SilentAimFOVCircle.Color = Color3.fromRGB(255, 100, 100)
-	SilentAimFOVCircle.Transparency = 1
-	SilentAimFOVCircle.Visible = false
-	SilentAimFOVCircle.Filled = false
-end
-
-local function CreateESP(OtherPlayer)
-	if OtherPlayer == Player then return nil end
-
-	local Esp = {
-		Player = OtherPlayer,
-		Box = Drawing.new("Square"),
-		Name = Drawing.new("Text"),
-		Distance = Drawing.new("Text"),
-		Health = Drawing.new("Text"),
-		Tracer = Drawing.new("Line"),
-	}
-
-	Esp.Box.Thickness = 2
-	Esp.Box.Filled = false
-	Esp.Box.Color = Color3.fromRGB(255, 255, 255)
-	Esp.Box.Visible = false
-
-	Esp.Name.Size = 18
-	Esp.Name.Center = true
-	Esp.Name.Outline = true
-	Esp.Name.Color = Color3.fromRGB(255, 255, 255)
-	Esp.Name.Visible = false
-
-	Esp.Distance.Size = 16
-	Esp.Distance.Center = true
-	Esp.Distance.Outline = true
-	Esp.Distance.Color = Color3.fromRGB(255, 255, 255)
-	Esp.Distance.Visible = false
-
-	Esp.Health.Size = 16
-	Esp.Health.Center = true
-	Esp.Health.Outline = true
-	Esp.Health.Color = Color3.fromRGB(0, 255, 0)
-	Esp.Health.Visible = false
-
-	Esp.Tracer.Thickness = 1
-	Esp.Tracer.Color = Color3.fromRGB(255, 255, 255)
-	Esp.Tracer.Visible = false
-
-	return Esp
-end
-
-local function UpdateESP(Esp)
-	local OtherPlayer = Esp.Player
-	local Char = OtherPlayer.Character
-
-	local function HideAll()
-		Esp.Box.Visible = false
-		Esp.Name.Visible = false
-		Esp.Distance.Visible = false
-		Esp.Health.Visible = false
-		Esp.Tracer.Visible = false
-	end
-
-	if not Char or not Char:FindFirstChild("HumanoidRootPart") or not Char:FindFirstChild("Humanoid") then
-		HideAll()
-		return
-	end
-
-	if IsTeamMate(OtherPlayer) then
-		HideAll()
-		return
-	end
-
-	local HRP = Char.HumanoidRootPart
-	local Head = Char:FindFirstChild("Head")
-	local Hum = Char.Humanoid
-	local Vector, OnScreen = Camera:WorldToViewportPoint(HRP.Position)
-
-	if OnScreen then
-		local HeadPos = Camera:WorldToViewportPoint(Head.Position + Vector3.new(0, 0.5, 0))
-		local LegPos = Camera:WorldToViewportPoint(HRP.Position - Vector3.new(0, 3, 0))
-
-		local Height = math.abs(HeadPos.Y - LegPos.Y)
-		local Width = Height / 2
-
-		if Config.ESPEnabled and Config.BoxESP then
-			Esp.Box.Size = Vector2.new(Width, Height)
-			Esp.Box.Position = Vector2.new(Vector.X - Width / 2, Vector.Y - Height / 2)
-			Esp.Box.Visible = true
-		else
-			Esp.Box.Visible = false
-		end
-
-		if Config.ESPEnabled and Config.NameESP then
-			Esp.Name.Text = OtherPlayer.Name
-			Esp.Name.Position = Vector2.new(Vector.X, HeadPos.Y - 20)
-			Esp.Name.Visible = true
-		else
-			Esp.Name.Visible = false
-		end
-
-		if Config.ESPEnabled and Config.DistanceESP and Player.Character:FindFirstChild("HumanoidRootPart") then
-			local Distance = math.floor((HRP.Position - Player.Character.HumanoidRootPart.Position).Magnitude)
-			Esp.Distance.Text = Distance .. "m"
-			Esp.Distance.Position = Vector2.new(Vector.X, LegPos.Y + 5)
-			Esp.Distance.Visible = true
-		else
-			Esp.Distance.Visible = false
-		end
-
-		if Config.ESPEnabled and Config.HealthESP then
-			local Health = math.floor(Hum.Health)
-			local MaxHealth = math.floor(Hum.MaxHealth)
-			Esp.Health.Text = Health .. "/" .. MaxHealth
-			Esp.Health.Position = Vector2.new(Vector.X, Vector.Y)
-			Esp.Health.Color = Color3.fromRGB(255 - (Health / MaxHealth) * 255, (Health / MaxHealth) * 255, 0)
-			Esp.Health.Visible = true
-		else
-			Esp.Health.Visible = false
-		end
-
-		if Config.ESPEnabled and Config.TracerESP then
-			Esp.Tracer.From = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y)
-			Esp.Tracer.To = Vector2.new(Vector.X, Vector.Y)
-			Esp.Tracer.Visible = true
-		else
-			Esp.Tracer.Visible = false
-		end
-	else
-		HideAll()
-	end
-end
-
-local function RemoveESP(OtherPlayer)
-	if ESPObjects[OtherPlayer] then
-		if ESPObjects[OtherPlayer].Box then ESPObjects[OtherPlayer].Box:Remove() end
-		if ESPObjects[OtherPlayer].Name then ESPObjects[OtherPlayer].Name:Remove() end
-		if ESPObjects[OtherPlayer].Distance then ESPObjects[OtherPlayer].Distance:Remove() end
-		if ESPObjects[OtherPlayer].Health then ESPObjects[OtherPlayer].Health:Remove() end
-		if ESPObjects[OtherPlayer].Tracer then ESPObjects[OtherPlayer].Tracer:Remove() end
-		ESPObjects[OtherPlayer] = nil
-	end
-end
-
-local function GetClosestPlayerToMouse()
-	local ClosestPlayer = nil
-	local ShortestDistance = math.huge
-	local MousePos = UserInputService:GetMouseLocation()
-
-	for _, OtherPlayer in pairs(Players:GetPlayers()) do
-		if OtherPlayer ~= Player and OtherPlayer.Character and OtherPlayer.Character:FindFirstChild("HumanoidRootPart") then
-			if IsTeamMate(OtherPlayer) then continue end
-
-			local TargetPart = GetCharacterPart(OtherPlayer.Character, Config.AimbotTarget)
-			if not TargetPart then continue end
-
-			local ScreenPos, OnScreen = Camera:WorldToViewportPoint(TargetPart.Position)
-			if OnScreen then
-				local Distance = (Vector2.new(MousePos.X, MousePos.Y) - Vector2.new(ScreenPos.X, ScreenPos.Y)).Magnitude
-				if Config.UseFOVCircle then
-					if Distance < Config.AimbotFOV and Distance < ShortestDistance then
-						ClosestPlayer = OtherPlayer
-						ShortestDistance = Distance
-					end
-				else
-					if Distance < ShortestDistance then
-						ClosestPlayer = OtherPlayer
-						ShortestDistance = Distance
-					end
-				end
-			end
-		end
-	end
-
-	return ClosestPlayer
-end
-
-local function GetSilentAimTarget()
-	if not Config.SilentAimEnabled then return nil end
-	if math.random(1, 100) > Config.HitChance then return nil end
-
-	local ClosestPlayer = nil
-	local ShortestDistance = math.huge
-	local ClosestPart = nil
-	local MousePos = UserInputService:GetMouseLocation()
-
-	for _, OtherPlayer in pairs(Players:GetPlayers()) do
-		if OtherPlayer ~= Player and OtherPlayer.Character and OtherPlayer.Character:FindFirstChild("HumanoidRootPart") then
-			if IsTeamMate(OtherPlayer) then continue end
-
-			local UseHead = math.random(1, 100) <= Config.HeadshotChance
-			local TargetPart = GetCharacterPart(OtherPlayer.Character, UseHead and "Head" or "Torso")
-			if not TargetPart then continue end
-			if Config.SilentVisibility and not IsVisible(TargetPart) then continue end
-
-			local TargetPos = TargetPart.Position
-			if Config.SilentPrediction then
-				local HRP = OtherPlayer.Character.HumanoidRootPart
-				local Velocity = HRP.AssemblyLinearVelocity or HRP.Velocity
-				local Distance = (TargetPos - Camera.CFrame.Position).Magnitude
-				local TimeToHit = Distance / 1000
-				TargetPos = TargetPos + (Velocity * TimeToHit)
-			end
-
-			local ScreenPos, OnScreen = Camera:WorldToViewportPoint(TargetPos)
-			if OnScreen then
-				local Distance = (Vector2.new(MousePos.X, MousePos.Y) - Vector2.new(ScreenPos.X, ScreenPos.Y)).Magnitude
-				if Distance < Config.SilentAimFOV and Distance < ShortestDistance then
-					ClosestPlayer = OtherPlayer
-					ShortestDistance = Distance
-					ClosestPart = TargetPart
-				end
-			end
-		end
-	end
-
-	return ClosestPart
-end
-
--- ===== Silent Aim Hook =====
-if hookmetamethod then
-	local OldNamecall
-	OldNamecall = hookmetamethod(game, "__namecall", function(...)
-		local Args = { ... }
-		local Method = getnamecallmethod()
-
-		if Config.SilentAimEnabled and (Method == "FireServer" or Method == "InvokeServer") then
-			local SilentTarget = GetSilentAimTarget()
-			if SilentTarget then
-				for i, Arg in pairs(Args) do
-					if typeof(Arg) == "Vector3" then
-						if Config.SilentPrediction and SilentTarget.Parent:FindFirstChild("HumanoidRootPart") then
-							local HRP = SilentTarget.Parent.HumanoidRootPart
-							local Velocity = HRP.AssemblyLinearVelocity or HRP.Velocity
-							local Distance = (SilentTarget.Position - Camera.CFrame.Position).Magnitude
-							local TimeToHit = Distance / 1000
-							Args[i] = SilentTarget.Position + (Velocity * TimeToHit)
-						else
-							Args[i] = SilentTarget.Position
-						end
-					elseif typeof(Arg) == "CFrame" then
-						Args[i] = CFrame.new(Camera.CFrame.Position, SilentTarget.Position)
-					elseif typeof(Arg) == "Ray" then
-						Args[i] = Ray.new(Camera.CFrame.Position, (SilentTarget.Position - Camera.CFrame.Position).Unit * 1000)
-					end
-				end
-			end
-		end
-
-		return OldNamecall(...)
-	end)
-end
-
--- ===== Main Render Loop (ESP / FOV circles / Aimbot / Movement) =====
-local function RenderLoop()
-	task.spawn(function()
-		while true do
-			RunService.RenderStepped:Wait()
-			pcall(function()
-				-- ESP
-				if Config.ESPEnabled then
-					for OtherPlayer, Esp in pairs(ESPObjects) do
-						if OtherPlayer and OtherPlayer.Parent then
-							UpdateESP(Esp)
-						else
-							RemoveESP(OtherPlayer)
-						end
-					end
-				end
-
-				-- FOV circles
-				if FOVCircle then
-					local MousePos = UserInputService:GetMouseLocation()
-					FOVCircle.Position = Vector2.new(MousePos.X, MousePos.Y)
-					FOVCircle.Radius = Config.AimbotFOV
-					FOVCircle.Visible = Config.AimbotEnabled and Config.UseFOVCircle
-				end
-
-				if SilentAimFOVCircle then
-					local MousePos = UserInputService:GetMouseLocation()
-					SilentAimFOVCircle.Position = Vector2.new(MousePos.X, MousePos.Y)
-					SilentAimFOVCircle.Radius = Config.SilentAimFOV
-					SilentAimFOVCircle.Visible = Config.SilentAimEnabled
-				end
-
-				-- Aimbot
-				local ShouldAim = false
-				if Config.UseKeybind then
-					ShouldAim = Config.AimbotEnabled and UserInputService:IsKeyDown(Enum.KeyCode[Config.AimbotKey])
-				else
-					ShouldAim = Config.AimbotEnabled
-				end
-
-				if ShouldAim then
-					local Target = GetClosestPlayerToMouse()
-					if Target and Target.Character then
-						local TargetPart = GetCharacterPart(Target.Character, Config.AimbotTarget)
-						if TargetPart then
-							Camera.CFrame = CFrame.new(Camera.CFrame.Position, TargetPart.Position)
-						end
-					end
-				end
-
-				-- Noclip
-				if Config.NoclipEnabled and Player.Character then
-					for _, Part in pairs(Player.Character:GetDescendants()) do
-						if Part:IsA("BasePart") then
-							Part.CanCollide = false
-						end
-					end
-				end
-
-				-- Movement
-				if Player.Character and Player.Character:FindFirstChild("Humanoid") then
-					local Hum = Player.Character.Humanoid
-					if Config.WalkspeedEnabled then
-						Hum.WalkSpeed = Config.WalkspeedValue
-					else
-						Hum.WalkSpeed = OriginalWalkspeed
-					end
-					if Config.JumpPowerEnabled then
-						Hum.JumpPower = Config.JumpPowerValue
-					else
-						Hum.JumpPower = OriginalJumpPower
-					end
-				end
-			end)
-		end
-	end)
-end
-
--- ===== Theme Manager =====
-local function MakeTheme(Accent, Background, Main, Outline, Font)
-	return {
-		AccentColor = Accent,
-		BackgroundColor = Background,
-		MainColor = Main,
-		OutlineColor = Outline,
-		FontColor = Font,
-	}
-end
-
-local Themes = {
-	["Obsidian (Default)"] = MakeTheme(
-		Color3.fromRGB(125, 85, 255),
-		Color3.fromRGB(15, 15, 15),
-		Color3.fromRGB(25, 25, 25),
-		Color3.fromRGB(40, 40, 40),
-		Color3.fromRGB(255, 255, 255)
-	),
-	["Midnight Blue"] = MakeTheme(
-		Color3.fromRGB(96, 165, 255),
-		Color3.fromRGB(8, 10, 16),
-		Color3.fromRGB(18, 22, 32),
-		Color3.fromRGB(38, 46, 64),
-		Color3.fromRGB(255, 255, 255)
-	),
-	["Blood Red"] = MakeTheme(
-		Color3.fromRGB(255, 76, 76),
-		Color3.fromRGB(16, 8, 8),
-		Color3.fromRGB(28, 14, 14),
-		Color3.fromRGB(64, 30, 30),
-		Color3.fromRGB(255, 255, 255)
-	),
-	["Emerald Green"] = MakeTheme(
-		Color3.fromRGB(96, 216, 118),
-		Color3.fromRGB(8, 16, 10),
-		Color3.fromRGB(16, 28, 20),
-		Color3.fromRGB(30, 58, 40),
-		Color3.fromRGB(255, 255, 255)
-	),
-	["Sunset Orange"] = MakeTheme(
-		Color3.fromRGB(255, 148, 60),
-		Color3.fromRGB(18, 12, 8),
-		Color3.fromRGB(32, 22, 12),
-		Color3.fromRGB(64, 46, 26),
-		Color3.fromRGB(255, 255, 255)
-	),
-}
-
-local ThemeNames = {}
-for Name in Themes do
-	table.insert(ThemeNames, Name)
-end
-
-local function CloneColors(Scheme)
-	local Clone = {}
-	for Key, Value in Scheme do
-		Clone[Key] = Value
-	end
-	return Clone
-end
-
-local function ApplyTheme(Scheme)
-	for Key, Value in Scheme do
-		if Library.Scheme[Key] ~= nil then
-			Library.Scheme[Key] = Value
-		end
-	end
-	Library:UpdateColorsUsingRegistry()
-end
-
-local function ApplyColorOverride(Key, Color)
-	if Library.Scheme[Key] ~= nil then
-		Library.Scheme[Key] = Color
-		Library:UpdateColorsUsingRegistry()
-	end
-end
-
-local function ApplyCustomColors()
-	for Key, Color in Config.CustomColors do
-		ApplyColorOverride(Key, Color)
-	end
-end
-
-local function SyncColorPickers()
-	local PickerMap = {
-		AccentColor = "ThemeAccent",
-		FontColor = "ThemeFontColor",
-		BackgroundColor = "ThemeBackground",
-		MainColor = "ThemeMain",
-		OutlineColor = "ThemeOutline",
-	}
-	for Key, Idx in PickerMap do
-		local Picker = Library.Options[Idx]
-		if Picker and Picker.SetValueRGB then
-			Picker:SetValueRGB(Config.CustomColors[Key])
-		end
-	end
-end
-
--- ===== Fonts =====
-local FontNames = {
-	"Code", "Gotham", "Roboto", "Cartoon", "Arial",
-	"SourceSans", "FredokaOne", "SpaceGrotesk", "Montserrat", "TitilliumWeb", "Nunito",
-}
-
-local FontPresets = {
-	{ Name = "White + Emerald", Accent = Color3.fromRGB(96, 216, 118) },
-	{ Name = "White + Sky Blue", Accent = Color3.fromRGB(79, 195, 247) },
-	{ Name = "White + Gold", Accent = Color3.fromRGB(255, 213, 79) },
-	{ Name = "White + Rose", Accent = Color3.fromRGB(255, 107, 107) },
-	{ Name = "White + Violet", Accent = Color3.fromRGB(179, 136, 255) },
-	{ Name = "White + Teal", Accent = Color3.fromRGB(77, 208, 196) },
-	{ Name = "White + Coral", Accent = Color3.fromRGB(255, 138, 101) },
-	{ Name = "White + Lavender", Accent = Color3.fromRGB(206, 147, 216) },
-	{ Name = "White + Cyan", Accent = Color3.fromRGB(77, 208, 225) },
-	{ Name = "White + Lime", Accent = Color3.fromRGB(174, 213, 129) },
-}
-
--- ===== Config Save / Load =====
-local ConfigsDir = "FarmScript/Configs"
-local AutoloadPath = "FarmScript/Autoload.json"
-local CurrentConfig = nil
-
-local function SanitizeConfigName(Name)
-	if type(Name) ~= "string" then return nil end
-	local Clean = Name:gsub("[^%w _%-%.]", ""):gsub("%s+", " "):gsub("^%s+", ""):gsub("%s+$", "")
-	if Clean == "" then return nil end
-	return Clean
-end
-
-local function ConfigPath(Name)
-	return ConfigsDir .. "/" .. Name .. ".json"
-end
-
-local function GetConfigList()
-	local List = {}
-	if not listfiles then return List end
-	pcall(function()
-		makefolder("FarmScript")
-		makefolder(ConfigsDir)
-		for _, Path in listfiles(ConfigsDir) do
-			if Path:sub(-5) == ".json" then
-				local Name = Path:match("([^/\\]+)%.json$")
-				if Name then table.insert(List, Name) end
-			end
-		end
-	end)
-	table.sort(List)
-	return List
-end
-
-local function ConfigExists(Name)
-	Name = SanitizeConfigName(Name)
-	if not Name or not isfile then return false end
-	return isfile(ConfigPath(Name))
-end
-
-local function SaveConfigData(Name)
-	if not writefile then return false end
-	Name = SanitizeConfigName(Name)
-	if not Name then return false end
-	pcall(function()
-		makefolder("FarmScript")
-		makefolder(ConfigsDir)
-		local Data = {
-			Toggles = {},
-			ThemeName = Config.ThemeName,
-			FontName = Config.FontName,
-			FontPreset = Config.FontPreset,
-			MenuBind = Config.MenuBind,
-			Colors = {},
-		}
-		for Key, Color in Config.CustomColors do
-			Data.Colors[Key] = {
-				math.floor(Color.R * 255),
-				math.floor(Color.G * 255),
-				math.floor(Color.B * 255),
-			}
-		end
-		for Id, Toggle in Library.Toggles do
-			Data.Toggles[Id] = Toggle.Value
-		end
-		writefile(ConfigPath(Name), HttpService:JSONEncode(Data))
-	end)
-	return true
-end
-
-local function GetAutoloadName()
-	if not isfile or not readfile then return nil end
-	if not isfile(AutoloadPath) then return nil end
-	local Success, Data = pcall(function()
-		return HttpService:JSONDecode(readfile(AutoloadPath))
-	end)
-	if Success and type(Data) == "table" and type(Data.Name) == "string" then
-		return SanitizeConfigName(Data.Name)
-	end
-	return nil
-end
-
-local function SetAutoload(Name)
-	if not writefile then return false end
-	Name = SanitizeConfigName(Name)
-	if not Name then return false end
-	pcall(function()
-		makefolder("FarmScript")
-		writefile(AutoloadPath, HttpService:JSONEncode({ Name = Name }))
-	end)
-	return true
-end
-
-local function ClearAutoload()
-	pcall(function()
-		if isfile and isfile(AutoloadPath) then
-			delfile(AutoloadPath)
-		end
-	end)
-	return true
-end
-
-local SaveQueued = false
 local function ScheduleSave()
-	if not Config.AutoSave then return end
-	if not CurrentConfig then return end
-	if SaveQueued then return end
+	if not Config.AutoSave or not CurrentConfig or SaveQueued then return end
 	SaveQueued = true
-	task.delay(1, function()
-		SaveQueued = false
-		SaveConfigData(CurrentConfig)
-	end)
+	task.delay(1, function() SaveQueued = false; SaveConfigData(CurrentConfig) end)
 end
 
-local LoadConfig
-LoadConfig = function(Name, Silent)
-	Name = SanitizeConfigName(Name)
-	if not Name then return false end
-	if not isfile or not readfile then
-		if not Silent then Notify("Config", "Config loading not supported", "Error") end
-		return false
-	end
-	if not isfile(ConfigPath(Name)) then
-		if not Silent then Notify("Config", "Config not found", "Warning") end
-		return false
-	end
-
-	local Success, Data = pcall(function()
-		return HttpService:JSONDecode(readfile(ConfigPath(Name)))
-	end)
-	if not Success or type(Data) ~= "table" then
-		if not Silent then Notify("Config", "Failed to read config", "Error") end
-		return false
-	end
-
-	SuppressUI = true
-
-	if type(Data.ThemeName) == "string" and Themes[Data.ThemeName] then
-		Config.ThemeName = Data.ThemeName
-		ApplyTheme(Themes[Data.ThemeName])
-	end
-
-	if type(Data.Colors) == "table" then
-		for Key, RGB in Data.Colors do
-			if Config.CustomColors[Key] ~= nil and type(RGB) == "table" then
-				local R, G, B = RGB[1], RGB[2], RGB[3]
-				if type(R) == "number" and type(G) == "number" and type(B) == "number" then
-					Config.CustomColors[Key] = Color3.fromRGB(R, G, B)
-				end
-			end
-		end
-		ApplyCustomColors()
-	end
-
-	if type(Data.FontName) == "string" and Enum.Font[Data.FontName] then
-		Config.FontName = Data.FontName
-		Library:SetFont(Enum.Font[Data.FontName])
-	end
-
-	if type(Data.FontPreset) == "string" then
-		for _, Preset in FontPresets do
-			if Preset.Name == Data.FontPreset then
-				Config.FontPreset = Preset.Name
-				break
-			end
-		end
-	end
-
-	if type(Data.MenuBind) == "string" and Data.MenuBind ~= "None" then
-		Config.MenuBind = Data.MenuBind
-	end
-
-	if type(Data.Toggles) == "table" then
-		for Id, Value in Data.Toggles do
-			local Toggle = Library.Toggles[Id]
-			if Toggle and type(Value) == "boolean" then
-				Toggle:SetValue(Value)
-			end
-		end
-	end
-
-	if SettingsRefs.ThemeDropdown then
-		SettingsRefs.ThemeDropdown:SetValue(Config.ThemeName)
-	end
-	if SettingsRefs.FontDropdown then
-		SettingsRefs.FontDropdown:SetValue(Config.FontName)
-	end
-	SyncColorPickers()
-
-	SuppressUI = false
-	CurrentConfig = Name
-	return true
-end
-
--- Add a feature toggle
 local function AddFeatureToggle(Box, Id, Info, OnToggle)
 	return Box:AddToggle(Id, {
 		Text = Info.Text,
-		Default = false,
+		Default = Info.Default == nil and false or Info.Default,
 		Tooltip = Info.Tooltip,
 		Callback = function(Value)
 			if OnToggle then OnToggle(Value) end
@@ -972,115 +130,319 @@ local function AddFeatureToggle(Box, Id, Info, OnToggle)
 	})
 end
 
--- ===== Auto Feature Loops =====
-local function RunAutoExecute()
-	task.delay(3, function()
-		if Config.AutoExecute then
-			local AutoShoot = Library.Toggles.AutoShoot
-			if AutoShoot and not AutoShoot.Value then
-				AutoShoot:SetValue(true)
+local function MakeTheme(Accent, Background, Main, Outline, Font)
+	return { AccentColor = Accent, BackgroundColor = Background, MainColor = Main, OutlineColor = Outline, FontColor = Font }
+end
+
+local Themes = {
+	["Obsidian (Default)"] = MakeTheme(Color3.fromRGB(125, 85, 255), Color3.fromRGB(15, 15, 15), Color3.fromRGB(25, 25, 25), Color3.fromRGB(40, 40, 40), Color3.fromRGB(255, 255, 255)),
+	["Midnight Blue"] = MakeTheme(Color3.fromRGB(96, 165, 255), Color3.fromRGB(8, 10, 16), Color3.fromRGB(18, 22, 32), Color3.fromRGB(38, 46, 64), Color3.fromRGB(255, 255, 255)),
+	["Blood Red"] = MakeTheme(Color3.fromRGB(255, 76, 76), Color3.fromRGB(16, 8, 8), Color3.fromRGB(28, 14, 14), Color3.fromRGB(64, 30, 30), Color3.fromRGB(255, 255, 255)),
+	["Emerald Green"] = MakeTheme(Color3.fromRGB(96, 216, 118), Color3.fromRGB(8, 16, 10), Color3.fromRGB(16, 28, 20), Color3.fromRGB(30, 58, 40), Color3.fromRGB(255, 255, 255)),
+	["Sunset Orange"] = MakeTheme(Color3.fromRGB(255, 148, 60), Color3.fromRGB(18, 12, 8), Color3.fromRGB(32, 22, 12), Color3.fromRGB(64, 46, 26), Color3.fromRGB(255, 255, 255)),
+}
+
+local ThemeNames = {}
+for Name in Themes do table.insert(ThemeNames, Name) end
+
+local FontNames = { "Code", "Gotham", "Roboto", "Cartoon", "Arial", "SourceSans", "FredokaOne", "SpaceGrotesk", "Montserrat", "TitilliumWeb", "Nunito" }
+
+local autoWinConnection = nil
+local autoTrainConnection = nil
+local autoTrailConnection = nil
+local autoRebirthConnection = nil
+local winCount = 0
+local trainCount = 0
+local rebirthCount = 0
+local trailIndex = 1
+
+local TrailList = { "RedTrail", "BlueTrail", "GreenTrail", "PurpleTrail", "OrangeTrail", "YellowTrail", "VoidTrail", "RainbowTrail" }
+
+local function getHitboxPath()
+	local s, h = pcall(function() return workspace.StageWinPaths.Normal["13"].Hitbox end)
+	return s and h or nil
+end
+
+local function doWin()
+	local char = LocalPlayer.Character
+	if not char then return false end
+	local hrp = char:FindFirstChild("HumanoidRootPart")
+	if not hrp then return false end
+	hrp.CFrame = Config.WinPosition
+	hrp.AssemblyLinearVelocity = Vector3.zero
+	hrp.AssemblyAngularVelocity = Vector3.zero
+	task.wait(0.15)
+	local hitbox = getHitboxPath()
+	if not hitbox then warn("Hitbox not found"); return false end
+	for _, part in ipairs(char:GetDescendants()) do
+		if part:IsA("BasePart") then
+			pcall(function()
+				firetouchinterest(part, hitbox, 0)
+				task.wait(0.05)
+				firetouchinterest(part, hitbox, 1)
+			end)
+		end
+	end
+	pcall(function()
+		firetouchinterest(hitbox, hrp, 0)
+		task.wait(0.05)
+		firetouchinterest(hitbox, hrp, 1)
+	end)
+	winCount = winCount + 1
+	return true
+end
+
+local function startAutoWin()
+	if autoWinConnection then autoWinConnection:Disconnect() end
+	autoWinConnection = RunService.Heartbeat:Connect(function()
+		if not Toggles.AutoWins.Value then autoWinConnection:Disconnect(); autoWinConnection = nil; return end
+		if not LocalPlayer.Character then return end
+		task.spawn(doWin)
+		task.wait(0.01)
+	end)
+end
+
+local function doTrainFast()
+	local s = pcall(function()
+		ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("JumpXpEvent"):FireServer()
+	end)
+	if s then trainCount = trainCount + 1 end
+	return s
+end
+
+local function startAutoTrainFast()
+	if autoTrainConnection then autoTrainConnection:Disconnect() end
+	autoTrainConnection = RunService.Heartbeat:Connect(function()
+		if not Toggles.AutoTrainFast.Value then autoTrainConnection:Disconnect(); autoTrainConnection = nil; return end
+		if not LocalPlayer.Character then return end
+		task.spawn(doTrainFast)
+		task.wait(0.01)
+	end)
+end
+
+local function doBuyTrail()
+	local s = pcall(function()
+		ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("TrailEquipRequest"):FireServer(TrailList[trailIndex])
+	end)
+	if s then trailIndex = trailIndex + 1; if trailIndex > #TrailList then trailIndex = 1 end end
+	return s
+end
+
+local function startAutoBuyTrail()
+	if autoTrailConnection then autoTrailConnection:Disconnect() end
+	trailIndex = 1
+	autoTrailConnection = RunService.Heartbeat:Connect(function()
+		if not Toggles.AutoBuyTrail.Value then autoTrailConnection:Disconnect(); autoTrailConnection = nil; return end
+		task.spawn(doBuyTrail)
+		task.wait(0.01)
+	end)
+end
+
+local function doRebirth()
+	local s = pcall(function()
+		ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("RebirthButtonEvent"):FireServer()
+	end)
+	if s then rebirthCount = rebirthCount + 1 end
+	return s
+end
+
+local function startAutoRebirth()
+	if autoRebirthConnection then autoRebirthConnection:Disconnect() end
+	autoRebirthConnection = RunService.Heartbeat:Connect(function()
+		if not Toggles.AutoRebirth.Value then autoRebirthConnection:Disconnect(); autoRebirthConnection = nil; return end
+		task.spawn(doRebirth)
+		task.wait(0.01)
+	end)
+end
+
+CloneColors = function(Scheme)
+	local Clone = {}
+	for Key, Value in Scheme do Clone[Key] = Value end
+	return Clone
+end
+
+ApplyTheme = function(Scheme)
+	for Key, Value in Scheme do
+		if Library.Scheme[Key] ~= nil then Library.Scheme[Key] = Value end
+	end
+	Library:UpdateColorsUsingRegistry()
+end
+
+ApplyColorOverride = function(Key, Color)
+	if Library.Scheme[Key] ~= nil then Library.Scheme[Key] = Color; Library:UpdateColorsUsingRegistry() end
+end
+
+local function ApplyCustomColors()
+	for Key, Color in Config.CustomColors do ApplyColorOverride(Key, Color) end
+end
+
+SyncColorPickers = function()
+	local PickerMap = { AccentColor = "ThemeAccent", FontColor = "ThemeFontColor", BackgroundColor = "ThemeBackground", MainColor = "ThemeMain", OutlineColor = "ThemeOutline" }
+	for Key, Idx in PickerMap do
+		local Picker = Library.Options[Idx]
+		if Picker and Picker.SetValueRGB then Picker:SetValueRGB(Config.CustomColors[Key]) end
+	end
+end
+
+local ConfigsDir = "AutoWins/Configs"
+local AutoloadPath = "AutoWins/Autoload.json"
+
+SanitizeConfigName = function(Name)
+	if type(Name) ~= "string" then return nil end
+	local Clean = Name:gsub("[^%w _%-%.]", ""):gsub("%s+", " "):gsub("^%s+", ""):gsub("%s+$", "")
+	if Clean == "" then return nil end
+	return Clean
+end
+
+ConfigPath = function(Name) return ConfigsDir .. "/" .. Name .. ".json" end
+
+GetConfigList = function()
+	local List = {}
+	if not listfiles then return List end
+	pcall(function()
+		makefolder("AutoWins"); makefolder(ConfigsDir)
+		for _, Path in listfiles(ConfigsDir) do
+			if Path:sub(-5) == ".json" then
+				local Name = Path:match("([^/\\]+)%.json$")
+				if Name then table.insert(List, Name) end
 			end
+		end
+	end)
+	table.sort(List)
+	return List
+end
+
+ConfigExists = function(Name)
+	Name = SanitizeConfigName(Name)
+	if not Name or not isfile then return false end
+	return isfile(ConfigPath(Name))
+end
+
+SaveConfigData = function(Name)
+	if not writefile then return false end
+	Name = SanitizeConfigName(Name)
+	if not Name then return false end
+	pcall(function()
+		makefolder("AutoWins"); makefolder(ConfigsDir)
+		local Data = { Toggles = {}, ThemeName = Config.ThemeName, FontName = Config.FontName, MenuBind = Config.MenuBind, Colors = {}, WalkspeedEnabled = Config.WalkspeedEnabled, WalkspeedValue = Config.WalkspeedValue, JumpPowerEnabled = Config.JumpPowerEnabled, JumpPowerValue = Config.JumpPowerValue }
+		for Key, Color in Config.CustomColors do Data.Colors[Key] = { math.floor(Color.R * 255), math.floor(Color.G * 255), math.floor(Color.B * 255) } end
+		for Id, Toggle in Library.Toggles do Data.Toggles[Id] = Toggle.Value end
+		writefile(ConfigPath(Name), HttpService:JSONEncode(Data))
+	end)
+	return true
+end
+
+GetAutoloadName = function()
+	if not isfile or not readfile then return nil end
+	if not isfile(AutoloadPath) then return nil end
+	local S, D = pcall(function() return HttpService:JSONDecode(readfile(AutoloadPath)) end)
+	if S and type(D) == "table" and type(D.Name) == "string" then return SanitizeConfigName(D.Name) end
+	return nil
+end
+
+SetAutoload = function(Name)
+	if not writefile then return false end
+	Name = SanitizeConfigName(Name)
+	if not Name then return false end
+	pcall(function() makefolder("AutoWins"); writefile(AutoloadPath, HttpService:JSONEncode({ Name = Name })) end)
+	return true
+end
+
+ClearAutoload = function()
+	pcall(function() if isfile and isfile(AutoloadPath) then delfile(AutoloadPath) end end)
+	return true
+end
+
+LoadConfig = function(Name, Silent)
+	Name = SanitizeConfigName(Name)
+	if not Name then return false end
+	if not isfile or not readfile then if not Silent then Notify("Config", "Not supported", "Error") end; return false end
+	if not isfile(ConfigPath(Name)) then if not Silent then Notify("Config", "Not found", "Warning") end; return false end
+	local S, D = pcall(function() return HttpService:JSONDecode(readfile(ConfigPath(Name))) end)
+	if not S or type(D) ~= "table" then if not Silent then Notify("Config", "Failed to read", "Error") end; return false end
+	SuppressUI = true
+	if type(D.ThemeName) == "string" and Themes[D.ThemeName] then Config.ThemeName = D.ThemeName; ApplyTheme(Themes[D.ThemeName]) end
+	if type(D.Colors) == "table" then
+		for Key, RGB in D.Colors do
+			if Config.CustomColors[Key] ~= nil and type(RGB) == "table" then
+				local R, G, B = RGB[1], RGB[2], RGB[3]
+				if type(R) == "number" and type(G) == "number" and type(B) == "number" then Config.CustomColors[Key] = Color3.fromRGB(R, G, B) end
+			end
+		end
+		ApplyCustomColors()
+	end
+	if type(D.FontName) == "string" and Enum.Font[D.FontName] then Config.FontName = D.FontName; Library:SetFont(Enum.Font[D.FontName]) end
+	if type(D.MenuBind) == "string" and D.MenuBind ~= "None" then Config.MenuBind = D.MenuBind end
+	if type(D.Toggles) == "table" then
+		for Id, Value in D.Toggles do
+			local Toggle = Library.Toggles[Id]
+			if Toggle and type(Value) == "boolean" then Toggle:SetValue(Value) end
+		end
+	end
+	if SettingsRefs.ThemeDropdown then SettingsRefs.ThemeDropdown:SetValue(Config.ThemeName) end
+	if SettingsRefs.FontDropdown then SettingsRefs.FontDropdown:SetValue(Config.FontName) end
+	SyncColorPickers()
+	SuppressUI = false; CurrentConfig = Name; return true
+end
+
+RunAutoExecute = function()
+	task.delay(3, function()
+		if Config.AutoExecute and not Library.Unloaded then
+			local T = Library.Toggles.AutoWins; if T and not T.Value then T:SetValue(true) end
 		end
 	end)
 end
 
-local function AutoReconnectLoop()
+AutoReconnectLoop = function()
 	task.spawn(function()
 		while Config.AutoReconnect do
-			task.wait(0.5)
+			task.wait(0.01)
+			if Library.Unloaded then break end
 			pcall(function()
-				local RobloxGui = game:GetService("CoreGui"):FindFirstChild("RobloxGui")
-				local DFrame = RobloxGui and RobloxGui:FindFirstChild("DisconnectedFrame")
-				if DFrame and DFrame.Visible then
-					TeleportService:TeleportToPlaceInstance(game.PlaceId, game.JobId, Players.LocalPlayer)
-				end
+				local R = game:GetService("CoreGui"):FindFirstChild("RobloxGui")
+				local D = R and R:FindFirstChild("DisconnectedFrame")
+				if D and D.Visible then TeleportService:TeleportToPlaceInstance(game.PlaceId, game.JobId, LocalPlayer) end
 			end)
 		end
 	end)
 end
 
-local function AutoHideUiLoop()
+AutoHideUiLoop = function()
 	task.spawn(function()
 		local OpenFor = 0
 		while Config.AutoHideUi do
-			task.wait(1)
-			if Library.Toggled then
-				OpenFor = OpenFor + 1
-				if OpenFor >= 30 then
-					Library:Toggle(false)
-					OpenFor = 0
-				end
-			else
-				OpenFor = 0
-			end
+			task.wait(0.01)
+			if Library.Unloaded then break end
+			if Library.Toggled then OpenFor = OpenFor + 1; if OpenFor >= 30 then Library:Toggle(false); OpenFor = 0 end else OpenFor = 0 end
 		end
 	end)
 end
 
-local function AntiAfkLoop()
+AntiAfkLoop = function()
 	task.spawn(function()
 		while Config.AntiAfk do
 			task.wait(600)
-			pcall(function()
-				VirtualUser:CaptureController()
-				VirtualUser:ClickButton2(Vector2.new())
-			end)
+			if Library.Unloaded then break end
+			pcall(function() VirtualUser:CaptureController(); VirtualUser:ClickButton2(Vector2.new()) end)
 		end
 	end)
 end
 
-local function NoPauseLoop()
-	task.spawn(function()
-		while Config.NoGameplayPaused do
-			task.wait(20)
-			pcall(function()
-				local Char = Player.Character
-				local HRP = Char and Char:FindFirstChild("HumanoidRootPart")
-				if HRP then
-					HRP.AssemblyLinearVelocity = HRP.AssemblyLinearVelocity + Vector3.new(0, 1.5, 0)
-				end
-			end)
-		end
-	end)
-end
-
--- Anti-AFK idle response
-Players.LocalPlayer.Idled:Connect(function()
-	if Config.AntiAfk then
-		pcall(function()
-			VirtualUser:CaptureController()
-			VirtualUser:ClickButton2(Vector2.new())
-		end)
+LocalPlayer.Idled:Connect(function()
+	if Config.AntiAfk and not Library.Unloaded then
+		pcall(function() VirtualUser:CaptureController(); VirtualUser:ClickButton2(Vector2.new()) end)
 	end
 end)
 
--- ===== Create Window =====
 local Window = Library:CreateWindow({
-	Title = "AntiGodHub",
+	Title = "AntiGodHub | Auto Wins",
 	Icon = 125265885440515,
-	Footer = {
-		{ Text = "Discord", Copyable = true, CopyText = Config.DiscordLink },
-		{ Text = " | " },
-		{ Text = "AntiGodHub", Copyable = true },
-	},
-	CornerRadius = 20,
-	AutoShow = true,
-	ShowMobileButtons = false,
-	Minimizable = true,
-	Resizable = true,
-	Animations = {
-		ToggleWindow = true,
-		TabSwitch = true,
-		Groupbox = true,
-		Dropdown = true,
-	},
+	Footer = { { Text = "Discord", Copyable = true, CopyText = Config.DiscordLink }, { Text = " | " }, { Text = "AntiGodHub", Copyable = true } },
+	CornerRadius = 20, AutoShow = true, ShowMobileButtons = false, Minimizable = true, Resizable = true,
+	Animations = { ToggleWindow = true, TabSwitch = true, Groupbox = true, Dropdown = true },
 })
 
--- Draggable buttons
-local ToggleButton = Library:AddDraggableButton("Toggle", function()
-	Library:Toggle()
-end, true, true)
-
+local ToggleButton = Library:AddDraggableButton("Toggle", function() Library:Toggle() end, true, true)
 local LockButton = Library:AddDraggableButton("Lock", function(self)
 	Library.CantDragForced = not Library.CantDragForced
 	self:SetText(Library.CantDragForced and "Unlock" or "Lock")
@@ -1091,35 +453,39 @@ ToggleButton.Button.Position = UDim2.fromOffset(6, 6)
 LockButton.Button.AnchorPoint = Vector2.new(0, 0)
 LockButton.Button.Position = UDim2.fromOffset(ToggleButton.Button.Size.X.Offset + 12, 6)
 
--- Tabs
 local Tabs = {
 	Info = Window:AddTab({ Name = "Info", Icon = "info" }),
 	Main = Window:AddTab({ Name = "Main", Icon = "house" }),
 	Settings = Window:AddTab({ Name = "Settings", Icon = "settings" }),
 }
 
--- Main sub-tabs
 local MainTabs = {
-	Combat = Tabs.Main:AddSubTab({ Name = "Combat", Icon = "crosshair" }),
-	ESP = Tabs.Main:AddSubTab({ Name = "ESP & Aimbot", Icon = "eye" }),
-	Movement = Tabs.Main:AddSubTab({ Name = "Movement", Icon = "zap" }),
+	Wins = Tabs.Main:AddSubTab({ Name = "Wins", Icon = "trophy" }),
 }
 
--- ===== Info Tab =====
 local StatusBox = Tabs.Info:AddLeftGroupbox("Status", "activity")
-
-StatusBox:AddLabel({ Text = 'USER - <font color="#60d888">' .. Player.Name .. '</font>' })
+StatusBox:AddLabel({ Text = 'USER - <font color="#60d888">' .. LocalPlayer.Name .. '</font>' })
 StatusBox:AddLabel({ Text = 'STATUS - <font color="#60d888">Keyless</font>' })
 StatusBox:AddLabel({ Text = 'EXECUTOR - <font color="#60d888">' .. ExecutorDisplay .. '</font>' })
 StatusBox:AddDivider()
 
 local SessionLabel = StatusBox:AddLabel({ Text = 'SESSION - <font color="#60d888">0h 0m 0s</font>' })
+task.spawn(function()
+	while true do
+		local E = tick() - SessionStart
+		local H = math.floor(E / 3600)
+		local M = math.floor((E % 3600) / 60)
+		local S = math.floor(E % 60)
+		pcall(function() SessionLabel:SetText('SESSION - <font color="#60d888">' .. H .. 'h ' .. M .. 'm ' .. S .. 's</font>') end)
+		task.wait(1)
+		if Library.Unloaded then break end
+	end
+end)
 
 local UpdatesBox = Tabs.Info:AddLeftGroupbox("Updates", "refresh-cw")
 UpdatesBox:AddLabel({ Text = '<font color="#60d888">● Up to date</font>' })
-UpdatesBox:AddLabel({ Text = '<font color="#8a8a8a">Last Updated 8/17/2026</font>' })
+UpdatesBox:AddLabel({ Text = '<font color="#8a8a8a">Last Updated 8/18/2026</font>' })
 
--- Game info
 local InfoGameBox = Tabs.Info:AddRightGroupbox("Game Info", "gamepad-2")
 local GameNameLabel = InfoGameBox:AddLabel({ Text = 'GAME - <font color="#60d888">Loading...</font>' })
 InfoGameBox:AddLabel({ Text = 'PLACE ID - <font color="#60d888">' .. tostring(game.PlaceId) .. '</font>' })
@@ -1128,624 +494,165 @@ local JobId = tostring(game.JobId)
 local ShortJobId = #JobId > 18 and JobId:sub(1, 18) .. "..." or JobId
 InfoGameBox:AddLabel({ Text = 'SERVER - <font color="#60d888">' .. ShortJobId .. '</font>' })
 
--- Fetch game name
 task.spawn(function()
-	local Success, Info = pcall(function()
-		return game:GetService("MarketplaceService"):GetProductInfo(game.PlaceId)
-	end)
-	if Success and Info and Info.Name then
-		pcall(function()
-			local CleanName = tostring(Info.Name):gsub("[^%z\1-\127]", "")
-			GameNameLabel:SetText('GAME - <font color="#60d888">' .. CleanName .. '</font>')
-		end)
+	local S, I = pcall(function() return MarketplaceService:GetProductInfo(game.PlaceId) end)
+	if S and I and I.Name then
+		pcall(function() GameNameLabel:SetText('GAME - <font color="#60d888">' .. tostring(I.Name):gsub("[^%z\\1-\\127]", "") .. '</font>') end)
 	end
 end)
 
--- Live session timer
-task.spawn(function()
-	while true do
-		local Elapsed = tick() - SessionStart
-		local Hours = math.floor(Elapsed / 3600)
-		local Mins = math.floor((Elapsed % 3600) / 60)
-		local Secs = math.floor(Elapsed % 60)
-		pcall(function()
-			SessionLabel:SetText('SESSION - <font color="#60d888">' .. Hours .. 'h ' .. Mins .. 'm ' .. Secs .. 's</font>')
-		end)
-		task.wait(1)
-	end
-end)
-
--- Copy buttons
-InfoGameBox:AddButton({
-	Text = "Copy Place ID",
-	Func = function()
-		CopyToClipboard(tostring(game.PlaceId))
-		Notify("Copied", "Place ID copied", "Success")
-	end,
-})
-
+InfoGameBox:AddButton({ Text = "Copy Place ID", Func = function() CopyToClipboard(tostring(game.PlaceId)); Notify("Copied", "Place ID copied", "Success") end })
 InfoGameBox:AddButton({
 	Text = "Copy Join Script",
 	Func = function()
-		local JoinScript = string.format(
-			'game:GetService("TeleportService"):TeleportToPlaceInstance(%d, %q, game:GetService("Players").LocalPlayer)',
-			game.PlaceId, JobId
-		)
-		CopyToClipboard(JoinScript)
-		Notify("Copied", "Join script copied", "Success")
+		local JS = string.format('game:GetService("TeleportService"):TeleportToPlaceInstance(%d, %q, game:GetService("Players").LocalPlayer)', game.PlaceId, JobId)
+		CopyToClipboard(JS); Notify("Copied", "Join script copied", "Success")
 	end,
 })
 
--- Socials
 local SocialsBox = Tabs.Info:AddRightGroupbox("Socials", "share-2")
+SocialsBox:AddButton({ Text = "Discord", Func = function() CopyToClipboard(Config.DiscordLink); Notify("Discord", "Link copied", "Success") end })
+SocialsBox:AddButton({ Text = "YouTube", Func = function() CopyToClipboard(Config.YouTubeLink); Notify("YouTube", "Link copied", "Success") end })
+SocialsBox:AddButton({ Text = "TikTok", Func = function() CopyToClipboard(Config.TikTokLink); Notify("TikTok", "Link copied", "Success") end })
 
-SocialsBox:AddButton({
-	Text = "Discord",
-	Func = function()
-		CopyToClipboard(Config.DiscordLink)
-		Notify("Discord", "Link copied", "Success")
-	end,
-})
-
-SocialsBox:AddButton({
-	Text = "YouTube",
-	Func = function()
-		CopyToClipboard(Config.YouTubeLink)
-		Notify("YouTube", "Link copied", "Success")
-	end,
-})
-
-SocialsBox:AddButton({
-	Text = "TikTok",
-	Func = function()
-		CopyToClipboard(Config.TikTokLink)
-		Notify("TikTok", "Link copied", "Success")
-	end,
-})
-
--- Features
 local FeaturesBox = Tabs.Info:AddRightGroupbox("Features", "sparkles")
-FeaturesBox:AddLabel({ Text = '<font color="#60d888">✓ Auto Shoot</font>' })
-FeaturesBox:AddLabel({ Text = '<font color="#60d888">✓ Auto Equip</font>' })
-FeaturesBox:AddLabel({ Text = '<font color="#60d888">✓ ESP</font>' })
-FeaturesBox:AddLabel({ Text = '<font color="#60d888">✓ Aimbot</font>' })
-FeaturesBox:AddLabel({ Text = '<font color="#60d888">✓ Silent Aim</font>' })
-FeaturesBox:AddLabel({ Text = '<font color="#60d888">✓ Movement</font>' })
-FeaturesBox:AddLabel({ Text = '<font color="#60d888">✓ Theme Manager</font>' })
-FeaturesBox:AddLabel({ Text = '<font color="#60d888">✓ Config System</font>' })
-FeaturesBox:AddLabel({ Text = '<font color="#60d888">✓ Auto Features</font>' })
+FeaturesBox:AddLabel({ Text = '<font color="#60d888">✓ Auto Wins (stage 13)</font>' })
+FeaturesBox:AddLabel({ Text = '<font color="#60d888">✓ Auto Train Fast</font>' })
+FeaturesBox:AddLabel({ Text = '<font color="#60d888">✓ Auto Buy Trail</font>' })
+FeaturesBox:AddLabel({ Text = '<font color="#60d888">✓ Auto Rebirth</font>' })
+FeaturesBox:AddLabel({ Text = '<font color="#60d888">✓ Noclip / Infinite Jump</font>' })
+FeaturesBox:AddLabel({ Text = '<font color="#60d888">✓ WalkSpeed / JumpPower</font>' })
 
--- ===== Main Tab > Combat =====
-local CombatBox = MainTabs.Combat:AddLeftGroupbox("Combat", "crosshair")
+local WinsBox = MainTabs.Wins:AddLeftGroupbox("Auto", "zap")
 
-AddFeatureToggle(CombatBox, "AutoShoot", {
-	Text = "Auto Shoot",
-	Tooltip = "Auto shoot nearest enemy with prediction",
-	Notify = true,
-}, function(Value)
-	Config.AutoShoot = Value
-	if Value then ShootLoop() end
-end)
+AddFeatureToggle(WinsBox, "AutoWins", { Text = "Auto Wins", Tooltip = "Teleport + touch stage 13", Notify = true }, function(Value) if Value then startAutoWin() end })
+AddFeatureToggle(WinsBox, "AutoTrainFast", { Text = "Auto Train Fast", Tooltip = "Fires JumpXpEvent", Notify = true }, function(Value) if Value then startAutoTrainFast() end })
+AddFeatureToggle(WinsBox, "AutoBuyTrail", { Text = "Auto Buy Trail", Tooltip = "Buys all 8 trails", Notify = true }, function(Value) if Value then startAutoBuyTrail() end })
+AddFeatureToggle(WinsBox, "AutoRebirth", { Text = "Auto Rebirth", Tooltip = "Fires RebirthButtonEvent", Notify = true }, function(Value) if Value then startAutoRebirth() end })
 
-AddFeatureToggle(CombatBox, "AutoEquip", {
-	Text = "Auto Equip",
-	Tooltip = "Equip gun (key 2) when no tool equipped",
-	Notify = true,
-}, function(Value)
-	Config.AutoEquip = Value
-	if Value then ShootLoop() end
-end)
-
-CombatBox:AddDivider()
-
-CombatBox:AddSlider("MaxDistance", {
-	Text = "Max Distance",
-	Min = 50,
-	Max = 1000,
-	Default = Config.MaxDistance,
-	Increment = 10,
-	ValueFormat = "%.0f",
-	Callback = function(Value)
-		Config.MaxDistance = Value
-		ScheduleSave()
-	end,
-})
-
-CombatBox:AddSlider("PredRate", {
-	Text = "Prediction Rate",
-	Min = 0,
-	Max = 0.5,
-	Default = Config.PredRate,
-	Increment = 0.005,
-	ValueFormat = "%.3f",
-	Callback = function(Value)
-		Config.PredRate = Value
-		ScheduleSave()
-	end,
-})
-
--- ===== Main Tab > ESP & Aimbot =====
-local ESPBox = MainTabs.ESP:AddLeftGroupbox("ESP", "eye")
-
-AddFeatureToggle(ESPBox, "ESPEnabled", {
-	Text = "ESP Enabled",
-	Tooltip = "Master ESP toggle",
-	Notify = true,
-}, function(Value)
-	Config.ESPEnabled = Value
-end)
-
-AddFeatureToggle(ESPBox, "BoxESP", {
-	Text = "Box ESP",
-	Tooltip = "Draw boxes around players",
-	Notify = true,
-}, function(Value)
-	Config.BoxESP = Value
-end)
-
-AddFeatureToggle(ESPBox, "NameESP", {
-	Text = "Name ESP",
-	Tooltip = "Show player names",
-	Notify = true,
-}, function(Value)
-	Config.NameESP = Value
-end)
-
-AddFeatureToggle(ESPBox, "DistanceESP", {
-	Text = "Distance ESP",
-	Tooltip = "Show distance to players",
-	Notify = true,
-}, function(Value)
-	Config.DistanceESP = Value
-end)
-
-AddFeatureToggle(ESPBox, "HealthESP", {
-	Text = "Health ESP",
-	Tooltip = "Show player health",
-	Notify = true,
-}, function(Value)
-	Config.HealthESP = Value
-end)
-
-AddFeatureToggle(ESPBox, "TracerESP", {
-	Text = "Tracer ESP",
-	Tooltip = "Draw tracers to players",
-	Notify = true,
-}, function(Value)
-	Config.TracerESP = Value
-end)
-
-AddFeatureToggle(ESPBox, "TeamCheck", {
-	Text = "Team Check",
-	Tooltip = "Skip teammates",
-	Notify = true,
-}, function(Value)
-	Config.TeamCheck = Value
-end)
-
--- Aimbot
-local AimbotBox = MainTabs.ESP:AddRightGroupbox("Aimbot", "target")
-
-AddFeatureToggle(AimbotBox, "AimbotEnabled", {
-	Text = "Aimbot Enabled",
-	Tooltip = "Snap camera to target",
-	Notify = true,
-}, function(Value)
-	Config.AimbotEnabled = Value
-end)
-
-AddFeatureToggle(AimbotBox, "UseKeybind", {
-	Text = "Use Keybind",
-	Tooltip = "Hold key to aim",
-	Notify = true,
-}, function(Value)
-	Config.UseKeybind = Value
-end)
-
-AddFeatureToggle(AimbotBox, "UseFOVCircle", {
-	Text = "Use FOV Circle",
-	Tooltip = "Show aimbot FOV circle",
-	Notify = true,
-}, function(Value)
-	Config.UseFOVCircle = Value
-end)
-
-AimbotBox:AddDivider()
-
-AimbotBox:AddSlider("AimbotFOV", {
-	Text = "Aimbot FOV",
-	Min = 10,
-	Max = 360,
-	Default = Config.AimbotFOV,
-	Increment = 5,
-	ValueFormat = "%.0f",
-	Callback = function(Value)
-		Config.AimbotFOV = Value
-		ScheduleSave()
-	end,
-})
-
-local TargetDropdown = AimbotBox:AddDropdown("AimbotTarget", {
-	Text = "Target Part",
-	Values = { "Head", "Torso", "HumanoidRootPart" },
-	Default = Config.AimbotTarget,
-	Callback = function(Value)
-		Config.AimbotTarget = Value
-		ScheduleSave()
-	end,
-})
-SettingsRefs.TargetDropdown = TargetDropdown
-
-AimbotBox:AddLabel({ Text = "Aimbot Key" }):AddKeyPicker("AimbotKey", {
-	Default = Config.AimbotKey,
-	Mode = "Hold",
-	Text = "Aimbot",
-	ChangedCallback = function(NewKey)
-		if typeof(NewKey) == "EnumItem" then
-			Config.AimbotKey = NewKey.Name
+WinsBox:AddButton({
+	Text = "Buy All Trails Now",
+	Func = function()
+		local c = 0
+		for _, t in ipairs(TrailList) do
+			pcall(function() ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("TrailEquipRequest"):FireServer(t) end)
+			c = c + 1; task.wait(0.01)
 		end
-		ScheduleSave()
+		Notify("Trails", "Bought all " .. c .. "!", "Success")
 	end,
 })
 
--- Silent aim
-local SilentBox = MainTabs.ESP:AddRightGroupbox("Silent Aim", "ghost")
+local ExtrasBox = MainTabs.Wins:AddRightGroupbox("Extras", "sparkles")
 
-AddFeatureToggle(SilentBox, "SilentAimEnabled", {
-	Text = "Silent Aim Enabled",
-	Tooltip = "Redirect fired remotes to target",
-	Notify = true,
-}, function(Value)
-	Config.SilentAimEnabled = Value
-end)
+AddFeatureToggle(ExtrasBox, "Noclip", { Text = "Noclip", Tooltip = "Walk through walls", Notify = true })
+AddFeatureToggle(ExtrasBox, "InfiniteJump", { Text = "Infinite Jump", Tooltip = "Jump in air", Notify = true })
 
-AddFeatureToggle(SilentBox, "SilentPrediction", {
-	Text = "Prediction",
-	Tooltip = "Lead shots by target velocity",
-	Notify = true,
-}, function(Value)
-	Config.SilentPrediction = Value
-end)
-
-AddFeatureToggle(SilentBox, "SilentVisibility", {
-	Text = "Visibility Check",
-	Tooltip = "Skip targets behind walls",
-	Notify = true,
-}, function(Value)
-	Config.SilentVisibility = Value
-end)
-
-SilentBox:AddDivider()
-
-SilentBox:AddSlider("SilentAimFOV", {
-	Text = "Silent Aim FOV",
-	Min = 10,
-	Max = 360,
-	Default = Config.SilentAimFOV,
-	Increment = 5,
-	ValueFormat = "%.0f",
-	Callback = function(Value)
-		Config.SilentAimFOV = Value
-		ScheduleSave()
-	end,
-})
-
-SilentBox:AddSlider("HeadshotChance", {
-	Text = "Headshot Chance",
-	Min = 0,
-	Max = 100,
-	Default = Config.HeadshotChance,
-	Increment = 1,
-	ValueFormat = "%.0f%%",
-	Callback = function(Value)
-		Config.HeadshotChance = Value
-		ScheduleSave()
-	end,
-})
-
-SilentBox:AddSlider("HitChance", {
-	Text = "Hit Chance",
-	Min = 0,
-	Max = 100,
-	Default = Config.HitChance,
-	Increment = 1,
-	ValueFormat = "%.0f%%",
-	Callback = function(Value)
-		Config.HitChance = Value
-		ScheduleSave()
-	end,
-})
-
--- ===== Main Tab > Movement =====
-local MoveBox = MainTabs.Movement:AddLeftGroupbox("Movement", "zap")
-
-AddFeatureToggle(MoveBox, "WalkspeedEnabled", {
-	Text = "Walkspeed Enabled",
-	Tooltip = "Override walkspeed",
-	Notify = true,
-}, function(Value)
+AddFeatureToggle(ExtrasBox, "Walkspeed", { Text = "WalkSpeed", Tooltip = "Override speed" }, function(Value)
 	Config.WalkspeedEnabled = Value
+	local H = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+	if H then H.WalkSpeed = Value and Config.WalkspeedValue or 16 end
 end)
 
-MoveBox:AddSlider("WalkspeedValue", {
-	Text = "Walkspeed",
-	Min = 1,
-	Max = 350,
-	Default = Config.WalkspeedValue,
-	Increment = 1,
-	ValueFormat = "%.0f",
+ExtrasBox:AddSlider("WalkspeedValue", {
+	Text = "Speed", Min = 16, Max = 500, Default = 16, Rounding = 0,
 	Callback = function(Value)
 		Config.WalkspeedValue = Value
+		if Toggles.Walkspeed.Value then local H = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid"); if H then H.WalkSpeed = Value end end
 		ScheduleSave()
 	end,
 })
 
-MoveBox:AddDivider()
-
-AddFeatureToggle(MoveBox, "JumpPowerEnabled", {
-	Text = "Jump Power Enabled",
-	Tooltip = "Override jump power",
-	Notify = true,
-}, function(Value)
+AddFeatureToggle(ExtrasBox, "JumpPower", { Text = "Jump Power", Tooltip = "Override jump" }, function(Value)
 	Config.JumpPowerEnabled = Value
+	local H = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+	if H then H.UseJumpPower = true; H.JumpPower = Value and Config.JumpPowerValue or 50 end
 end)
 
-MoveBox:AddSlider("JumpPowerValue", {
-	Text = "Jump Power",
-	Min = 1,
-	Max = 500,
-	Default = Config.JumpPowerValue,
-	Increment = 1,
-	ValueFormat = "%.0f",
+ExtrasBox:AddSlider("JumpPowerValue", {
+	Text = "Power", Min = 50, Max = 500, Default = 50, Rounding = 0,
 	Callback = function(Value)
 		Config.JumpPowerValue = Value
+		if Toggles.JumpPower.Value then local H = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid"); if H then H.JumpPower = Value end end
 		ScheduleSave()
 	end,
 })
 
-MoveBox:AddDivider()
-
-AddFeatureToggle(MoveBox, "NoclipEnabled", {
-	Text = "Noclip",
-	Tooltip = "Walk through walls",
-	Notify = true,
-}, function(Value)
-	Config.NoclipEnabled = Value
-end)
-
--- ===== Settings Tab =====
 local ThemeBox = Tabs.Settings:AddLeftGroupbox("Theme Manager", "palette")
-
 local ThemeDropdown = ThemeBox:AddDropdown("Theme", {
-	Text = "Theme",
-	Values = ThemeNames,
-	Default = Config.ThemeName,
+	Text = "Theme", Values = ThemeNames, Default = Config.ThemeName,
 	Callback = function(Value)
-		Config.ThemeName = Value
-		ApplyTheme(Themes[Value])
-		if not SuppressUI then
-			Config.CustomColors = CloneColors(Themes[Value])
-			SyncColorPickers()
-			Notify("Theme", "Changed to " .. Value, "Success")
-			ScheduleSave()
-		end
+		Config.ThemeName = Value; ApplyTheme(Themes[Value])
+		if not SuppressUI then Config.CustomColors = CloneColors(Themes[Value]); SyncColorPickers(); Notify("Theme", "Changed to " .. Value, "Success"); ScheduleSave() end
 	end,
 })
 SettingsRefs.ThemeDropdown = ThemeDropdown
 
 ThemeBox:AddDivider()
-
-ThemeBox:AddLabel({ Text = "Accent" }):AddColorPicker("ThemeAccent", {
-	Default = Config.CustomColors.AccentColor,
-	Title = "Accent Color",
-	Callback = function(Color)
-		Config.CustomColors.AccentColor = Color
-		ApplyColorOverride("AccentColor", Color)
-		ScheduleSave()
-	end,
-})
-
-ThemeBox:AddLabel({ Text = "Font" }):AddColorPicker("ThemeFontColor", {
-	Default = Config.CustomColors.FontColor,
-	Title = "Font Color",
-	Callback = function(Color)
-		Config.CustomColors.FontColor = Color
-		ApplyColorOverride("FontColor", Color)
-		ScheduleSave()
-	end,
-})
-
-ThemeBox:AddLabel({ Text = "Background" }):AddColorPicker("ThemeBackground", {
-	Default = Config.CustomColors.BackgroundColor,
-	Title = "Background Color",
-	Callback = function(Color)
-		Config.CustomColors.BackgroundColor = Color
-		ApplyColorOverride("BackgroundColor", Color)
-		ScheduleSave()
-	end,
-})
-
-ThemeBox:AddLabel({ Text = "Main" }):AddColorPicker("ThemeMain", {
-	Default = Config.CustomColors.MainColor,
-	Title = "Main Color",
-	Callback = function(Color)
-		Config.CustomColors.MainColor = Color
-		ApplyColorOverride("MainColor", Color)
-		ScheduleSave()
-	end,
-})
-
-ThemeBox:AddLabel({ Text = "Outline" }):AddColorPicker("ThemeOutline", {
-	Default = Config.CustomColors.OutlineColor,
-	Title = "Outline Color",
-	Callback = function(Color)
-		Config.CustomColors.OutlineColor = Color
-		ApplyColorOverride("OutlineColor", Color)
-		ScheduleSave()
-	end,
-})
-
+ThemeBox:AddLabel({ Text = "Accent" }):AddColorPicker("ThemeAccent", { Default = Config.CustomColors.AccentColor, Title = "Accent Color", Callback = function(C) Config.CustomColors.AccentColor = C; ApplyColorOverride("AccentColor", C); ScheduleSave() end })
+ThemeBox:AddLabel({ Text = "Font" }):AddColorPicker("ThemeFontColor", { Default = Config.CustomColors.FontColor, Title = "Font Color", Callback = function(C) Config.CustomColors.FontColor = C; ApplyColorOverride("FontColor", C); ScheduleSave() end })
+ThemeBox:AddLabel({ Text = "Background" }):AddColorPicker("ThemeBackground", { Default = Config.CustomColors.BackgroundColor, Title = "Background Color", Callback = function(C) Config.CustomColors.BackgroundColor = C; ApplyColorOverride("BackgroundColor", C); ScheduleSave() end })
+ThemeBox:AddLabel({ Text = "Main" }):AddColorPicker("ThemeMain", { Default = Config.CustomColors.MainColor, Title = "Main Color", Callback = function(C) Config.CustomColors.MainColor = C; ApplyColorOverride("MainColor", C); ScheduleSave() end })
+ThemeBox:AddLabel({ Text = "Outline" }):AddColorPicker("ThemeOutline", { Default = Config.CustomColors.OutlineColor, Title = "Outline Color", Callback = function(C) Config.CustomColors.OutlineColor = C; ApplyColorOverride("OutlineColor", C); ScheduleSave() end })
 ThemeBox:AddDivider()
 
 local FontDropdown = ThemeBox:AddDropdown("Font", {
-	Text = "Font",
-	Values = FontNames,
-	Default = Config.FontName,
-	Callback = function(Value)
-		Config.FontName = Value
-		Library:SetFont(Enum.Font[Value])
-		if not SuppressUI then ScheduleSave() end
-	end,
+	Text = "Font", Values = FontNames, Default = Config.FontName,
+	Callback = function(Value) Config.FontName = Value; Library:SetFont(Enum.Font[Value]); if not SuppressUI then ScheduleSave() end end,
 })
 SettingsRefs.FontDropdown = FontDropdown
 
 ThemeBox:AddButton({
 	Text = "Reset Theme",
 	Func = function()
-		Config.ThemeName = "Emerald Green"
-		Config.FontPreset = "White + Emerald"
-		Config.CustomColors = CloneColors(Themes["Emerald Green"])
-		ApplyTheme(Themes["Emerald Green"])
-		ThemeDropdown:SetValue("Emerald Green")
-		SyncColorPickers()
-		Notify("Theme", "Reset to default", "Info")
-		ScheduleSave()
+		Config.ThemeName = "Emerald Green"; Config.CustomColors = CloneColors(Themes["Emerald Green"])
+		ApplyTheme(Themes["Emerald Green"]); ThemeDropdown:SetValue("Emerald Green"); SyncColorPickers()
+		Notify("Theme", "Reset to default", "Info"); ScheduleSave()
 	end,
 })
 
--- Menu settings
 local MenuBox = Tabs.Settings:AddRightGroupbox("Menu Settings", "menu")
-
 MenuBox:AddLabel({ Text = "Menu Bind" }):AddKeyPicker("MenuBind", {
-	Default = Config.MenuBind,
-	Mode = "Press",
-	Text = "Toggle UI",
-	Callback = function()
-		Library:Toggle()
-	end,
-	ChangedCallback = function(NewKey)
-		if typeof(NewKey) == "EnumItem" then
-			Config.MenuBind = NewKey.Name
-		end
-		ScheduleSave()
-	end,
+	Default = Config.MenuBind, Mode = "Press", Text = "Toggle UI",
+	Callback = function() Library:Toggle() end,
+	ChangedCallback = function(NewKey) if typeof(NewKey) == "EnumItem" then Config.MenuBind = NewKey.Name end; ScheduleSave() end,
 })
-SettingsRefs.MenuBindPicker = Library.Options.MenuBind
-
 MenuBox:AddDivider()
 
-AddFeatureToggle(MenuBox, "AutoExecute", {
-	Text = "Auto Execute Script",
-	Tooltip = "Auto run on startup",
-}, function(Value)
-	Config.AutoExecute = Value
-	if Value then RunAutoExecute() end
-end)
-
-AddFeatureToggle(MenuBox, "AutoReconnect", {
-	Text = "Auto Reconnect",
-	Tooltip = "Auto reconnect on disconnect",
-}, function(Value)
-	Config.AutoReconnect = Value
-	if Value then AutoReconnectLoop() end
-end)
-
-AddFeatureToggle(MenuBox, "AutoHideUi", {
-	Text = "Auto Hide UI",
-	Tooltip = "Auto hide after 30s",
-}, function(Value)
-	Config.AutoHideUi = Value
-	if Value then AutoHideUiLoop() end
-end)
-
-AddFeatureToggle(MenuBox, "AntiAfk", {
-	Text = "Anti AFK",
-	Tooltip = "Prevent idle kick",
-}, function(Value)
-	Config.AntiAfk = Value
-	if Value then AntiAfkLoop() end
-end)
-
-AddFeatureToggle(MenuBox, "NoGameplayPaused", {
-	Text = "No Gameplay Paused",
-	Tooltip = "Keep running when paused",
-}, function(Value)
-	Config.NoGameplayPaused = Value
-	if Value then NoPauseLoop() end
-end)
-
+AddFeatureToggle(MenuBox, "AutoExecute", { Text = "Auto Execute", Tooltip = "Auto enable on startup" }, function(Value) Config.AutoExecute = Value; if Value then RunAutoExecute() end })
+AddFeatureToggle(MenuBox, "AutoReconnect", { Text = "Auto Reconnect", Tooltip = "Reconnect on disconnect" }, function(Value) Config.AutoReconnect = Value; if Value then AutoReconnectLoop() end })
+AddFeatureToggle(MenuBox, "AutoHideUi", { Text = "Auto Hide UI", Tooltip = "Auto hide after 30s" }, function(Value) Config.AutoHideUi = Value; if Value then AutoHideUiLoop() end })
+AddFeatureToggle(MenuBox, "AntiAfk", { Text = "Anti AFK", Tooltip = "Prevent idle kick" }, function(Value) Config.AntiAfk = Value; if Value then AntiAfkLoop() end })
 MenuBox:AddDivider()
 
 MenuBox:AddButton({
 	Text = "Stop All Features",
 	Func = function()
-		Config.AutoShoot = false
-		Config.AutoEquip = false
-		Config.ESPEnabled = false
-		Config.AimbotEnabled = false
-		Config.SilentAimEnabled = false
-		Config.WalkspeedEnabled = false
-		Config.JumpPowerEnabled = false
-		Config.NoclipEnabled = false
-		for Id, Toggle in Library.Toggles do
-			if Toggle.Value then
-				Toggle:SetValue(false)
-			end
-		end
+		for _, Toggle in Library.Toggles do if Toggle.Value then Toggle:SetValue(false) end end
 		Notify("Stop", "All features stopped", "Warning")
-	end,
-	Risky = true
+	end, Risky = true,
 })
 
--- ===== Config System =====
 local ConfigBox = Tabs.Settings:AddRightGroupbox("Configuration", "database")
-
-local ConfigNameInput = ConfigBox:AddInput("ConfigName", {
-	Text = "Config name",
-	Placeholder = "Type config name...",
-	ClearTextOnFocus = true,
-})
-
+local ConfigNameInput = ConfigBox:AddInput("ConfigName", { Text = "Config name", Placeholder = "Type config name...", ClearTextOnFocus = true })
 ConfigBox:AddButton({
 	Text = "Create Config",
 	Func = function()
-		local Name = SanitizeConfigName(ConfigNameInput.Value)
-		if not Name then
-			Notify("Config", "Invalid name", "Warning")
-			return
-		end
-		if ConfigExists(Name) then
-			Notify("Config", "Already exists", "Warning")
-			return
-		end
-		if SaveConfigData(Name) then
-			CurrentConfig = Name
-			Notify("Config", "Created: " .. Name, "Success")
-		else
-			Notify("Config", "Save not supported", "Error")
-		end
+		local N = SanitizeConfigName(ConfigNameInput.Value)
+		if not N then Notify("Config", "Invalid name", "Warning"); return end
+		if ConfigExists(N) then Notify("Config", "Already exists", "Warning"); return end
+		if SaveConfigData(N) then CurrentConfig = N; Notify("Config", "Created: " .. N, "Success") else Notify("Config", "Save not supported", "Error") end
 	end,
 })
-
 ConfigBox:AddDivider()
 
-local ConfigListDropdown = ConfigBox:AddDropdown("ConfigList", {
-	Text = "Select config",
-	Values = { "---" },
-	Default = "---",
-	Callback = function(Value)
-		CurrentConfig = Value == "---" and nil or Value
-	end,
-})
+local ConfigListDropdown = ConfigBox:AddDropdown("ConfigList", { Text = "Select config", Values = { "---" }, Default = "---", Callback = function(Value) CurrentConfig = Value == "---" and nil or Value end })
 SettingsRefs.ConfigListDropdown = ConfigListDropdown
 
 local AutoloadLabel = ConfigBox:AddLabel({ Text = 'Autoload: <font color="#60d888">None</font>' })
 
 local function RefreshConfigList(SelectName)
 	local Values = { "---" }
-	for _, Name in GetConfigList() do
-		table.insert(Values, Name)
-	end
+	for _, Name in GetConfigList() do table.insert(Values, Name) end
 	ConfigListDropdown:SetValues(Values)
 	local Choice = SelectName or CurrentConfig or "---"
 	if not table.find(Values, Choice) then Choice = "---" end
@@ -1754,130 +661,77 @@ local function RefreshConfigList(SelectName)
 end
 
 local function UpdateAutoloadLabel()
-	local Name = GetAutoloadName()
-	local Text = 'Autoload: <font color="#60d888">None</font>'
-	if Name then
-		Text = 'Autoload: <font color="#60d888">' .. Name .. '</font>'
-	end
-	AutoloadLabel:SetText(Text)
+	local N = GetAutoloadName()
+	local T = 'Autoload: <font color="#60d888">None</font>'
+	if N then T = 'Autoload: <font color="#60d888">' .. N .. '</font>' end
+	AutoloadLabel:SetText(T)
 end
 
-ConfigBox:AddButton({
-	Text = "Load Config",
-	Func = function()
-		if not CurrentConfig then
-			Notify("Config", "Select config first", "Warning")
-			return
-		end
-		if LoadConfig(CurrentConfig, false) then
-			Notify("Config", "Loaded: " .. CurrentConfig, "Success")
-		end
-	end,
-})
-
-ConfigBox:AddButton({
-	Text = "Overwrite Config",
-	Func = function()
-		if not CurrentConfig then
-			Notify("Config", "Select config first", "Warning")
-			return
-		end
-		if SaveConfigData(CurrentConfig) then
-			Notify("Config", "Overwritten", "Success")
-		end
-	end,
-})
-
-ConfigBox:AddButton({
-	Text = "Delete Config",
-	Func = function()
-		if not CurrentConfig then
-			Notify("Config", "Select config first", "Warning")
-			return
-		end
-		pcall(function() delfile(ConfigPath(CurrentConfig)) end)
-		if GetAutoloadName() == CurrentConfig then ClearAutoload() end
-		CurrentConfig = nil
-		RefreshConfigList()
-		UpdateAutoloadLabel()
-		Notify("Config", "Deleted", "Warning")
-	end,
-	Risky = true
-})
-
-ConfigBox:AddButton({
-	Text = "Set Autoload",
-	Func = function()
-		if not CurrentConfig then
-			Notify("Config", "Select config first", "Warning")
-			return
-		end
-		if SetAutoload(CurrentConfig) then
-			UpdateAutoloadLabel()
-			Notify("Config", "Autoload set: " .. CurrentConfig, "Success")
-		end
-	end,
-})
-
-ConfigBox:AddButton({
-	Text = "Clear Autoload",
-	Func = function()
-		ClearAutoload()
-		UpdateAutoloadLabel()
-		Notify("Config", "Autoload cleared", "Info")
-	end,
-})
-
+ConfigBox:AddButton({ Text = "Load Config", Func = function()
+	if not CurrentConfig then Notify("Config", "Select first", "Warning"); return end
+	if LoadConfig(CurrentConfig, false) then Notify("Config", "Loaded: " .. CurrentConfig, "Success") end
+end })
+ConfigBox:AddButton({ Text = "Overwrite Config", Func = function()
+	if not CurrentConfig then Notify("Config", "Select first", "Warning"); return end
+	if SaveConfigData(CurrentConfig) then Notify("Config", "Overwritten", "Success") end
+end })
+ConfigBox:AddButton({ Text = "Delete Config", Func = function()
+	if not CurrentConfig then Notify("Config", "Select first", "Warning"); return end
+	pcall(function() delfile(ConfigPath(CurrentConfig)) end)
+	if GetAutoloadName() == CurrentConfig then ClearAutoload() end
+	CurrentConfig = nil; RefreshConfigList(); UpdateAutoloadLabel(); Notify("Config", "Deleted", "Warning")
+end, Risky = true })
+ConfigBox:AddButton({ Text = "Set Autoload", Func = function()
+	if not CurrentConfig then Notify("Config", "Select first", "Warning"); return end
+	if SetAutoload(CurrentConfig) then UpdateAutoloadLabel(); Notify("Config", "Autoload: " .. CurrentConfig, "Success") end
+end })
+ConfigBox:AddButton({ Text = "Clear Autoload", Func = function() ClearAutoload(); UpdateAutoloadLabel(); Notify("Config", "Cleared", "Info") end })
 ConfigBox:AddDivider()
+AddFeatureToggle(ConfigBox, "AutoSave", { Text = "Auto Save Config", Tooltip = "Auto save on changes" }, function(Value) Config.AutoSave = Value end)
 
-AddFeatureToggle(ConfigBox, "AutoSave", {
-	Text = "Auto Save Config",
-	Tooltip = "Auto save on changes",
-}, function(Value)
-	Config.AutoSave = Value
+RunService.Stepped:Connect(function()
+	if Library.Unloaded then return end
+	if Toggles.Noclip.Value and LocalPlayer.Character then
+		for _, P in ipairs(LocalPlayer.Character:GetDescendants()) do if P:IsA("BasePart") then P.CanCollide = false end end
+	end
 end)
 
--- ===== Startup =====
--- Apply theme on startup
+UserInputService.JumpRequest:Connect(function()
+	if Library.Unloaded then return end
+	if Toggles.InfiniteJump.Value then
+		local C = LocalPlayer.Character; local H = C and C:FindFirstChildOfClass("Humanoid")
+		if H then H:ChangeState(Enum.HumanoidStateType.Jumping) end
+	end
+end)
+
+LocalPlayer.CharacterAdded:Connect(function(C)
+	task.wait(0.5)
+	local H = C:FindFirstChildOfClass("Humanoid")
+	if not H then return end
+	if Toggles.Walkspeed.Value then H.WalkSpeed = Config.WalkspeedValue end
+	if Toggles.JumpPower.Value then H.UseJumpPower = true; H.JumpPower = Config.JumpPowerValue end
+end)
+
 ApplyTheme(Themes[Config.ThemeName])
 
--- Autoload on startup
 task.delay(1, function()
-	local AutoloadName = GetAutoloadName()
-	if AutoloadName and ConfigExists(AutoloadName) then
-		CurrentConfig = AutoloadName
-		if LoadConfig(AutoloadName, true) then
-			Notify("Autoload", "Loaded: " .. AutoloadName, "Success")
-		end
-	end
-	RunAutoExecute()
-	UpdateAutoloadLabel()
-	RefreshConfigList()
+	if Library.Unloaded then return end
+	local AN = GetAutoloadName()
+	if AN and ConfigExists(AN) then CurrentConfig = AN; if LoadConfig(AN, true) then Notify("Autoload", "Loaded: " .. AN, "Success") end end
+	RunAutoExecute(); UpdateAutoloadLabel(); RefreshConfigList()
 end)
 
--- ESP init
-CreateFOVCircle()
-CreateSilentFOVCircle()
-
-Players.PlayerAdded:Connect(function(NewPlayer)
-	ESPObjects[NewPlayer] = CreateESP(NewPlayer)
+Library:OnUnload(function()
+	if autoWinConnection then autoWinConnection:Disconnect(); autoWinConnection = nil end
+	if autoTrainConnection then autoTrainConnection:Disconnect(); autoTrainConnection = nil end
+	if autoTrailConnection then autoTrailConnection:Disconnect(); autoTrailConnection = nil end
+	if autoRebirthConnection then autoRebirthConnection:Disconnect(); autoRebirthConnection = nil end
+	for _, Toggle in Library.Toggles do if Toggle.Value then Toggle:SetValue(false) end end
+	pcall(function()
+		local H = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+		if H then H.WalkSpeed = 16; H.JumpPower = 50 end
+	end)
+	Config.AutoReconnect = false; Config.AutoHideUi = false; Config.AntiAfk = false
 end)
 
-Players.PlayerRemoving:Connect(function(OldPlayer)
-	RemoveESP(OldPlayer)
-end)
-
-for _, ExistingPlayer in pairs(Players:GetPlayers()) do
-	if ExistingPlayer ~= Player then
-		ESPObjects[ExistingPlayer] = CreateESP(ExistingPlayer)
-	end
-end
-
-if Player.Character and Player.Character:FindFirstChild("Humanoid") then
-	OriginalWalkspeed = Player.Character.Humanoid.WalkSpeed
-	OriginalJumpPower = Player.Character.Humanoid.JumpPower
-end
-
-RenderLoop()
-
-Notify("AntiGodHub", "Script loaded!", "Success")
+Notify("AntiGodHub", "Auto Wins loaded! ✓", "Success")
