@@ -55,7 +55,7 @@ local SupportedGames = {
 	{name = "Murderers VS Sheriffs", placeIds = {12355337193}, url = "https://raw.githubusercontent.com/LuaUScrip/LuaU/refs/heads/main/MurderVsSherif.lua"},
 	{name = "+1 Web Swing Escape", placeIds = {110668201954727}, url = "https://raw.githubusercontent.com/LuaUScrip/LuaU/refs/heads/main/WebSwingEscape.lua"},
 	{name = "Fish For Junk", placeIds = {132010220154773, 74347901984127}, url = "https://raw.githubusercontent.com/LuaUScrip/LuaU/refs/heads/main/FishForJunk.lua"},
-	{name = "Script 46", placeIds = {0}, url = nil},
+	{name = "+1 Backflip Keyboard Escape", placeIds = {109451440978523}, url = "https://raw.githubusercontent.com/LuaUScrip/LuaU/refs/heads/main/Plus1BackflipKeyboardEscapeW3.lua"},
 	{name = "Script 47", placeIds = {0}, url = nil},
 	{name = "Script 48", placeIds = {0}, url = nil},
 	{name = "Script 49", placeIds = {0}, url = nil},
