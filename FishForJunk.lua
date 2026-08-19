@@ -160,14 +160,14 @@ end
 local function BuyAllRods()
 	for _, RodName in RodsList do
 		BuyRod(RodName)
-		RunService.RenderStepped:Wait(1)
+		RunService.RenderStepped:Wait(0.01)
 	end
 end
 
 local function EquipAllRods()
 	for _, RodName in RodsList do
 		EquipRod(RodName)
-		RunService.RenderStepped:Wait(1)
+		RunService.RenderStepped:Wait(0.01)
 	end
 end
 
@@ -197,7 +197,7 @@ end
 local function BuyAllUpgrades()
 	for _, UpgradeName in UpgradesList do
 		BuyUpgrade(UpgradeName)
-		RunService.RenderStepped:Wait(0.05)
+		RunService.RenderStepped:Wait(0.01)
 	end
 end
 
@@ -895,11 +895,11 @@ AddFeatureToggle(FarmBox, "AutoUpgrade", {
 }, function(Value)
 	Config.AutoUpgradeActive = Value
 	if Value then
-		ResetUpgradeTracking()
 		task.spawn(function()
 			while Config.AutoUpgradeActive do
+				ResetUpgradeTracking()
 				BuyAllUpgrades()
-				RunService.RenderStepped:Wait(0.001)
+				RunService.RenderStepped:Wait(0.1)
 			end
 		end)
 	end
