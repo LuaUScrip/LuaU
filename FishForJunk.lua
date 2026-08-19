@@ -197,7 +197,7 @@ end
 local function BuyAllUpgrades()
 	for _, UpgradeName in UpgradesList do
 		BuyUpgrade(UpgradeName)
-		RunService.RenderStepped:Wait(0.001)
+		RunService.RenderStepped:Wait(0.05)
 	end
 end
 
