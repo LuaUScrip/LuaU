@@ -32,7 +32,7 @@ end)
 -- ============================================================
 
 -- Win position (+3 studs higher on Y)
-local WinCFrame = CFrame.new(-32654.9492, -1759.86194, 50200.6875, 0, 0, -1, 0, 1, 0, 1, 0, 0)
+local WinCFrame = CFrame.new(-27238.2129, 1656.729, 76626.0234, 0, 0, -1, 0, 1, 0, 1, 0, 0)
 
 -- Train positions based on Rebirths
 local TrainPositions = {
