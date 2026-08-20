@@ -35,7 +35,7 @@ end)
 -- ============================================================
 
 -- Win position CFrame (+4 studs higher on Y)
-local WinCFrame = CFrame.new(-5.48531342, 5557.75, 794.886475, 0, 0, -1, 0, 1, 0, 1, 0, 0)
+local WinCFrame = CFrame.new(-5.48531342, 5585.75, 794.886475, 0, 0, -1, 0, 1, 0, 1, 0, 0)
 
 -- Remote Events
 local RebirthRemote = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("RebirthRequest")
@@ -830,7 +830,7 @@ local FarmBox = MainTabs.AutoFarm:AddLeftGroupbox("Farming", "zap")
 
 AddFeatureToggle(FarmBox, "AutoFarmWins", {
 	Text = "Auto Farm Wins",
-	Tooltip = "Teleport to win pad and collect wins",
+	Tooltip = "Auto Farm",
 	Notify = true,
 }, function(Value)
 	Config.AutoFarmWinsActive = Value
@@ -838,7 +838,7 @@ AddFeatureToggle(FarmBox, "AutoFarmWins", {
 		task.spawn(function()
 			while Config.AutoFarmWinsActive do
 				DoAutoFarmWins()
-				RunService.RenderStepped:Wait(0.1)
+				RunService.RenderStepped:Wait(1)
 			end
 		end)
 	end
@@ -881,7 +881,7 @@ local EggBox = MainTabs.AutoFarm:AddRightGroupbox("Egg", "egg")
 
 AddFeatureToggle(EggBox, "AutoBuyEgg", {
 	Text = "Auto Buy Best Egg",
-	Tooltip = "Auto Buy Best Egg (JellyBox)",
+	Tooltip = "Auto Buy Best Egg",
 	Notify = true,
 }, function(Value)
 	Config.AutoBuyEggActive = Value
