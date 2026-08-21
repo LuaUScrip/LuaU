@@ -56,7 +56,7 @@ local SupportedGames = {
 	{name = "+1 Web Swing Escape", placeIds = {110668201954727}, url = "https://raw.githubusercontent.com/LuaUScrip/LuaU/refs/heads/main/WebSwingEscape.lua"},
 	{name = "Fish For Junk", placeIds = {132010220154773, 74347901984127}, url = "https://raw.githubusercontent.com/LuaUScrip/LuaU/refs/heads/main/FishForJunk.lua"},
 	{name = "+1 Backflip Keyboard Escape", placeIds = {109451440978523}, url = "https://raw.githubusercontent.com/LuaUScrip/LuaU/refs/heads/main/Plus1BackflipKeyboardEscapeW3.lua"},
-	{name = "+1 Jump Crunchy", placeIds = {0}, url = "https://raw.githubusercontent.com/LuaUScrip/LuaU/refs/heads/main/Plus1JumpCrunchy.lua"},
+	{name = "+1 Jump Crunchy", placeIds = {83264774625004}, url = "https://raw.githubusercontent.com/LuaUScrip/LuaU/refs/heads/main/Plus1JumpCrunchy.lua"},
 	{name = "+1 Jump Crunchy", placeIds = {107067504582886}, url = "https://raw.githubusercontent.com/LuaUScrip/LuaU/refs/heads/main/Plus1JumpCrunchy2.lua"},
 	{name = "Script 49", placeIds = {0}, url = nil},
 	{name = "Script 50", placeIds = {0}, url = nil},
