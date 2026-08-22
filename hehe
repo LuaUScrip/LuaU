@@ -47,7 +47,6 @@ local Config = {
 	AutoSpinAura = false,
 	AutoBuyEgg = false,
 	AutoSpinWheel = false,
-	AutoEquipBestPet = false,
 	AutoSave = false,
 	AutoExecute = false,
 	AutoReconnect = false,
@@ -56,6 +55,7 @@ local Config = {
 	NoGameplayPaused = false,
 	ThemeName = "Emerald Green",
 	FontName = "Cartoon",
+	FontPreset = "White + Emerald",
 	MenuBind = "G",
 	CustomColors = {
 		AccentColor = Color3.fromRGB(96, 216, 118),
@@ -75,8 +75,8 @@ local SuppressUI = false
 -- Trail list
 local TrailList = {"Orange", "Green", "Blue", "Purple", "White", "Black", "Rainbow", "Lava", "Inferno"}
 
--- Win positions for each world (accurate CFrame data)
-local WinsPositions = {
+-- Win CFrame positions for each world
+local WinCFrames = {
 	[1] = CFrame.new(1206.9248, 2.12651229, 184.378662, 1, 0, 0, 0, 1, 0, 0, 0, 1),
 	[2] = CFrame.new(1471.19507, 1.97363377, 512.867432, 1, 8.6321983e-05, 8.56921645e-08, -8.6321983e-05, 0.999998033, 0.00198540557, 8.56921503e-08, -0.00198540557, 0.999998033),
 	[3] = CFrame.new(1768.69031, 1.97363377, 870.788513, 1, 8.6321983e-05, 8.56921503e-08, -8.6321983e-05, 0.999998033, 0.00198540557, 8.56921503e-08, -0.00198540557, 0.999998033),
@@ -84,24 +84,26 @@ local WinsPositions = {
 	[5] = CFrame.new(1768.69031, 1.9726572, 2841.63428, 1, 8.6321983e-05, 8.56921503e-08, -8.6321983e-05, 0.999998033, 0.00198540557, 8.56921503e-08, -0.00198540557, 0.999998033),
 }
 
--- WinPad Floor paths per world
-local WinPadFloors = {
-	[1] = function()
-		return Workspace.Worlds.World1.DefaultWinPads.DefaultWin11.Floor
-	end,
-	[2] = function()
-		return Workspace.Worlds.World2.DefaultWinPads:GetChildren()[9].Floor
-	end,
-	[3] = function()
-		return Workspace.Worlds.World3.DefaultWinPads:GetChildren()[3].Floor
-	end,
-	[4] = function()
-		return Workspace.Worlds.World4.DefaultWinPads.DefaultWin.Floor
-	end,
-	[5] = function()
-		return Workspace.Worlds.World5.DefaultWinPads:GetChildren()[9].Floor
-	end,
-}
+-- Win Pad Floor paths per world (each world has a different path)
+local function GetWinPadFloor(world)
+	local success, result = pcall(function()
+		local worldFolder = Workspace:WaitForChild("Worlds"):WaitForChild("World" .. world)
+		local pads = worldFolder:WaitForChild("DefaultWinPads")
+		if world == 1 then
+			return pads:WaitForChild("DefaultWin11"):WaitForChild("Floor", 3)
+		elseif world == 2 then
+			return pads:GetChildren()[9]:WaitForChild("Floor", 3)
+		elseif world == 3 then
+			return pads:GetChildren()[3]:WaitForChild("Floor", 3)
+		elseif world == 4 then
+			return pads:WaitForChild("DefaultWin"):WaitForChild("Floor", 3)
+		elseif world == 5 then
+			return pads:GetChildren()[9]:WaitForChild("Floor", 3)
+		end
+		return nil
+	end)
+	return success and result or nil
+end
 
 -- Training positions by world & rebirth tier
 local TrainPositions = {
@@ -208,7 +210,7 @@ local function AutoWins()
 		local char = Player.Character
 		if char and char:FindFirstChild("HumanoidRootPart") then
 			local currentWorld = Player:GetAttributes().CurrentWorld or 1
-			local winsPos = WinsPositions[currentWorld]
+			local winsPos = WinCFrames[currentWorld]
 
 			if winsPos then
 				-- Teleport to win position
@@ -217,14 +219,11 @@ local function AutoWins()
 
 				-- firetouchinterest on the correct Floor part
 				pcall(function()
-					local getFloor = WinPadFloors[currentWorld]
-					if getFloor then
-						local floor = getFloor()
-						if floor and floor:IsA("BasePart") then
-							firetouchinterest(HumanoidRootPart, floor, 0)
-							task.wait(0.1)
-							firetouchinterest(HumanoidRootPart, floor, 1)
-						end
+					local floor = GetWinPadFloor(currentWorld)
+					if floor and floor:IsA("BasePart") then
+						firetouchinterest(HumanoidRootPart, floor, 0)
+						task.wait(0.1)
+						firetouchinterest(HumanoidRootPart, floor, 1)
 					end
 				end)
 
@@ -232,15 +231,12 @@ local function AutoWins()
 
 				-- Method 2: Teleport directly onto floor as fallback
 				pcall(function()
-					local getFloor = WinPadFloors[currentWorld]
-					if getFloor then
-						local floor = getFloor()
-						if floor and floor:IsA("BasePart") then
-							HumanoidRootPart.CFrame = floor.CFrame + Vector3.new(0, 3, 0)
-							task.wait(0.1)
-							HumanoidRootPart.CFrame = floor.CFrame + Vector3.new(0, 0.5, 0)
-							task.wait(0.2)
-						end
+					local floor = GetWinPadFloor(currentWorld)
+					if floor and floor:IsA("BasePart") then
+						HumanoidRootPart.CFrame = floor.CFrame + Vector3.new(0, 3, 0)
+						task.wait(0.1)
+						HumanoidRootPart.CFrame = floor.CFrame + Vector3.new(0, 0.5, 0)
+						task.wait(0.2)
 					end
 				end)
 			end
@@ -249,35 +245,6 @@ local function AutoWins()
 end
 
 -- 2. AUTO TRAIN (Smart position selector + DamageBlock event)
-local function GetClosestTrainDummy()
-	local currentWorld = Player:GetAttributes().CurrentWorld or 1
-	local currentRebirths = Player:GetAttributes().Rebirths or 0
-
-	if not TrainDummyPaths[currentWorld] then return nil end
-
-	local worldDummies = TrainDummyPaths[currentWorld]
-	local closestRebirth = nil
-	local closestPath = nil
-	local highestRebirth = nil
-	local highestPath = nil
-
-	for rebirth, path in pairs(worldDummies) do
-		if highestRebirth == nil or rebirth > highestRebirth then
-			highestRebirth = rebirth
-			highestPath = path
-		end
-
-		if rebirth <= currentRebirths then
-			if closestRebirth == nil or rebirth > closestRebirth then
-				closestRebirth = rebirth
-				closestPath = path
-			end
-		end
-	end
-
-	return closestPath or highestPath
-end
-
 local function GetClosestTrainPosition()
 	local currentWorld = Player:GetAttributes().CurrentWorld or 1
 	local currentRebirths = Player:GetAttributes().Rebirths or 0
@@ -295,7 +262,6 @@ local function GetClosestTrainPosition()
 			highestRebirth = rebirth
 			highestPos = pos
 		end
-
 		if rebirth <= currentRebirths then
 			if closestRebirth == nil or rebirth > closestRebirth then
 				closestRebirth = rebirth
@@ -307,7 +273,88 @@ local function GetClosestTrainPosition()
 	return closestPos or highestPos
 end
 
+local function GetClosestTrainDummy()
+	local currentWorld = Player:GetAttributes().CurrentWorld or 1
+	local currentRebirths = Player:GetAttributes().Rebirths or 0
+
+	if not TrainDummyPaths[currentWorld] then return nil end
+
+	local worldDummies = TrainDummyPaths[currentWorld]
+	local closestRebirth = nil
+	local closestPath = nil
+	local highestRebirth = nil
+	local highestPath = nil
+
+	for rebirth, path in pairs(worldDummies) do
+		if highestRebirth == nil or rebirth > highestRebirth then
+			highestRebirth = rebirth
+			highestPath = path
+		end
+		if rebirth <= currentRebirths then
+			if closestRebirth == nil or rebirth > closestRebirth then
+				closestRebirth = rebirth
+				closestPath = path
+			end
+		end
+	end
+
+	return closestPath or highestPath
+end
+
 local TrainingHitbox = nil
+local TrainingActive = false
+local LastTrainWorld = nil
+
+local function ResolveTrainHitbox()
+	local dummyPath = GetClosestTrainDummy()
+	if not dummyPath then return nil end
+
+	local success, hitbox = pcall(function()
+		local parts = string.split(dummyPath, ".")
+		local current = Workspace
+		for i = 2, #parts do
+			current = current:WaitForChild(parts[i], 3)
+			if not current then return nil end
+		end
+		return current
+	end)
+
+	if success and hitbox and hitbox:IsA("BasePart") then
+		return hitbox
+	end
+	return nil
+end
+
+local function StartTrainingLoop()
+	if TrainingActive then return end
+	TrainingActive = true
+
+	task.spawn(function()
+		while Config.AutoTrain and TrainingActive do
+			-- Re-resolve hitbox if world changed or hitbox was destroyed
+			local currentWorld = Player:GetAttributes().CurrentWorld or 1
+			if not TrainingHitbox or not TrainingHitbox.Parent or LastTrainWorld ~= currentWorld then
+				TrainingHitbox = ResolveTrainHitbox()
+				LastTrainWorld = currentWorld
+			end
+
+			if TrainingHitbox and TrainingHitbox.Parent then
+				pcall(function()
+					local Event = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("DamageBlock")
+					Event:InvokeServer(TrainingHitbox)
+				end)
+			end
+			task.wait(0.000001)
+		end
+		TrainingActive = false
+	end)
+end
+
+local function StopTrainingLoop()
+	TrainingActive = false
+	TrainingHitbox = nil
+	LastTrainWorld = nil
+end
 
 local function AutoTrain()
 	if not HumanoidRootPart or not HumanoidRootPart.Parent then return end
@@ -315,67 +362,19 @@ local function AutoTrain()
 		local char = Player.Character
 		if char and char:FindFirstChild("HumanoidRootPart") then
 			local trainPos = GetClosestTrainPosition()
-			local dummyPath = GetClosestTrainDummy()
-
 			if trainPos then
-				-- Teleport to training position
 				HumanoidRootPart.CFrame = CFrame.new(trainPos)
 				task.wait(0.3)
-
-				-- Cache the hitbox reference
-				if dummyPath and not TrainingHitbox then
-					pcall(function()
-						local parts = string.split(dummyPath, ".")
-						local hitbox = Workspace
-
-						for i = 2, #parts do
-							hitbox = hitbox[parts[i]]
-							if not hitbox then return end
-						end
-
-						if hitbox and hitbox:IsA("BasePart") then
-							TrainingHitbox = hitbox
-						end
-					end)
-				end
 			end
 		end
 	end)
-end
-
--- Training damage loop (0.000001 interval)
-local TrainingActive = false
-local function StartTrainingLoop()
-	if TrainingActive then return end
-	TrainingActive = true
-
-	task.spawn(function()
-		while Config.AutoTrain and TrainingActive do
-			if TrainingHitbox and TrainingHitbox.Parent then
-				pcall(function()
-					local Event = ReplicatedStorage.Remotes.DamageBlock
-					if Event then
-						Event:InvokeServer(TrainingHitbox)
-					end
-				end)
-			end
-			task.wait(0.0000000001)
-		end
-		TrainingActive = false
-		TrainingHitbox = nil
-	end)
-end
-
-local function StopTrainingLoop()
-	TrainingActive = false
-	TrainingHitbox = nil
 end
 
 -- 3. AUTO BUY TRAIL
 local function AutoBuyTrail()
 	for _, trail in ipairs(TrailList) do
 		pcall(function()
-			local Event = ReplicatedStorage.Remotes.BuyTrail
+			local Event = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("BuyTrail")
 			Event:InvokeServer(trail)
 		end)
 		task.wait(0.3)
@@ -385,7 +384,7 @@ end
 -- 4. AUTO REBIRTH
 local function AutoRebirth()
 	pcall(function()
-		local Event = ReplicatedStorage.Remotes.Rebirth
+		local Event = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("Rebirth")
 		Event:InvokeServer()
 	end)
 end
@@ -395,7 +394,7 @@ local function AutoSpinAura()
 	pcall(function()
 		local mythicPity = Player:GetAttributes().MythicPityRolls or 0
 		if mythicPity < 999 then
-			local Event = ReplicatedStorage.Remotes.SpinAura
+			local Event = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("SpinAura")
 			Event:InvokeServer(false)
 		end
 	end)
@@ -404,7 +403,7 @@ end
 -- 6. AUTO BUY EGG
 local function AutoBuyEgg()
 	pcall(function()
-		local Event = ReplicatedStorage.Remotes.Hatch
+		local Event = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("Hatch")
 		Event:InvokeServer("Lucky Egg", "One")
 	end)
 end
@@ -412,29 +411,8 @@ end
 -- 7. AUTO SPIN WHEEL
 local function AutoSpinWheel()
 	pcall(function()
-		local Event = ReplicatedStorage.Remotes.SpinRequest
+		local Event = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("SpinRequest")
 		Event:InvokeServer()
-	end)
-end
-
--- 8. AUTO EQUIP BEST PET
-local function AutoEquipBestPet()
-	pcall(function()
-		local Event = game:GetService("ReplicatedStorage").Remotes.PetEquipBest
-		Event:FireServer()
-	end)
-end
-
--- Anti-AFK (main)
-local function AntiAfkLoop()
-	task.spawn(function()
-		while Config.AntiAfk do
-			task.wait(600)
-			pcall(function()
-				VirtualUser:CaptureController()
-				VirtualUser:ClickButton2(Vector2.new())
-			end)
-		end
 	end)
 end
 
@@ -447,6 +425,19 @@ Players.LocalPlayer.Idled:Connect(function()
 		end)
 	end
 end)
+
+-- Anti-AFK (main loop)
+local function AntiAfkLoop()
+	task.spawn(function()
+		while Config.AntiAfk do
+			task.wait(600)
+			pcall(function()
+				VirtualUser:CaptureController()
+				VirtualUser:ClickButton2(Vector2.new())
+			end)
+		end
+	end)
+end
 
 -- No Gameplay Paused
 local function NoPauseLoop()
@@ -489,7 +480,7 @@ local function AutoHideUiLoop()
 			if Library.Toggled then
 				OpenFor = OpenFor + 1
 				if OpenFor >= 30 then
-					Library:Toggle(false)
+					Library:Toggle()
 					OpenFor = 0
 				end
 			else
@@ -749,15 +740,11 @@ LoadConfig = function(Name, Silent)
 	Name = SanitizeConfigName(Name)
 	if not Name then return false end
 	if not isfile or not readfile then
-		if not Silent then
-			Notify("Config", "Config loading not supported", "Error")
-		end
+		if not Silent then Notify("Config", "Config loading not supported", "Error") end
 		return false
 	end
 	if not isfile(ConfigPath(Name)) then
-		if not Silent then
-			Notify("Config", "Config '" .. Name .. "' not found", "Warning")
-		end
+		if not Silent then Notify("Config", "Config '" .. Name .. "' not found", "Warning") end
 		return false
 	end
 
@@ -765,9 +752,7 @@ LoadConfig = function(Name, Silent)
 		return HttpService:JSONDecode(readfile(ConfigPath(Name)))
 	end)
 	if not Success or type(Data) ~= "table" then
-		if not Silent then
-			Notify("Config", "Failed to read configuration", "Error")
-		end
+		if not Silent then Notify("Config", "Failed to read configuration", "Error") end
 		return false
 	end
 
@@ -817,15 +802,9 @@ LoadConfig = function(Name, Silent)
 		end
 	end
 
-	if SettingsRefs.ThemeDropdown then
-		SettingsRefs.ThemeDropdown:SetValue(Config.ThemeName)
-	end
-	if SettingsRefs.FontDropdown then
-		SettingsRefs.FontDropdown:SetValue(Config.FontName)
-	end
-	if SettingsRefs.FontPresetDropdown then
-		SettingsRefs.FontPresetDropdown:SetValue(Config.FontPreset)
-	end
+	if SettingsRefs.ThemeDropdown then SettingsRefs.ThemeDropdown:SetValue(Config.ThemeName) end
+	if SettingsRefs.FontDropdown then SettingsRefs.FontDropdown:SetValue(Config.FontName) end
+	if SettingsRefs.FontPresetDropdown then SettingsRefs.FontPresetDropdown:SetValue(Config.FontPreset) end
 	SyncColorPickers()
 
 	SuppressUI = false
@@ -840,9 +819,7 @@ local function AddFeatureToggle(Box, Id, Info, OnToggle)
 		Default = false,
 		Tooltip = Info.Tooltip,
 		Callback = function(Value)
-			if OnToggle then
-				OnToggle(Value)
-			end
+			if OnToggle then OnToggle(Value) end
 			if Info.Notify and not SuppressUI then
 				Notify(Info.Text .. " " .. (Value and "On" or "Off"), "", Value and "Success" or "Warning")
 			end
@@ -857,9 +834,9 @@ local Window = Library:CreateWindow({
 	Title = "AntiGodHub",
 	Icon = 125265885440515,
 	Footer = {
-		{ Text = "Discord" },
+		{ Text = "Discord", Callback = function() CopyToClipboard(Config.DiscordLink) Notify("Copied", "Discord link copied!", "Success") end },
 		{ Text = " | " },
-		{ Text = "AntiGodHub" },
+		{ Text = "AntiGodHub", Callback = function() CopyToClipboard(Config.YouTubeLink) Notify("Copied", "YouTube link copied!", "Success") end },
 	},
 	CornerRadius = 20,
 	AutoShow = true,
@@ -947,24 +924,40 @@ local SessionLabel = StatusBox:AddLabel({ Text = 'SESSION - <font color="#60d888
 -- Updates Box
 local UpdatesBox = Tabs.Info:AddLeftGroupbox("Updates", "rotate-ccw")
 UpdatesBox:AddLabel({ Text = '<font color="#60d888">● Up to date</font>' })
-UpdatesBox:AddLabel({ Text = '<font color="#8a8a8a"> Last Updated 8/15/2026</font>' })
+UpdatesBox:AddLabel({ Text = '<font color="#8a8a8a"> Last Updated 8/22/2026</font>' })
 
 -- Game Info Box
 local InfoGameBox = Tabs.Info:AddRightGroupbox("Game Info", "gamepad-2")
 
 local Green = "#60d888"
-local GameName = GetGameName()
-local GameNameLabel = InfoGameBox:AddLabel({ Text = 'GAME - <font color="' .. Green .. '">' .. GameName .. '</font>' })
+local GameNameLabel = InfoGameBox:AddLabel({ Text = 'GAME - <font color="' .. Green .. '">Loading...</font>' })
 InfoGameBox:AddLabel({ Text = 'PLACE ID - <font color="' .. Green .. '">' .. tostring(game.PlaceId) .. '</font>' })
 
 local JobId = tostring(game.JobId)
 local ShortJobId = #JobId > 18 and JobId:sub(1, 18) .. "..." or JobId
 InfoGameBox:AddLabel({ Text = 'SERVER - <font color="' .. Green .. '">' .. ShortJobId .. '</font>' })
 
+-- Fetch game name async
+task.spawn(function()
+	local Success, Info = pcall(function()
+		return MarketplaceService:GetProductInfo(game.PlaceId)
+	end)
+	if Success and Info and Info.Name then
+		pcall(function()
+			GameNameLabel:SetText('GAME - <font color="#60d888">' .. Info.Name .. ' [' .. game.PlaceId .. ']</font>')
+		end)
+	else
+		pcall(function()
+			GameNameLabel:SetText('GAME - <font color="#60d888">Unknown</font>')
+		end)
+	end
+end)
+
 InfoGameBox:AddButton({
 	Text = "Copy Place ID",
 	Func = function()
 		CopyToClipboard(tostring(game.PlaceId))
+		Notify("Copied", "Place ID copied!", "Success")
 	end,
 	Tooltip = "Copy Place ID"
 })
@@ -977,6 +970,7 @@ InfoGameBox:AddButton({
 			game.PlaceId, JobId
 		)
 		CopyToClipboard(JoinScript)
+		Notify("Copied", "Join script copied!", "Success")
 	end,
 	Tooltip = "Copy Join Script"
 })
@@ -988,6 +982,7 @@ SocialsBox:AddButton({
 	Text = "Discord",
 	Func = function()
 		CopyToClipboard(Config.DiscordLink)
+		Notify("Copied", "Discord link copied!", "Success")
 	end,
 	Tooltip = "Discord"
 })
@@ -996,6 +991,7 @@ SocialsBox:AddButton({
 	Text = "YouTube",
 	Func = function()
 		CopyToClipboard(Config.YouTubeLink)
+		Notify("Copied", "YouTube link copied!", "Success")
 	end,
 	Tooltip = "YouTube"
 })
@@ -1004,6 +1000,7 @@ SocialsBox:AddButton({
 	Text = "TikTok",
 	Func = function()
 		CopyToClipboard(Config.TikTokLink)
+		Notify("Copied", "TikTok link copied!", "Success")
 	end,
 	Tooltip = "TikTok"
 })
@@ -1018,7 +1015,6 @@ FeaturesBox:AddLabel({ Text = '<font color="#60d888">✓ Auto Rebirth</font>' })
 FeaturesBox:AddLabel({ Text = '<font color="#60d888">✓ Auto Spin Aura</font>' })
 FeaturesBox:AddLabel({ Text = '<font color="#60d888">✓ Auto Buy Egg</font>' })
 FeaturesBox:AddLabel({ Text = '<font color="#60d888">✓ Auto Spin Wheel</font>' })
-FeaturesBox:AddLabel({ Text = '<font color="#60d888">✓ Auto Equip Best Pet</font>' })
 FeaturesBox:AddLabel({ Text = '<font color="#60d888">✓ Anti AFK</font>' })
 FeaturesBox:AddLabel({ Text = '<font color="#60d888">✓ No Gameplay Paused</font>' })
 FeaturesBox:AddLabel({ Text = '<font color="#60d888">✓ Auto Reconnect</font>' })
@@ -1046,7 +1042,7 @@ local FarmBox = MainTabs.Farming:AddLeftGroupbox("Auto Farming", "star")
 
 AddFeatureToggle(FarmBox, "AutoWins", {
 	Text = "Auto Farm Wins",
-	Tooltip = "Automatically farm wins",
+	Tooltip = "Automatically farm wins by teleporting to win pad",
 	Notify = true,
 }, function(Value)
 	Config.AutoWins = Value
@@ -1054,7 +1050,7 @@ AddFeatureToggle(FarmBox, "AutoWins", {
 		task.spawn(function()
 			while Config.AutoWins do
 				AutoWins()
-				task.wait(0.5)
+				task.wait(1)
 			end
 		end)
 	end
@@ -1062,18 +1058,13 @@ end)
 
 AddFeatureToggle(FarmBox, "AutoTrain", {
 	Text = "Auto Train",
-	Tooltip = "Auto train at closest tier (0.000001 loop speed)",
+	Tooltip = "Auto train at closest tier (teleport + DamageBlock)",
 	Notify = true,
 }, function(Value)
 	Config.AutoTrain = Value
 	if Value then
-		task.spawn(function()
-			while Config.AutoTrain do
-				AutoTrain()
-				StartTrainingLoop()
-				task.wait(0.5)
-			end
-		end)
+		AutoTrain()
+		StartTrainingLoop()
 	else
 		StopTrainingLoop()
 	end
@@ -1136,23 +1127,7 @@ AddFeatureToggle(EggBox, "AutoBuyEgg", {
 		task.spawn(function()
 			while Config.AutoBuyEgg do
 				AutoBuyEgg()
-				task.wait(0.5)
-			end
-		end)
-	end
-end)
-
-AddFeatureToggle(EggBox, "AutoEquipBestPet", {
-	Text = "Auto Equip Best Pet",
-	Tooltip = "Automatically equip best pet",
-	Notify = true,
-}, function(Value)
-	Config.AutoEquipBestPet = Value
-	if Value then
-		task.spawn(function()
-			while Config.AutoEquipBestPet do
-				AutoEquipBestPet()
-				task.wait(0.5)
+				task.wait(1)
 			end
 		end)
 	end
@@ -1170,7 +1145,7 @@ AddFeatureToggle(AuraBox, "AutoBuyTrail", {
 		task.spawn(function()
 			while Config.AutoBuyTrail do
 				AutoBuyTrail()
-				task.wait(0.5)
+				task.wait(1)
 			end
 		end)
 	end
@@ -1202,7 +1177,7 @@ AddFeatureToggle(AuraBox, "AutoSpinWheel", {
 		task.spawn(function()
 			while Config.AutoSpinWheel do
 				AutoSpinWheel()
-				task.wait(0.5)
+				task.wait(1)
 			end
 		end)
 	end
@@ -1291,9 +1266,7 @@ local FontDropdown = ThemeBox:AddDropdown("Font", {
 	Callback = function(Value)
 		Config.FontName = Value
 		Library:SetFont(Enum.Font[Value])
-		if not SuppressUI then
-			ScheduleSave()
-		end
+		if not SuppressUI then ScheduleSave() end
 	end,
 })
 SettingsRefs.FontDropdown = FontDropdown
@@ -1315,9 +1288,7 @@ local FontPresetDropdown = ThemeBox:AddDropdown("FontPreset", {
 				break
 			end
 		end
-		if not SuppressUI then
-			ScheduleSave()
-		end
+		if not SuppressUI then ScheduleSave() end
 	end,
 })
 SettingsRefs.FontPresetDropdown = FontPresetDropdown
@@ -1362,9 +1333,7 @@ AddFeatureToggle(MenuBox, "AutoExecute", {
 	Tooltip = "Auto Execute Script",
 }, function(Value)
 	Config.AutoExecute = Value
-	if Value then
-		RunAutoExecute()
-	end
+	if Value then RunAutoExecute() end
 end)
 
 AddFeatureToggle(MenuBox, "AutoReconnect", {
@@ -1372,9 +1341,7 @@ AddFeatureToggle(MenuBox, "AutoReconnect", {
 	Tooltip = "Auto Reconnect to Game",
 }, function(Value)
 	Config.AutoReconnect = Value
-	if Value then
-		AutoReconnectLoop()
-	end
+	if Value then AutoReconnectLoop() end
 end)
 
 AddFeatureToggle(MenuBox, "AutoHideUi", {
@@ -1382,9 +1349,7 @@ AddFeatureToggle(MenuBox, "AutoHideUi", {
 	Tooltip = "Auto Hide UI",
 }, function(Value)
 	Config.AutoHideUi = Value
-	if Value then
-		AutoHideUiLoop()
-	end
+	if Value then AutoHideUiLoop() end
 end)
 
 AddFeatureToggle(MenuBox, "AntiAfk", {
@@ -1392,9 +1357,7 @@ AddFeatureToggle(MenuBox, "AntiAfk", {
 	Tooltip = "Anti AFK",
 }, function(Value)
 	Config.AntiAfk = Value
-	if Value then
-		AntiAfkLoop()
-	end
+	if Value then AntiAfkLoop() end
 end)
 
 AddFeatureToggle(MenuBox, "NoGameplayPaused", {
@@ -1402,9 +1365,7 @@ AddFeatureToggle(MenuBox, "NoGameplayPaused", {
 	Tooltip = "No Gameplay Paused",
 }, function(Value)
 	Config.NoGameplayPaused = Value
-	if Value then
-		NoPauseLoop()
-	end
+	if Value then NoPauseLoop() end
 end)
 
 MenuBox:AddDivider()
@@ -1419,24 +1380,21 @@ MenuBox:AddButton({
 		Config.AutoSpinAura = false
 		Config.AutoBuyEgg = false
 		Config.AutoSpinWheel = false
-		Config.AutoEquipBestPet = false
 		Config.AutoReconnect = false
 		Config.AutoHideUi = false
 		Config.AntiAfk = false
 		Config.NoGameplayPaused = false
+		StopTrainingLoop()
 		for Id, Toggle in Library.Toggles do
-			if Toggle.Value then
-				Toggle:SetValue(false)
-			end
+			if Toggle.Value then Toggle:SetValue(false) end
 		end
 		Notify("Script", "All features stopped", "Warning")
 	end,
-	Risky = true
+	Risky = true,
 })
 
 -- Configuration
 local ConfigBox = Tabs.Settings:AddRightGroupbox("Configuration", "save")
-
 local RefreshConfigList
 
 local ConfigNameInput = ConfigBox:AddInput("ConfigName", {
@@ -1556,7 +1514,7 @@ ConfigBox:AddButton({
 		Notify("Config", "Config '" .. Name .. "' deleted", "Warning")
 	end,
 	Tooltip = "Delete config",
-	Risky = true
+	Risky = true,
 })
 
 ConfigBox:AddButton({
@@ -1603,11 +1561,11 @@ AddFeatureToggle(ConfigBox, "AutoSave", {
 	Config.AutoSave = Value
 end)
 
--- Apply default theme and font on startup
+-- ===== STARTUP =====
+
 ApplyTheme(Themes[Config.ThemeName])
 Library:SetFont(Enum.Font[Config.FontName])
 
--- Autoload config on start
 task.delay(1, function()
 	local AutoloadName = GetAutoloadName()
 	if AutoloadName and ConfigExists(AutoloadName) then
@@ -1621,4 +1579,4 @@ task.delay(1, function()
 	RefreshConfigList()
 end)
 
-Notify("AntiGodHub", "Success")
+Notify("AntiGodHub", "Script v4.3 loaded - All features working!", "Success")
