@@ -32,6 +32,7 @@ local LuckyBlocksList = {
     "Champions Lucky Block",
     "Spain Lucky Block",
     "Icons Lucky Block",
+    "Japan Lucky Block",
 }
 
 -- Configuration
@@ -174,7 +175,7 @@ local function FarmLuckyBlock()
                     FirePrompt(Prompt)
                 end
 
-                RunService.RenderStepped:Wait(3)
+                RunService.RenderStepped:Wait(0.3)
             end
         end
 
