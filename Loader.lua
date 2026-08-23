@@ -10,7 +10,7 @@ local PlayerGui = Player:WaitForChild("PlayerGui")
 --==================================================
 
 local SupportedGames = {
-	{name = "Throw A Coin", placeIds = {115681808123944, 72042130041700, 100875131717601, 81335362752013}, url = "https://raw.githubusercontent.com/LuaUScrip/LuaU/refs/heads/main/ThrowACoin.lua"},
+	{name = "Throw A Coin", placeIds = {115681808123944, 72042130041700, 100875131717601, 81335362752013, 115468445635568}, url = "https://raw.githubusercontent.com/LuaUScrip/LuaU/refs/heads/main/ThrowACoin.lua"},
 	{name = "+1 Loot Evolution", placeIds = {96033388567901}, url = "https://raw.githubusercontent.com/LuaUScrip/LuaU/refs/heads/main/Plus1LootEvolution.lua"},
 	{name = "+1 Pickaxe Swing Escape", placeIds = {82554996468034}, url = "https://raw.githubusercontent.com/LuaUScrip/LuaU/refs/heads/main/Plus1PickaxeSwingEscape.lua"},
 	{name = "Spin A Fish", placeIds = {79776733008346}, url = "https://raw.githubusercontent.com/LuaUScrip/LuaU/refs/heads/main/SpinAFish.lua"},
