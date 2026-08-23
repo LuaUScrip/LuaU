@@ -70,7 +70,7 @@ local SettingsRefs = {}
 local SuppressUI = false
 
 -- Lucky Blocks list
-local LuckyBlockList = {"Moon Lucky Block", "Candy Lucky Block", "Galaxy Lucky Block"}
+local LuckyBlockList = {"Moon Lucky Block", "Candy Lucky Block", "Galaxy Lucky Block", "Beach Lucky Block", "Toxic Lucky Block", "Stellar Lucky Block"}
 
 -- Slimes list (1-70)
 local SlimesList = {}
@@ -978,7 +978,7 @@ local SessionLabel = StatusBox:AddLabel({ Text = 'SESSION - <font color="#60d888
 -- Updates Box
 local UpdatesBox = Tabs.Info:AddLeftGroupbox("Updates", "rotate-ccw")
 UpdatesBox:AddLabel({ Text = '<font color="#60d888">● Up to date</font>' })
-UpdatesBox:AddLabel({ Text = '<font color="#8a8a8a"> Last Updated 8/15/2026</font>' })
+UpdatesBox:AddLabel({ Text = '<font color="#8a8a8a"> Last Updated 8/23/2026</font>' })
 
 -- Game Info Box
 local InfoGameBox = Tabs.Info:AddRightGroupbox("Game Info", "gamepad-2")
