@@ -68,7 +68,7 @@ local CoinList = {
     "Eclipse Coin", "Mirage Coin", "Obsidia Coin", "Tempest Coin", "Soul Coin",
     "Paradox Coin", "Miracle Coin", "Nexus Coin", "Apex Coin", "Infinity Coin",
     "Grace Coin", "Dominion Coin", "Empyrean Coin", "Atlas Coin", "Judgement Coin",
-    "Hercules Coin", "Helios Coin", "Nyx Coin", "Titan Coin", "Zeus Coin", "Runic Coin", "Amethyst Coin", "Merlin Coin", "Eldritch Coin", "Avalon Coin", "Dragonheart Coin", "Phoenix Coin", "Immortal Coin", "Fate Coin", "Leviathan Coin",
+    "Hercules Coin", "Helios Coin", "Nyx Coin", "Titan Coin", "Zeus Coin", "Runic Coin", "Amethyst Coin", "Merlin Coin", "Eldritch Coin", "Avalon Coin", "Dragonheart Coin", "Phoenix Coin", "Immortal Coin", "Fate Coin", "Leviathan Coin", "Clockwork Coin", "Steamheart Coin", "Voltaris Coin", "Gravitas Coin", "Galvanis Coin", "Overdrive Coin", "Skyforge Coin",
 }
 
 -- Upgrade list
