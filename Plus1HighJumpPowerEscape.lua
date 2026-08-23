@@ -1,6 +1,6 @@
 --[[
-	AntiGodHub — Farm Script
-	Logic: Auto Farm Wins / Auto Rebirth / Auto Spin Wheels / Trails / Auras / Equipment.
+	AntiGodHub — Farm Script (FIXED)
+	Logic: Auto Farm Wins (W1/W2) / Auto Rebirth / Auto Spin Wheels / Trails / Auras / Equipment.
 	Same structure as the original. Remotes live under ReplicatedStorage.Remote.
 --]]
 
@@ -42,6 +42,7 @@ local SessionStart = tick()
 -- ===== Configuration =====
 local Config = {
 	AutoFarmWins = false,
+	FarmWorld = "W1",
 	AutoRebirth = false,
 	AutoSpinWheels = false,
 	AutoBuyEquipTrail = false,
@@ -157,13 +158,30 @@ local function GetRemote(Group, Name)
 	return GroupFolder:FindFirstChild(Name)
 end
 
--- Farm wins: touch the reward part (workspace.Reward.Normal["14"].Part)
+-- ===== World Configuration =====
+local WorldConfig = {
+	W1 = {
+		RewardPath = "Reward",
+		RewardIndex = "14",
+		Display = "World 1",
+	},
+	W2 = {
+		RewardPath = "Reward_World2",
+		RewardIndex = "11",
+		Display = "World 2",
+	},
+}
+
+-- Farm wins: touch the reward part based on selected world
 local function FarmWins()
 	pcall(function()
-		local Rewards = Workspace:FindFirstChild("Reward")
+		local World = WorldConfig[Config.FarmWorld]
+		if not World then return end
+
+		local Rewards = Workspace:FindFirstChild(World.RewardPath)
 		local Normal = Rewards and Rewards:FindFirstChild("Normal")
-		local Reward14 = Normal and Normal:FindFirstChild("14")
-		local Part = Reward14 and Reward14:FindFirstChild("Part")
+		local RewardIndex = Normal and Normal:FindFirstChild(World.RewardIndex)
+		local Part = RewardIndex and RewardIndex:FindFirstChild("Part")
 		if not Part then return end
 
 		Teleport(Part.Position)
@@ -418,6 +436,7 @@ local function SaveConfigData(Name)
 			FontName = Config.FontName,
 			FontPreset = Config.FontPreset,
 			MenuBind = Config.MenuBind,
+			FarmWorld = Config.FarmWorld,
 			Colors = {},
 		}
 		for Key, Color in Config.CustomColors do
@@ -537,6 +556,10 @@ LoadConfig = function(Name, Silent)
 		Config.MenuBind = Data.MenuBind
 	end
 
+	if type(Data.FarmWorld) == "string" and WorldConfig[Data.FarmWorld] then
+		Config.FarmWorld = Data.FarmWorld
+	end
+
 	if type(Data.Toggles) == "table" then
 		for Id, Value in Data.Toggles do
 			local Toggle = Library.Toggles[Id]
@@ -551,6 +574,9 @@ LoadConfig = function(Name, Silent)
 	end
 	if SettingsRefs.FontDropdown then
 		SettingsRefs.FontDropdown:SetValue(Config.FontName)
+	end
+	if SettingsRefs.FarmWorldDropdown then
+		SettingsRefs.FarmWorldDropdown:SetValue(Config.FarmWorld)
 	end
 	SyncColorPickers()
 
@@ -720,7 +746,7 @@ local SessionLabel = StatusBox:AddLabel({ Text = 'SESSION - <font color="#60d888
 
 local UpdatesBox = Tabs.Info:AddLeftGroupbox("Updates", "refresh-cw")
 UpdatesBox:AddLabel({ Text = '<font color="#60d888">● Up to date</font>' })
-UpdatesBox:AddLabel({ Text = '<font color="#8a8a8a">Last Updated 8/17/2026</font>' })
+UpdatesBox:AddLabel({ Text = '<font color="#8a8a8a">Last Updated 8/23/2026</font>' })
 
 -- Game info
 local InfoGameBox = Tabs.Info:AddRightGroupbox("Game Info", "gamepad-2")
@@ -822,9 +848,26 @@ FeaturesBox:AddLabel({ Text = '<font color="#60d888">✓ Auto Features</font>' }
 -- ===== Main Tab > Farming =====
 local FarmBox = MainTabs.Farming:AddLeftGroupbox("Farming", "star")
 
+-- World selector dropdown
+local FarmWorldDropdown = FarmBox:AddDropdown("FarmWorld", {
+	Text = "Select Farm World",
+	Values = { "W1", "W2" },
+	Default = Config.FarmWorld,
+	Callback = function(Value)
+		Config.FarmWorld = Value
+		if not SuppressUI then
+			Notify("Farm World", "Switched to " .. WorldConfig[Value].Display, "Success")
+			ScheduleSave()
+		end
+	end,
+})
+SettingsRefs.FarmWorldDropdown = FarmWorldDropdown
+
+FarmBox:AddDivider()
+
 AddFeatureToggle(FarmBox, "AutoFarmWins", {
 	Text = "Auto Farm Wins",
-	Tooltip = "Touch Reward.Normal[14] to farm wins",
+	Tooltip = "farm",
 	Notify = true,
 }, function(Value)
 	Config.AutoFarmWins = Value
@@ -877,7 +920,7 @@ QuickBox:AddButton({
 	Text = "Farm Wins",
 	Func = function()
 		FarmWins()
-		Notify("Action", "Farming wins", "Info")
+		Notify("Action", "Farming wins on " .. WorldConfig[Config.FarmWorld].Display, "Info")
 	end,
 })
 
