@@ -201,11 +201,11 @@ local function AutoWins()
 		local char = Player.Character
 		if char and char:FindFirstChild("HumanoidRootPart") then
 			local currentWorld = Player:GetAttributes().CurrentWorld or 1
-			task.wait(0.3)
+			task.wait(0.01)
 			local winsPos = WinsPositions[currentWorld]
 			if winsPos then
 				HumanoidRootPart.CFrame = winsPos
-				task.wait(0.5)
+				task.wait(0.02)
 			end
 			local winPad = GetWinPadPart(currentWorld)
 			if winPad then
