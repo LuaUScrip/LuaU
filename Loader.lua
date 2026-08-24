@@ -54,7 +54,7 @@ local SupportedGames = {
 	{name = "+1 High Jump Power Escape", placeIds = {83388257263676}, url = "https://raw.githubusercontent.com/LuaUScrip/LuaU/refs/heads/main/Plus1HighJumpPowerEscape.lua"},
 	{name = "Murderers VS Sheriffs", placeIds = {12355337193}, url = "https://raw.githubusercontent.com/LuaUScrip/LuaU/refs/heads/main/MurderVsSherif.lua"},
 	{name = "+1 Web Swing Escape", placeIds = {110668201954727}, url = "https://raw.githubusercontent.com/LuaUScrip/LuaU/refs/heads/main/WebSwingEscape.lua"},
-	{name = "Fish For Junk", placeIds = {132010220154773, 74347901984127}, url = "https://raw.githubusercontent.com/LuaUScrip/LuaU/refs/heads/main/FishForJunk.lua"},
+	{name = "Fish For Junk", placeIds = {132010220154773, 74347901984127, 107424566725243}, url = "https://raw.githubusercontent.com/LuaUScrip/LuaU/refs/heads/main/FishForJunk.lua"},
 	{name = "+1 Backflip Keyboard Escape", placeIds = {109451440978523}, url = "https://raw.githubusercontent.com/LuaUScrip/LuaU/refs/heads/main/Plus1BackflipKeyboardEscapeW3.lua"},
 	{name = "+1 Jump Crunchy", placeIds = {83264774625004}, url = "https://raw.githubusercontent.com/LuaUScrip/LuaU/refs/heads/main/Plus1JumpCrunchy.lua"},
 	{name = "+1 Jump Crunchy", placeIds = {107067504582886}, url = "https://raw.githubusercontent.com/LuaUScrip/LuaU/refs/heads/main/Plus1JumpCrunchy2.lua"},
