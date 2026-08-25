@@ -63,7 +63,7 @@ local SupportedGames = {
 	{name = "+1 Fire Per Click", placeIds = {86882230095625}, url = "https://raw.githubusercontent.com/LuaUScrip/LuaU/refs/heads/main/Plus1FirePerClick2.lua"},
 	{name = "+1 Heat Per Click", placeIds = {95570822232841}, url = "https://raw.githubusercontent.com/LuaUScrip/LuaU/refs/heads/main/Plus1HeatPerClick.lua"},
 	{name = "+1 WallHope Obby Escape", placeIds = {140462309938712}, url = "https://raw.githubusercontent.com/LuaUScrip/LuaU/refs/heads/main/Plus1WallhopeObbyEscape.lua"},
-	{name = "+1 Lava Escape", placeIds = {82460561886298}, url = nil},
+	{name = "+1 Lava Escape", placeIds = {82460561886298}, url = "https://raw.githubusercontent.com/LuaUScrip/LuaU/refs/heads/main/Plus1LavaEscape.lua"},
 	{name = "Script 55", placeIds = {0}, url = nil},
 	{name = "Script 56", placeIds = {0}, url = nil},
 	{name = "Script 57", placeIds = {0}, url = nil},
