@@ -66,7 +66,7 @@ local SupportedGames = {
 	{name = "Throw A Rock", placeIds = {85618776005651}, url = "https://raw.githubusercontent.com/LuaUScrip/LuaU/refs/heads/main/ThrowARock.lua"},
 	{name = "Lick A Fish", placeIds = {76661034906787}, url = "https://raw.githubusercontent.com/LuaUScrip/LuaU/refs/heads/main/LickAFish.lua"},
 	{name = "Hole Fishing", placeIds = {80158232099900}, url = "https://raw.githubusercontent.com/LuaUScrip/LuaU/refs/heads/main/HoleFishing.lua"},
-	{name = "Script 57", placeIds = {0}, url = nil},
+	{name = "Volleyball Training", placeIds = {119228622410382}, url = "https://raw.githubusercontent.com/LuaUScrip/LuaU/refs/heads/main/VolleyBall.lua"},
 	{name = "Script 58", placeIds = {0}, url = nil},
 	{name = "Script 59", placeIds = {0}, url = nil},
 	{name = "Script 60", placeIds = {0}, url = nil},
