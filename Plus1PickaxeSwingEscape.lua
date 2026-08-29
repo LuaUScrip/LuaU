@@ -31,8 +31,9 @@ local Config = {
 	AutoWins = false,
 	AutoTrain = false,
 	AutoBuyTrail = false,
+	AutoBuyEgg = false,
+	SelectedEgg = nil,
 	AutoRebirth = false,
-	AutoSpinAura = false,
 	AutoSpinWheel = false,
 	AutoSave = false,
 	AutoExecute = false,
@@ -61,13 +62,14 @@ local SuppressUI = false
 
 local TrailList = {"Orange", "Green", "Blue", "Purple", "White", "Black", "Rainbow", "Lava", "Inferno"}
 
--- 5 win positions (teleport to pos first)
+-- 6 win positions
 local WinsPositions = {
 	[1] = CFrame.new(1206.9248, 2.12651229, 184.378662, 1, 0, 0, 0, 1, 0, 0, 0, 1),
 	[2] = CFrame.new(1471.19507, 1.97363377, 512.867432, 1, 8.6321983e-05, 8.56921645e-08, -8.6321983e-05, 0.999998033, 0.00198540557, 8.56921503e-08, -0.00198540557, 0.999998033),
 	[3] = CFrame.new(1768.69031, 1.97363377, 870.788513, 1, 8.6321983e-05, 8.56921503e-08, -8.6321983e-05, 0.999998033, 0.00198540557, 8.56921503e-08, -0.00198540557, 0.999998033),
 	[4] = CFrame.new(1768.69031, 1.97363377, 1244.24573, 1, 8.6321983e-05, 8.56921645e-08, -8.6321983e-05, 0.999998033, 0.00198540557, 8.56921503e-08, -0.00198540557, 0.999998033),
 	[5] = CFrame.new(1768.69031, 1.9726572, 2841.63428, 1, 8.6321983e-05, 8.56921503e-08, -8.6321983e-05, 0.999998033, 0.00198540557, 8.56921503e-08, -0.00198540557, 0.999998033),
+	[6] = CFrame.new(1547.69214, 1.9726572, 4945.88135, 1, 8.6321983e-05, 8.56921503e-08, -8.6321983e-05, 0.999998033, 0.00198540557, 8.56921503e-08, -0.00198540557, 0.999998033),
 }
 
 -- Win pad part paths by world
@@ -83,6 +85,8 @@ local function GetWinPadPart(currentWorld)
 			return workspace.Worlds.World4.DefaultWinPads.DefaultWin.Floor
 		elseif currentWorld == 5 then
 			return workspace.Worlds.World5.DefaultWinPads:GetChildren()[9].Floor
+		elseif currentWorld == 6 then
+			return workspace.Worlds.World6.DefaultWinPads:GetChildren()[11].Floor
 		end
 	end)
 	if success and part then return part end
@@ -124,6 +128,12 @@ local function GetDummyHitbox(currentWorld, currentRebirths)
 			else
 				return workspace.Dummy5.Starter.Hitbox
 			end
+		elseif currentWorld == 6 then
+			if currentRebirths >= 24 then
+				return workspace.Dummy6.OneRebirth.Hitbox
+			else
+				return workspace.Dummy6.Starter.Hitbox
+			end
 		end
 	end)
 	if success and hitbox then return hitbox end
@@ -156,6 +166,11 @@ local TrainPositions = {
 		[0] = Vector3.new(-55, 6, 2893),
 		[20] = Vector3.new(-55, 6, 2882),
 		[26] = Vector3.new(-55, 6, 2869),
+	},
+	[6] = {
+		[0] = Vector3.new(-56, 5, 4997),
+		[24] = Vector3.new(-56, 5, 4986),
+		[30] = Vector3.new(-56, 5, 4973),
 	},
 }
 
@@ -194,22 +209,22 @@ local function Notify(Title, Description, Type)
 	end)
 end
 
--- 1. AUTO WINS (Teleport to pos, then teleport to pad part)
+-- 1. AUTO WINS (Teleport to CFrame, wait 0.4s, then teleport to pad)
 local function AutoWins()
 	if not HumanoidRootPart or not HumanoidRootPart.Parent then return end
 	pcall(function()
 		local char = Player.Character
 		if char and char:FindFirstChild("HumanoidRootPart") then
 			local currentWorld = Player:GetAttributes().CurrentWorld or 1
-			task.wait(0.01)
 			local winsPos = WinsPositions[currentWorld]
 			if winsPos then
 				HumanoidRootPart.CFrame = winsPos
-				task.wait(0.02)
+				task.wait(0.4)
 			end
 			local winPad = GetWinPadPart(currentWorld)
 			if winPad then
 				HumanoidRootPart.CFrame = winPad.CFrame
+				task.wait(0.5)
 			end
 		end
 	end)
@@ -274,7 +289,7 @@ local function AutoBuyTrail()
 			local Event = ReplicatedStorage.Remotes.BuyTrail
 			Event:InvokeServer(trail)
 		end)
-		RunService.RenderStepped:Wait(0.3)
+		task.wait(0.3)
 	end
 end
 
@@ -286,14 +301,11 @@ local function AutoRebirth()
 	end)
 end
 
--- 5. AUTO SPIN AURA
-local function AutoSpinAura()
+-- 5. AUTO BUY EGG
+local function AutoBuyEgg()
 	pcall(function()
-		local mythicPity = Player:GetAttributes().MythicPityRolls or 0
-		if mythicPity < 999 then
-			local Event = ReplicatedStorage.Remotes.SpinAura
-			Event:InvokeServer(false)
-		end
+		local Event = ReplicatedStorage.Remotes.Hatch
+		Event:InvokeServer(Config.SelectedEgg, "One")
 	end)
 end
 
@@ -590,7 +602,7 @@ end
 
 local function AddFeatureToggle(Box, Id, Info, OnToggle)
 	return Box:AddToggle(Id, {
-		Text = Info.Text, Default = false, Tooltip = Info.Tooltip,
+		Text = Info.Text, Default = false,
 		Callback = function(Value)
 			if OnToggle then OnToggle(Value) end
 			if Info.Notify and not SuppressUI then Notify(Info.Text .. " " .. (Value and "On" or "Off"), "", Value and "Success" or "Warning") end
@@ -659,7 +671,7 @@ local SessionLabel = StatusBox:AddLabel({ Text = 'SESSION - <font color="#60d888
 
 local UpdatesBox = Tabs.Info:AddLeftGroupbox("Updates", "rotate-ccw")
 UpdatesBox:AddLabel({ Text = '<font color="#60d888">● Up to date</font>' })
-UpdatesBox:AddLabel({ Text = '<font color="#8a8a8a"> Last Updated 8/23/2026</font>' })
+UpdatesBox:AddLabel({ Text = '<font color="#8a8a8a"> Last Updated 8/30/2026</font>' })
 
 local InfoGameBox = Tabs.Info:AddRightGroupbox("Game Info", "gamepad-2")
 local Green = "#60d888"
@@ -678,23 +690,22 @@ task.spawn(function()
 	end
 end)
 
-InfoGameBox:AddButton({Text = "Copy Place ID", Func = function() CopyToClipboard(tostring(game.PlaceId)) end, Tooltip = "Copy Place ID"})
+InfoGameBox:AddButton({Text = "Copy Place ID", Func = function() CopyToClipboard(tostring(game.PlaceId)) end})
 InfoGameBox:AddButton({Text = "Copy Join Script", Func = function()
-	local JoinScript = string.format('game:GetService("TeleportService"):TeleportToPlaceInstance(%d, %q, game:GetService("Players").LocalPlayer)', game.PlaceId, JobId)
-	CopyToClipboard(JoinScript)
-end, Tooltip = "Copy Join Script"})
+	CopyToClipboard(string.format('game:GetService("TeleportService"):TeleportToPlaceInstance(%d, %q, game:GetService("Players").LocalPlayer)', game.PlaceId, JobId))
+end})
 
 local SocialsBox = Tabs.Info:AddRightGroupbox("Socials", "link")
-SocialsBox:AddButton({Text = "Discord", Func = function() CopyToClipboard(Config.DiscordLink) end, Tooltip = "Discord"})
-SocialsBox:AddButton({Text = "YouTube", Func = function() CopyToClipboard(Config.YouTubeLink) end, Tooltip = "YouTube"})
-SocialsBox:AddButton({Text = "TikTok", Func = function() CopyToClipboard(Config.TikTokLink) end, Tooltip = "TikTok"})
+SocialsBox:AddButton({Text = "Discord", Func = function() CopyToClipboard(Config.DiscordLink) end})
+SocialsBox:AddButton({Text = "YouTube", Func = function() CopyToClipboard(Config.YouTubeLink) end})
+SocialsBox:AddButton({Text = "TikTok", Func = function() CopyToClipboard(Config.TikTokLink) end})
 
 local FeaturesBox = Tabs.Info:AddRightGroupbox("Features", "list")
 FeaturesBox:AddLabel({ Text = '<font color="#60d888">✓ Auto Farm Wins</font>' })
 FeaturesBox:AddLabel({ Text = '<font color="#60d888">✓ Auto Train</font>' })
 FeaturesBox:AddLabel({ Text = '<font color="#60d888">✓ Auto Buy Trail</font>' })
+FeaturesBox:AddLabel({ Text = '<font color="#60d888">✓ Auto Buy Egg</font>' })
 FeaturesBox:AddLabel({ Text = '<font color="#60d888">✓ Auto Rebirth</font>' })
-FeaturesBox:AddLabel({ Text = '<font color="#60d888">✓ Auto Spin Aura</font>' })
 FeaturesBox:AddLabel({ Text = '<font color="#60d888">✓ Auto Spin Wheel</font>' })
 FeaturesBox:AddLabel({ Text = '<font color="#60d888">✓ Anti AFK</font>' })
 FeaturesBox:AddLabel({ Text = '<font color="#60d888">✓ No Gameplay Paused</font>' })
@@ -717,45 +728,58 @@ end)
 -- ===== MAIN TAB - FARMING SUBTAB =====
 local FarmBox = MainTabs.Farming:AddLeftGroupbox("Auto Farming", "star")
 
-AddFeatureToggle(FarmBox, "AutoWins", {Text = "Auto Farm Wins", Tooltip = "Automatically farm wins", Notify = true}, function(Value)
+AddFeatureToggle(FarmBox, "AutoWins", {Text = "Auto Farm Wins", Notify = true}, function(Value)
 	Config.AutoWins = Value
-	if Value then task.spawn(function() while Config.AutoWins do AutoWins() RunService.RenderStepped:Wait(1) end end) end
+	if Value then task.spawn(function() while Config.AutoWins do AutoWins() end end) end
 end)
 
-AddFeatureToggle(FarmBox, "AutoTrain", {Text = "Auto Train", Tooltip = "Auto train and hit dummy", Notify = true}, function(Value)
+AddFeatureToggle(FarmBox, "AutoTrain", {Text = "Auto Train", Notify = true}, function(Value)
 	Config.AutoTrain = Value
 	if Value then
-		task.spawn(function() while Config.AutoTrain do AutoTrain() RunService.RenderStepped:Wait(0.5) end end)
-		task.spawn(function() while Config.AutoTrain do HitDummy() RunService.RenderStepped:Wait(0.00001) end end)
+		task.spawn(function() while Config.AutoTrain do AutoTrain() task.wait(0.5) end end)
+		task.spawn(function() while Config.AutoTrain do HitDummy() task.wait(0.000001) end end)
 	end
 end)
 
-AddFeatureToggle(FarmBox, "AutoRebirth", {Text = "Auto Rebirth", Tooltip = "Automatically rebirth", Notify = true}, function(Value)
+AddFeatureToggle(FarmBox, "AutoRebirth", {Text = "Auto Rebirth", Notify = true}, function(Value)
 	Config.AutoRebirth = Value
-	if Value then task.spawn(function() while Config.AutoRebirth do AutoRebirth() RunService.RenderStepped:Wait(1) end end) end
+	if Value then task.spawn(function() while Config.AutoRebirth do AutoRebirth() task.wait(1) end end) end
 end)
-
-local QuickBox = MainTabs.Farming:AddRightGroupbox("Quick Actions", "zap")
-QuickBox:AddButton({Text = "Farm Wins", Func = function() AutoWins() end, Tooltip = "Teleport to wins area once"})
-QuickBox:AddButton({Text = "Train", Func = function() AutoTrain() end, Tooltip = "Teleport to training spot once"})
-QuickBox:AddButton({Text = "Rebirth", Func = function() AutoRebirth() end, Tooltip = "Rebirth once"})
 
 -- ===== MAIN TAB - UPGRADE SUBTAB =====
-local AuraBox = MainTabs.Upgrade:AddLeftGroupbox("Auras & Trails", "sparkles")
+local EggBox = MainTabs.Upgrade:AddLeftGroupbox("Eggs", "egg")
 
-AddFeatureToggle(AuraBox, "AutoBuyTrail", {Text = "Auto Buy Trail", Tooltip = "Automatically buy all trails", Notify = true}, function(Value)
+local EggList = {
+	{ Name = "Lucky Egg - LuckyCoins" },
+	{ Name = "Void Egg - VoidCoins" },
+	{ Name = "Azure Egg - AzureCoins" },
+}
+local EggNames = {}
+for _, e in ipairs(EggList) do table.insert(EggNames, e.Name) end
+
+local EggDropdown = EggBox:AddDropdown("EggSelect", {
+	Text = "Select Egg", Values = EggNames, Default = EggNames[1],
+	Callback = function(v)
+		Config.SelectedEgg = v:match("^(.+)%s*%-") or v
+	end,
+})
+Config.SelectedEgg = EggList[1].Name:match("^(.+)%s*%-") or EggList[1].Name
+
+AddFeatureToggle(EggBox, "AutoBuyEgg", {Text = "Auto Buy Egg", Notify = true}, function(Value)
+	Config.AutoBuyEgg = Value
+	if Value then task.spawn(function() while Config.AutoBuyEgg do AutoBuyEgg() task.wait(0.5) end end) end
+end)
+
+local AuraBox = MainTabs.Upgrade:AddRightGroupbox("Auras & Trails", "sparkles")
+
+AddFeatureToggle(AuraBox, "AutoBuyTrail", {Text = "Auto Buy Trail", Notify = true}, function(Value)
 	Config.AutoBuyTrail = Value
-	if Value then task.spawn(function() while Config.AutoBuyTrail do AutoBuyTrail() RunService.RenderStepped:Wait(0.5) end end) end
+	if Value then task.spawn(function() while Config.AutoBuyTrail do AutoBuyTrail() task.wait(0.5) end end) end
 end)
 
-AddFeatureToggle(AuraBox, "AutoSpinAura", {Text = "Auto Spin Aura", Tooltip = "Spin until MythicPityRolls = 999", Notify = true}, function(Value)
-	Config.AutoSpinAura = Value
-	if Value then task.spawn(function() while Config.AutoSpinAura do AutoSpinAura() RunService.RenderStepped:Wait(0.00000001) end end) end
-end)
-
-AddFeatureToggle(AuraBox, "AutoSpinWheel", {Text = "Auto Spin Wheel", Tooltip = "Automatically spin wheel", Notify = true}, function(Value)
+AddFeatureToggle(AuraBox, "AutoSpinWheel", {Text = "Auto Spin Wheel", Notify = true}, function(Value)
 	Config.AutoSpinWheel = Value
-	if Value then task.spawn(function() while Config.AutoSpinWheel do AutoSpinWheel() RunService.RenderStepped:Wait(0.5) end end) end
+	if Value then task.spawn(function() while Config.AutoSpinWheel do AutoSpinWheel() task.wait(0.5) end end) end
 end)
 
 -- ===== SETTINGS TAB =====
@@ -821,17 +845,17 @@ MenuBox:AddLabel("Menu Bind"):AddKeyPicker("MenuBind", {
 })
 
 MenuBox:AddDivider()
-AddFeatureToggle(MenuBox, "AutoExecute", {Text = "Auto Execute Script", Tooltip = "Auto Execute Script"}, function(Value) Config.AutoExecute = Value if Value then RunAutoExecute() end end)
-AddFeatureToggle(MenuBox, "AutoReconnect", {Text = "Auto Reconnect to Game", Tooltip = "Auto Reconnect to Game"}, function(Value) Config.AutoReconnect = Value if Value then AutoReconnectLoop() end end)
-AddFeatureToggle(MenuBox, "AutoHideUi", {Text = "Auto Hide UI", Tooltip = "Auto Hide UI"}, function(Value) Config.AutoHideUi = Value if Value then AutoHideUiLoop() end end)
-AddFeatureToggle(MenuBox, "AntiAfk", {Text = "Anti AFK", Tooltip = "Anti AFK"}, function(Value) Config.AntiAfk = Value if Value then AntiAfkLoop() end end)
-AddFeatureToggle(MenuBox, "NoGameplayPaused", {Text = "No Gameplay Paused", Tooltip = "No Gameplay Paused"}, function(Value) Config.NoGameplayPaused = Value if Value then NoPauseLoop() end end)
+AddFeatureToggle(MenuBox, "AutoExecute", {Text = "Auto Execute Script"}, function(Value) Config.AutoExecute = Value if Value then RunAutoExecute() end end)
+AddFeatureToggle(MenuBox, "AutoReconnect", {Text = "Auto Reconnect to Game"}, function(Value) Config.AutoReconnect = Value if Value then AutoReconnectLoop() end end)
+AddFeatureToggle(MenuBox, "AutoHideUi", {Text = "Auto Hide UI"}, function(Value) Config.AutoHideUi = Value if Value then AutoHideUiLoop() end end)
+AddFeatureToggle(MenuBox, "AntiAfk", {Text = "Anti AFK"}, function(Value) Config.AntiAfk = Value if Value then AntiAfkLoop() end end)
+AddFeatureToggle(MenuBox, "NoGameplayPaused", {Text = "No Gameplay Paused"}, function(Value) Config.NoGameplayPaused = Value if Value then NoPauseLoop() end end)
 
 MenuBox:AddDivider()
 
 MenuBox:AddButton({Text = "Stop All Features", Func = function()
-	Config.AutoWins = false Config.AutoTrain = false Config.AutoBuyTrail = false Config.AutoRebirth = false
-	Config.AutoSpinAura = false Config.AutoSpinWheel = false
+	Config.AutoWins = false Config.AutoTrain = false Config.AutoBuyTrail = false Config.AutoBuyEgg = false Config.AutoRebirth = false
+	Config.AutoSpinWheel = false
 	Config.AutoReconnect = false Config.AutoHideUi = false Config.AntiAfk = false Config.NoGameplayPaused = false
 	for Id, Toggle in Library.Toggles do if Toggle.Value then Toggle:SetValue(false) end end
 	Notify("Script", "All features stopped", "Warning")
@@ -848,7 +872,7 @@ ConfigBox:AddButton({Text = "Create config", Func = function()
 	if not Name then Notify("Config", "Enter a valid config name first", "Warning") return end
 	if ConfigExists(Name) then Notify("Config", "'" .. Name .. "' already exists", "Warning") return end
 	if SaveConfigData(Name) then CurrentConfig = Name RefreshConfigList(Name) Notify("Config", "Config '" .. Name .. "' created", "Success") else Notify("Config", "Config saving not supported", "Error") end
-end, Tooltip = "Create config"})
+end})
 
 ConfigBox:AddDivider()
 
@@ -872,21 +896,21 @@ local function UpdateAutoloadLabel()
 	AutoloadLabel:SetText(Text)
 end
 
-ConfigBox:AddButton({Text = "Load config", Func = function() local Name = CurrentConfig if not Name then Notify("Config", "Select a config first", "Warning") return end if LoadConfig(Name, false) then Notify("Config", "Config '" .. Name .. "' loaded", "Success") end end, Tooltip = "Load config"})
-ConfigBox:AddButton({Text = "Overwrite config", Func = function() local Name = CurrentConfig if not Name then Notify("Config", "Select a config first", "Warning") return end if SaveConfigData(Name) then Notify("Config", "Config '" .. Name .. "' overwritten", "Success") else Notify("Config", "Config saving not supported", "Error") end end, Tooltip = "Overwrite config"})
+ConfigBox:AddButton({Text = "Load config", Func = function() local Name = CurrentConfig if not Name then Notify("Config", "Select a config first", "Warning") return end if LoadConfig(Name, false) then Notify("Config", "Config '" .. Name .. "' loaded", "Success") end end})
+ConfigBox:AddButton({Text = "Overwrite config", Func = function() local Name = CurrentConfig if not Name then Notify("Config", "Select a config first", "Warning") return end if SaveConfigData(Name) then Notify("Config", "Config '" .. Name .. "' overwritten", "Success") else Notify("Config", "Config saving not supported", "Error") end end})
 ConfigBox:AddButton({Text = "Delete config", Func = function()
 	local Name = CurrentConfig if not Name then Notify("Config", "Select a config first", "Warning") return end
 	pcall(function() delfile(ConfigPath(Name)) end)
 	if GetAutoloadName() == Name then ClearAutoload() end
 	CurrentConfig = nil RefreshConfigList() UpdateAutoloadLabel()
 	Notify("Config", "Config '" .. Name .. "' deleted", "Warning")
-end, Tooltip = "Delete config", Risky = true})
-ConfigBox:AddButton({Text = "Refresh list", Func = function() RefreshConfigList() Notify("Config", "Config list refreshed", "Info") end, Tooltip = "Refresh list"})
-ConfigBox:AddButton({Text = "Set as autoload", Func = function() local Name = CurrentConfig if not Name then Notify("Config", "Select a config first", "Warning") return end if SetAutoload(Name) then UpdateAutoloadLabel() Notify("Config", "Autoload set to '" .. Name .. "'", "Success") end end, Tooltip = "Set as autoload"})
-ConfigBox:AddButton({Text = "Reset autoload", Func = function() ClearAutoload() UpdateAutoloadLabel() Notify("Config", "Autoload cleared", "Info") end, Tooltip = "Reset autoload"})
+end, Risky = true})
+ConfigBox:AddButton({Text = "Refresh list", Func = function() RefreshConfigList() Notify("Config", "Config list refreshed", "Info") end})
+ConfigBox:AddButton({Text = "Set as autoload", Func = function() local Name = CurrentConfig if not Name then Notify("Config", "Select a config first", "Warning") return end if SetAutoload(Name) then UpdateAutoloadLabel() Notify("Config", "Autoload set to '" .. Name .. "'", "Success") end end})
+ConfigBox:AddButton({Text = "Reset autoload", Func = function() ClearAutoload() UpdateAutoloadLabel() Notify("Config", "Autoload cleared", "Info") end})
 
 ConfigBox:AddDivider()
-AddFeatureToggle(ConfigBox, "AutoSave", {Text = "Auto Save Config", Tooltip = "Auto Save Config"}, function(Value) Config.AutoSave = Value end)
+AddFeatureToggle(ConfigBox, "AutoSave", {Text = "Auto Save Config"}, function(Value) Config.AutoSave = Value end)
 
 -- Startup
 ApplyTheme(Themes[Config.ThemeName])
@@ -903,4 +927,4 @@ task.delay(1, function()
 	RefreshConfigList()
 end)
 
-Notify("AntiGodHub", "Script loaded", "Success")
+Notify("AntiGodHub", "Loaded", "Success")
