@@ -79,7 +79,7 @@ local LuckyBlocksList = {
 	"Spain Lucky Block",
 	"Icons Lucky Block",
 	"Japan Lucky Block",
-	"Alternative Lucky Block",
+	"Alternate Lucky Block",
 }
 
 -- Configuration
