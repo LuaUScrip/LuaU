@@ -62,23 +62,21 @@ getgenv().bypass_teleport = bypass_teleport
 -- Lucky Blocks List
 local LuckyBlocksList = {
 	"Secret Lucky Block",
-	"Exclusive Lucky Block",
-	"Cosmic Lucky Block",
+	"Slime God Lucky Block",
+	"OG Lucky Block",
+	"Water Lucky Block",
 	"Spain Lucky Block",
 	"Icons Lucky Block",
 	"Japan Lucky Block",
+	"OG Lucky Block",
 	"Limited Lucky Block",
 	"Champions Lucky Block",
-	"Nightmare Lucky Block",
-	"Meltdown Lucky Block",
-	"Slime God Lucky Block",
-	"OG Lucky Block",
 }
 
 -- Configuration
 local Config = {
 	HomePosition = Vector3.new(198, 3, 280),
-	SelectedLuckyBlocks = {},
+	SelectedLuckyBlock = "Lucky Block",
 	FarmActive = false,
 	CollectActive = false,
 	OpenActive = false,
@@ -154,48 +152,45 @@ local function fireAllPrompts(instance)
 	end)
 end
 
--- 1. AUTO FARM LUCKY BLOCKS (uses SelectedLuckyBlocks, only StealPrompt)
+-- 1. AUTO FARM LUCKY BLOCKS (uses SelectedLuckyBlock, only StealPrompt)
 local function FarmLuckyBlock()
 	local hrp = get_hrp()
 	if not hrp or not hrp.Parent then return end
-	if type(Config.SelectedLuckyBlocks) ~= "table" or #Config.SelectedLuckyBlocks == 0 then return end
+	if type(Config.SelectedLuckyBlock) ~= "string" or Config.SelectedLuckyBlock == "" then return end
 
 	local slimesFolder = Workspace:FindFirstChild("Live") and Workspace.Live:FindFirstChild("Slimes")
 	if not slimesFolder then return end
 
-	-- Farm each selected block
-	for _, blockName in ipairs(Config.SelectedLuckyBlocks) do
-		local slime = slimesFolder:FindFirstChild(blockName)
-		if slime then
-			local rootPart = slime:FindFirstChild("RootPart")
-			if rootPart then
-				-- Teleport to slime
-				pcall(function()
-					hrp.CFrame = rootPart.CFrame
-					hrp.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
-				end)
-				task.wait(0.3)
+	local slime = slimesFolder:FindFirstChild(Config.SelectedLuckyBlock)
+	if not slime then return end
 
-				-- Fire ONLY StealPrompt on this slime
-				pcall(function()
-					-- Try StealPrompt directly
-					local prompt = slime:FindFirstChild("StealPrompt")
-					if prompt and prompt:IsA("ProximityPrompt") then
-						fireproximityprompt(prompt)
-					else
-						-- Fallback: find any ProximityPrompt named StealPrompt in descendants
-						for _, child in pairs(slime:GetDescendants()) do
-							if child:IsA("ProximityPrompt") and child.Name == "StealPrompt" then
-								fireproximityprompt(child)
-								break
-							end
-						end
-					end
-				end)
-				task.wait(0.2)
+	local rootPart = slime:FindFirstChild("RootPart")
+	if not rootPart then return end
+
+	-- Teleport to slime
+	pcall(function()
+		hrp.CFrame = rootPart.CFrame
+		hrp.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
+	end)
+	task.wait(0.3)
+
+	-- Fire ONLY StealPrompt on this slime
+	pcall(function()
+		-- Try StealPrompt directly
+		local prompt = slime:FindFirstChild("StealPrompt")
+		if prompt and prompt:IsA("ProximityPrompt") then
+			fireproximityprompt(prompt)
+		else
+			-- Fallback: find any ProximityPrompt named StealPrompt in descendants
+			for _, child in pairs(slime:GetDescendants()) do
+				if child:IsA("ProximityPrompt") and child.Name == "StealPrompt" then
+					fireproximityprompt(child)
+					break
+				end
 			end
 		end
-	end
+	end)
+	task.wait(0.2)
 
 	-- Return home
 	pcall(function()
@@ -398,7 +393,7 @@ local function SaveConfigData(Name)
 	if not Name then return false end
 	pcall(function()
 		makefolder("LuckyBlocksHub") makefolder(ConfigsDir)
-		local Data = { Toggles = {}, ThemeName = Config.ThemeName, FontName = Config.FontName, MenuBind = Config.MenuBind, SelectedLuckyBlocks = Config.SelectedLuckyBlocks, Colors = {} }
+		local Data = { Toggles = {}, ThemeName = Config.ThemeName, FontName = Config.FontName, MenuBind = Config.MenuBind, SelectedLuckyBlock = Config.SelectedLuckyBlock, Colors = {} }
 		for Key, Color in Config.CustomColors do Data.Colors[Key] = { math.floor(Color.R * 255), math.floor(Color.G * 255), math.floor(Color.B * 255) } end
 		for Id, Toggle in Library.Toggles do Data.Toggles[Id] = Toggle.Value end
 		writefile(ConfigPath(Name), HttpService:JSONEncode(Data))
@@ -451,11 +446,11 @@ LoadConfig = function(Name, Silent)
 	end
 	if type(Data.FontName) == "string" and Enum.Font[Data.FontName] then Config.FontName = Data.FontName Library:SetFont(Enum.Font[Data.FontName]) end
 	if type(Data.MenuBind) == "string" and Data.MenuBind ~= "None" then Config.MenuBind = Data.MenuBind end
-	if type(Data.SelectedLuckyBlocks) == "table" then Config.SelectedLuckyBlocks = Data.SelectedLuckyBlocks end
+	if type(Data.SelectedLuckyBlock) == "string" then Config.SelectedLuckyBlock = Data.SelectedLuckyBlock end
 	if type(Data.Toggles) == "table" then for Id, Value in Data.Toggles do local Toggle = Library.Toggles[Id] if Toggle and type(Value) == "boolean" then Toggle:SetValue(Value) end end end
 	if SettingsRefs.ThemeDropdown then SettingsRefs.ThemeDropdown:SetValue(Config.ThemeName) end
 	if SettingsRefs.FontDropdown then SettingsRefs.FontDropdown:SetValue(Config.FontName) end
-	if SettingsRefs.LuckyBlockDropdown then SettingsRefs.LuckyBlockDropdown:SetValue(Config.SelectedLuckyBlocks) end
+	if SettingsRefs.LuckyBlockDropdown then SettingsRefs.LuckyBlockDropdown:SetValue(Config.SelectedLuckyBlock) end
 	SyncColorPickers() SuppressUI = false CurrentConfig = Name return true
 end
 
@@ -580,13 +575,13 @@ for _, f in ipairs(featureList) do FeaturesBox:AddLabel({ Text = '<font color="#
 local FarmBox = MainTabs.Farming:AddLeftGroupbox("Lucky Block Farming", "star")
 
 local LuckyBlockDropdown = FarmBox:AddDropdown("LuckyBlockSelect", {
-	Text = "Select Block Type", Values = LuckyBlocksList, Default = "Secret Lucky Block", MaxVisibleDropdownItems = 8,
-	Callback = function(v) Config.SelectedLuckyBlocks = {v} if not SuppressUI then ScheduleSave() end end,
+	Text = "Select Block Type", Values = LuckyBlocksList, Default = Config.SelectedLuckyBlock, MaxVisibleDropdownItems = 8,
+	Callback = function(v) Config.SelectedLuckyBlock = v if not SuppressUI then ScheduleSave() end end,
 })
 SettingsRefs.LuckyBlockDropdown = LuckyBlockDropdown
 FarmBox:AddDivider()
 
-AddFeatureToggle(FarmBox, "AutoFarmLuckyBlocks", {Text = "Auto Farm Lucky Blocks", Tooltip = "Teleport and fire StealPrompt on all selected blocks", Notify = true}, function(Value)
+AddFeatureToggle(FarmBox, "AutoFarmLuckyBlocks", {Text = "Auto Farm Lucky Blocks", Tooltip = "Teleport and fire StealPrompt on selected block", Notify = true}, function(Value)
 	Config.FarmActive = Value
 	if Value then
 		task.spawn(function()
