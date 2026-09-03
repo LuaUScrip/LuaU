@@ -148,9 +148,9 @@ local function AutoCollectEgg()
 				hrp.CFrame = part.CFrame + Vector3.new(0, 2, 0)
 				task.wait(0.2)
 				FirePrompt(prompt, 3)
-				task.wait(0.03)
+				task.wait(0.1)
 				hrp.CFrame = homeCFrame
-				task.wait(0.01)
+				task.wait(0.10)
 			end
 		end
 	end)
