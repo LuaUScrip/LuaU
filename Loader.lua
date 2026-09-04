@@ -69,7 +69,7 @@ local SupportedGames = {
 	{name = "Volleyball Training", placeIds = {119228622410382}, url = "https://raw.githubusercontent.com/LuaUScrip/LuaU/refs/heads/main/VolleyBall.lua"},
 	{name = "Steal A Baby Egg", placeIds = {112530679555916}, url = "https://raw.githubusercontent.com/LuaUScrip/LuaU/refs/heads/main/StealBabyEgg.lua"},
 	{name = "Surf For Lucky Block", placeIds = {98916904742148}, url = "https://raw.githubusercontent.com/LuaUScrip/LuaU/refs/heads/main/SurfForLuckyBlock.lua"},
-	{name = "Script 60", placeIds = {0}, url = nil},
+	{name = "Steal Fish Eggs", placeIds = {99183404085821}, url = "https://raw.githubusercontent.com/LuaUScrip/LuaU/refs/heads/main/StealFishEggs.lua"},
 	{name = "Script 61", placeIds = {0}, url = nil},
 	{name = "Script 62", placeIds = {0}, url = nil},
 	{name = "Script 63", placeIds = {0}, url = nil},
