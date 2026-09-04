@@ -91,7 +91,7 @@ local rarity, farming = RARITIES[1], false
 local HOME = Vector3.new(35, 119, -49)
 
 win2:AddList({text = "Select Rarity", values = RARITIES, value = RARITIES[1], callback = function(v) rarity = v end})
-win2:AddToggle({text = "Farm", callback = function(v) farming = v end})
+win2:AddToggle({text = "Collect Eggs", callback = function(v) farming = v end})
 
 local function getFishNames(rarityName)
     local folder = FishModels and FishModels:FindFirstChild(rarityName .. "Fish")
