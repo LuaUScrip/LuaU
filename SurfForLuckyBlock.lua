@@ -195,7 +195,7 @@ farming:AddList({
 })
 
 farming:AddButton({
-    text = "Steal",
+    text = "Collect",
     callback = function()
         if not stealBlock(Library.flags["LuckyBlock"]) then
             teleportHome()
@@ -204,7 +204,7 @@ farming:AddButton({
 })
 
 farming:AddToggle({
-    text = "Auto Steal",
+    text = "Collect Lucky Block",
     callback = function(state)
         autoSteal = state
         if state and not stealThread then
