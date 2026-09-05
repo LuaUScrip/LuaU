@@ -25,7 +25,7 @@ local ARRIVE_WAIT = 0.4
 local PROMPT_FIRE_WAIT = 0.5
 local HOME_ARRIVE_WAIT = 0.2
 local HOME_STAY_WAIT = 1.5
-local EGG_LOOP_WAIT = 1.0
+local EGG_LOOP_WAIT = 1.1
 
 local PRIORITY_RARITIES = {"InsaneEgg"}
 
@@ -37,6 +37,7 @@ local upgradeState = {
     sellChicken = false,
     autoBuyTrail = false,
     equipBestPets = false,
+    claimIndex = false,
 }
 
 local trailList = {"blue", "purple", "red", "galaxy", "aquatic", "divine", "rainbow"}
@@ -97,6 +98,13 @@ end
 local function equipBestPets()
     pcall(function()
         local Event = getRemoteEvent("data.base.equipBestChickens")
+        Event:FireServer()
+    end)
+end
+
+local function claimIndex()
+    pcall(function()
+        local Event = getRemoteEvent("data.index.claimMoney")
         Event:FireServer()
     end)
 end
@@ -450,6 +458,10 @@ local function upgradeLoop()
         equipBestPets()
         task.wait(0.5)
     end
+    while upgradeState.claimIndex do
+        claimIndex()
+        task.wait(0.5)
+    end
 end
 
 local win1 = library:CreateWindow("AntiGodHub")
@@ -525,6 +537,17 @@ win1:AddToggle({
     state = false,
     callback = function(state)
         upgradeState.equipBestPets = state
+        if state then
+            task.spawn(upgradeLoop)
+        end
+    end
+})
+
+win1:AddToggle({
+    text = "Claim Index",
+    state = false,
+    callback = function(state)
+        upgradeState.claimIndex = state
         if state then
             task.spawn(upgradeLoop)
         end
