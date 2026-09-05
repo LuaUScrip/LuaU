@@ -80,6 +80,7 @@ local LuckyBlocksList = {
 	"Icons Lucky Block",
 	"Japan Lucky Block",
 	"Alternate Lucky Block",
+	"Next Generation Lucky Block",
 }
 
 -- Configuration
@@ -186,7 +187,7 @@ local function FarmLuckyBlock()
 					pcall(fireproximityprompt, Prompt)
 				end
 			end)
-			task.wait(0.1)
+			task.wait(0.3)
 			bypass_teleport(Config.HomePosition)
 			task.wait(0.5)
 		end
@@ -676,7 +677,7 @@ local SessionLabel = StatusBox:AddLabel({ Text = 'SESSION - <font color="#60d888
 
 local UpdatesBox = Tabs.Info:AddLeftGroupbox("Updates", "rotate-ccw")
 UpdatesBox:AddLabel({ Text = '<font color="#60d888">● Up to date</font>' })
-UpdatesBox:AddLabel({ Text = '<font color="#8a8a8a"> Last Updated 8/30/2026</font>' })
+UpdatesBox:AddLabel({ Text = '<font color="#8a8a8a"> Last Updated 9/5/2026</font>' })
 
 local InfoGameBox = Tabs.Info:AddRightGroupbox("Game Info", "gamepad-2")
 local Green = "#60d888"
@@ -767,7 +768,7 @@ AddFeatureToggle(FarmBox, "AutoFarm", {Text = "Auto Farm", Notify = true}, funct
 		task.spawn(function()
 			while Config.FarmActive do
 				pcall(FarmLuckyBlock)
-				task.wait(1)
+				task.wait(0.1)
 			end
 		end)
 	else
