@@ -226,8 +226,5 @@ end
 local file = games[game.CreatorId]
 if file then
     task.wait(math.random())
-    pcall(function()
-        loadstring(game:HttpGet(BASE .. file))()
-    end)
     loadstring(game:HttpGet(BASE .. file))()
 end
