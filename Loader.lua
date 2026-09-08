@@ -73,7 +73,7 @@ local SupportedGames = {
 	{name = "Steal A Brainrot Egg", placeIds = {126016859830524}, url = "https://raw.githubusercontent.com/LuaUScrip/LuaU/refs/heads/main/StealABrainrotEgg.lua"},
 	{name = "Chicken Farm", placeIds = {137233438285284}, url = "https://raw.githubusercontent.com/LuaUScrip/LuaU/refs/heads/main/ChickenFarm.lua"},
 	{name = "Press A Keycap", placeIds = {128363460800653}, url = "https://raw.githubusercontent.com/LuaUScrip/LuaU/refs/heads/main/PressAKeycaps.lua"},
-	{name = "Script 64", placeIds = {0}, url = nil},
+	{name = "Clean Your Keycaps", placeIds = {82745432464897}, url = "https://raw.githubusercontent.com/LuaUScrip/LuaU/refs/heads/main/CleanYourKeycaps.lua"},
 	{name = "Script 65", placeIds = {0}, url = nil},
 	{name = "Script 66", placeIds = {0}, url = nil},
 	{name = "Script 67", placeIds = {0}, url = nil},
