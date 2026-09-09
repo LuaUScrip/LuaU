@@ -6,7 +6,7 @@ local BASE = 'https://raw.githubusercontent.com/LuaUScrip/LuaU/refs/heads/main/'
 
 local games = {
     [380415714] = 'ThrowACoin.lua',
-    [nil] = 'WebSwingForLuckyBlock.lua',
+    [34949992] = 'WebSwingForLuckyBlock.lua',
     [nil] = 'game3.lua',
     [nil] = 'game4.lua',
     [nil] = 'game5.lua',
