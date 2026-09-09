@@ -1,400 +1,305 @@
-local repo = "https://raw.githubusercontent.com/deividcomsono/Obsidian/main/"
-local Library = loadstring(game:HttpGet(repo .. "Library.lua"))()
-local ThemeManager = loadstring(game:HttpGet(repo .. "addons/ThemeManager.lua"))()
-local SaveManager = loadstring(game:HttpGet(repo .. "addons/SaveManager.lua"))()
+local lib = loadstring(game:HttpGet("https://raw.githubusercontent.com/LuaUScrip/OMG/refs/heads/main/LOL.lua"))()
 
-local Options = Library.Options
-local Toggles = Library.Toggles
-
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
 local VirtualUser = game:GetService("VirtualUser")
-local Players = game:GetService("Players")
+
 local LocalPlayer = Players.LocalPlayer
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Remotes = ReplicatedStorage:WaitForChild("RemotesFolder")
+local Configs = ReplicatedStorage:WaitForChild("Configs")
+
+local running = {}
+local loops = {}
+
+local function loop(name, fn, wait_time)
+	if loops[name] then return end
+	loops[name] = true
+	task.spawn(function()
+		while loops[name] and running[name] do
+			pcall(fn)
+			task.wait(wait_time or 0.01)
+		end
+	end)
+end
+
+local function stop(name)
+	loops[name] = false
+end
+
+local function getHRP()
+	local char = LocalPlayer.Character
+	return char and char:FindFirstChild("HumanoidRootPart")
+end
+
+local function csvContains(csv, name)
+	for word in string.gmatch(csv or "", "[^,]+") do
+		if word == tostring(name) then return true end
+	end
+	return false
+end
+
+local function parseWinText(text)
+	local numStr = text:match([[%d[%d%.]*]])
+	if not numStr then return 0 end
+	local num = tonumber(numStr) or 0
+	if text:find("Dc") then num = num * 1e66
+	elseif text:find("No") then num = num * 1e63
+	elseif text:find("Oc") then num = num * 1e60
+	elseif text:find("Sp") then num = num * 1e57
+	elseif text:find("Sx") then num = num * 1e54
+	elseif text:find("Qi") then num = num * 1e51
+	elseif text:find("Qd") then num = num * 1e48
+	elseif text:find("T") then num = num * 1e12
+	elseif text:find("B") then num = num * 1e9
+	elseif text:find("M") then num = num * 1e6
+	elseif text:find("K") then num = num * 1e3
+	end
+	return num
+end
+
+local function loadConfig(name)
+	local ok, data = pcall(function()
+		return require(Configs:WaitForChild(name))
+	end)
+	if ok and type(data) == "table" then
+		local items = {}
+		for _, entry in ipairs(data) do
+			if type(entry) == "table" and entry.Name then
+				items[#items + 1] = entry
+			end
+		end
+		return items
+	end
+	return {}
+end
+
+local function doFarmWins()
+	local hrp = getHRP()
+	if not hrp then return end
+	local winsFolder = Workspace:FindFirstChild("World3") and Workspace.World3:FindFirstChild("Wins")
+	if not winsFolder then return end
+	local bestPad = nil
+	local bestScore = -1
+	for _, win in ipairs(winsFolder:GetChildren()) do
+		pcall(function()
+			local gui = win:FindFirstChild("BillboardGui")
+			local label = gui and gui:FindFirstChild("TextLabel")
+			if label then
+				local score = parseWinText(label.Text)
+				if score > bestScore then
+					bestScore = score
+					bestPad = win
+				end
+			end
+		end)
+	end
+	if not bestPad then return end
+	local touchPart = bestPad:GetChildren()[3]
+	if not touchPart or not touchPart:IsA("BasePart") then return end
+	pcall(function()
+		firetouchinterest(hrp, touchPart, 0)
+		task.wait(0.1)
+		firetouchinterest(hrp, touchPart, 1)
+	end)
+end
+
+local function doTrain()
+	Remotes:WaitForChild("ClaimPowerGain"):FireServer()
+end
+
+local function doRebirth()
+	Remotes:WaitForChild("Rebirth"):InvokeServer()
+end
+
+local function doBuyAllStands()
+	local ranges = {{1, 15}, {2, 25}, {3, 25}}
+	for _, r in ipairs(ranges) do
+		for i = r[1], r[2] do
+			pcall(function() Remotes:WaitForChild("PurchaseStand"):InvokeServer(i) end)
+			task.wait(0.05)
+		end
+	end
+end
+
+local function doBuyAndEquipBestTrail()
+	local data = loadConfig("Trails")
+	if #data == 0 then return end
+	local owned = LocalPlayer:GetAttribute("OwnedTrails") or ""
+	local equipped = LocalPlayer:GetAttribute("EquippedTrail") or ""
+	local firstUnowned = nil
+	local bestOwned = nil
+	local bestMult = 0
+	for i = #data, 1, -1 do
+		local item = data[i]
+		if item.Requirement == "Robux" or item.Requirement == "Group" then
+			-- skip non-purchasable
+		else
+			if csvContains(owned, item.Name) then
+				if (item.Multiplier or 0) > bestMult then
+					bestMult = item.Multiplier or 0
+					bestOwned = item.Name
+				end
+			else
+				if item.Wins and not firstUnowned then
+					firstUnowned = item.Name
+				end
+			end
+		end
+	end
+	if firstUnowned then
+		pcall(function() Remotes:WaitForChild("PurchaseTrail"):InvokeServer(firstUnowned) end)
+		task.wait(1)
+		owned = LocalPlayer:GetAttribute("OwnedTrails") or ""
+		for i = #data, 1, -1 do
+			if csvContains(owned, data[i].Name) then
+				if (data[i].Multiplier or 0) > bestMult then
+					bestMult = data[i].Multiplier or 0
+					bestOwned = data[i].Name
+				end
+			end
+		end
+	end
+	if bestOwned and bestOwned ~= equipped then
+		pcall(function() Remotes:WaitForChild("EquipTrail"):FireServer(bestOwned) end)
+	end
+end
+
+local function doBuyAndEquipBestAura()
+	local data = loadConfig("Auras")
+	if #data == 0 then return end
+	local owned = LocalPlayer:GetAttribute("OwnedAuras") or ""
+	local equipped = LocalPlayer:GetAttribute("EquippedAura") or ""
+	local firstUnowned = nil
+	local bestOwned = nil
+	local bestMult = 0
+	for i = #data, 1, -1 do
+		local item = data[i]
+		if item.Requirement == "Robux" or item.Requirement == "Group" then
+			-- skip non-purchasable
+		else
+			if csvContains(owned, item.Name) then
+				if (item.Multiplier or 0) > bestMult then
+					bestMult = item.Multiplier or 0
+					bestOwned = item.Name
+				end
+			else
+				if not firstUnowned then
+					firstUnowned = item.Name
+				end
+			end
+		end
+	end
+	if firstUnowned then
+		pcall(function() Remotes:WaitForChild("PurchaseAura"):InvokeServer(firstUnowned) end)
+		task.wait(1)
+		owned = LocalPlayer:GetAttribute("OwnedAuras") or ""
+		for i = #data, 1, -1 do
+			if csvContains(owned, data[i].Name) then
+				if (data[i].Multiplier or 0) > bestMult then
+					bestMult = data[i].Multiplier or 0
+					bestOwned = data[i].Name
+				end
+			end
+		end
+	end
+	if bestOwned and bestOwned ~= equipped then
+		pcall(function() Remotes:WaitForChild("EquipAura"):FireServer(bestOwned) end)
+	end
+end
 
 LocalPlayer.Idled:Connect(function()
-	VirtualUser:Button2Down(Vector2.new(0, 0), Workspace.CurrentCamera.CFrame)
-	task.wait(0.1)
-	VirtualUser:Button2Up(Vector2.new(0, 0), Workspace.CurrentCamera.CFrame)
+	pcall(function()
+		VirtualUser:Button2Down(Vector2.new(0, 0), Workspace.CurrentCamera.CFrame)
+		task.wait(0.1)
+		VirtualUser:Button2Up(Vector2.new(0, 0), Workspace.CurrentCamera.CFrame)
+	end)
 end)
 
 task.spawn(function()
-	while task.wait() do
+	while true do
 		pcall(function()
 			if LocalPlayer.GameplayPaused then
 				LocalPlayer.GameplayPaused = false
 			end
 		end)
+		task.wait()
 	end
 end)
 
-local CONFIG = {
-	AutoFarmWins = false,
-	AutoTrain = false,
-	AutoRebirth = false,
-	AutoBuyLuckyBlock = false,
-	AutoBuyStand = false,
-	AutoBuyTrail = false,
-	AutoBuyAura = false,
-}
+local ui = lib:CreateWindow("AntiGodHub")
 
-local LISTS = {
-	Stands = {2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25},
-	Trails = {"Yellow", "Blue", "Green", "Purple", "Red"},
-	Auras = {"Fire", "Money", "Ice", "Water", "Light", "Cyberpunk", "Angel", "Binary", "Flame Crown"},
-}
-
-local function GetPremiumStatus()
-	if LocalPlayer.MembershipType == Enum.MembershipType.Premium then
-		return "Yes Premium"
-	else
-		return "No Premium"
-	end
-end
-
--- Auto Farm Wins - Teleport and freeze with AssemblyLinearVelocity
-task.spawn(function()
-	while task.wait(1) do
-		if CONFIG.AutoFarmWins then
-			pcall(function()
-				if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
-					local targetCFrame = CFrame.new(3668.61865, 112.892197 + 3, -1246.05859) * CFrame.Angles(0, 0, 1)
-					LocalPlayer.Character.HumanoidRootPart.CFrame = targetCFrame
-					LocalPlayer.Character.HumanoidRootPart.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
-				end
-			end)
-		end
-	end
-end)
-
--- Auto Train - Claim Power Gain
-task.spawn(function()
-	while task.wait(0.00000001) do
-		if CONFIG.AutoTrain then
-			pcall(function()
-				local Event = ReplicatedStorage.RemotesFolder.ClaimPowerGain
-				Event:FireServer()
-			end)
-		end
-	end
-end)
-
--- Auto Rebirth
-task.spawn(function()
-	while task.wait(0.5) do
-		if CONFIG.AutoRebirth then
-			pcall(function()
-				local Event = ReplicatedStorage.RemotesFolder.Rebirth
-				Event:InvokeServer()
-			end)
-		end
-	end
-end)
-
--- Auto Buy Best Lucky Blocks
-task.spawn(function()
-	while task.wait(0.1) do
-		if CONFIG.AutoBuyLuckyBlock then
-			pcall(function()
-				local Event = ReplicatedStorage.RemotesFolder.BuyLuckyBlockWithWins
-				Event:FireServer("Ancient", 6)
-			end)
-		end
-	end
-end)
-
--- Auto Buy Stand - Buy all in list
-task.spawn(function()
-	while task.wait(0.2) do
-		if CONFIG.AutoBuyStand then
-			pcall(function()
-				local Event = ReplicatedStorage.RemotesFolder.PurchaseStand
-				for _, standId in ipairs(LISTS.Stands) do
-					Event:InvokeServer(standId)
-					task.wait(0.05)
-				end
-			end)
-		end
-	end
-end)
-
--- Auto Buy Trail - Buy all in list
-task.spawn(function()
-	while task.wait(0.2) do
-		if CONFIG.AutoBuyTrail then
-			pcall(function()
-				local Event = ReplicatedStorage.RemotesFolder.PurchaseTrail
-				for _, trail in ipairs(LISTS.Trails) do
-					Event:InvokeServer(trail)
-					task.wait(0.05)
-				end
-			end)
-		end
-	end
-end)
-
--- Auto Buy Aura - Buy all in list
-task.spawn(function()
-	while task.wait(0.2) do
-		if CONFIG.AutoBuyAura then
-			pcall(function()
-				local Event = ReplicatedStorage.RemotesFolder.PurchaseAura
-				for _, aura in ipairs(LISTS.Auras) do
-					Event:InvokeServer(aura)
-					task.wait(0.05)
-				end
-			end)
-		end
-	end
-end)
-
-local Window = Library:CreateWindow({
-	Title = "AntiGodHub",
-	Footer = "Version: 2.0 - YouTube AntiGodHub Subscribe",
-	Icon = nil,
-	NotifySide = "Right",
-	ShowCustomCursor = false,
-})
-
-Window:SetCornerRadius(20)
-
-local Tabs = {
-	Main = Window:AddTab("Main", "star"),
-	Player = Window:AddTab("Player", "user"),
-	Settings = Window:AddTab("UI Settings", "settings"),
-}
-
-local FarmingGroup = Tabs.Main:AddLeftGroupbox("Auto Farming", "cpu")
-
-FarmingGroup:AddToggle("AutoFarmWins", {
-	Text = "Auto Farm Wins",
-	Default = false,
-	Tooltip = "Automatically farm wins",
-	Callback = function(Value)
-		CONFIG.AutoFarmWins = Value
+ui:AddToggle({
+	text = "Farm Wins",
+	state = false,
+	callback = function(s)
+		running.farmWins = s
+		if s then loop("farmWins", doFarmWins, 0.1) else stop("farmWins") end
 	end,
 })
 
-FarmingGroup:AddToggle("AutoTrain", {
-	Text = "Auto Train",
-	Default = false,
-	Tooltip = "Automatically claim power gains",
-	Callback = function(Value)
-		CONFIG.AutoTrain = Value
+ui:AddToggle({
+	text = "Fast Train",
+	state = false,
+	callback = function(s)
+		running.train = s
+		if s then loop("train", doTrain, 0.00000001) else stop("train") end
 	end,
 })
 
-FarmingGroup:AddToggle("AutoRebirth", {
-	Text = "Auto Rebirth",
-	Default = false,
-	Tooltip = "Automatically rebirth",
-	Callback = function(Value)
-		CONFIG.AutoRebirth = Value
+ui:AddToggle({
+	text = "Auto Rebirth",
+	state = false,
+	callback = function(s)
+		running.rebirth = s
+		if s then loop("rebirth", doRebirth, 0.5) else stop("rebirth") end
 	end,
 })
 
-local UpgradeGroup = Tabs.Main:AddRightGroupbox("Auto Purchases", "star")
-
-UpgradeGroup:AddToggle("AutoBuyLuckyBlock", {
-	Text = "Auto Buy Lucky Block",
-	Default = false,
-	Tooltip = "Automatically buy Ancient Lucky Blocks",
-	Callback = function(Value)
-		CONFIG.AutoBuyLuckyBlock = Value
+ui:AddToggle({
+	text = "Buy Stands",
+	state = false,
+	callback = function(s)
+		running.buyStand = s
+		if s then loop("buyStand", doBuyAllStands, 0.2) else stop("buyStand") end
 	end,
 })
 
-UpgradeGroup:AddToggle("AutoBuyStand", {
-	Text = "Auto Buy Stand",
-	Default = false,
-	Tooltip = "Automatically buy all stands (2-25)",
-	Callback = function(Value)
-		CONFIG.AutoBuyStand = Value
+ui:AddToggle({
+	text = "Buy Trail",
+	state = false,
+	callback = function(s)
+		running.buyTrail = s
+		if s then loop("buyTrail", doBuyAndEquipBestTrail, 2) else stop("buyTrail") end
 	end,
 })
 
-UpgradeGroup:AddToggle("AutoBuyTrail", {
-	Text = "Auto Buy Trail",
-	Default = false,
-	Tooltip = "Automatically buy all trails",
-	Callback = function(Value)
-		CONFIG.AutoBuyTrail = Value
+ui:AddToggle({
+	text = "Buy Aura",
+	state = false,
+	callback = function(s)
+		running.buyAura = s
+		if s then loop("buyAura", doBuyAndEquipBestAura, 2) else stop("buyAura") end
 	end,
 })
 
-UpgradeGroup:AddToggle("AutoBuyAura", {
-	Text = "Auto Buy Aura",
-	Default = false,
-	Tooltip = "Automatically buy all auras",
-	Callback = function(Value)
-		CONFIG.AutoBuyAura = Value
+ui:AddButton({
+	text = "King Of Hill",
+	callback = function()
+		local hrp = getHRP()
+		if not hrp then return end
+		hrp.CFrame = CFrame.new(9558, 130, 91)
+		local existing = Workspace:FindFirstChild("FarmPlatform")
+		if existing then existing:Destroy() end
+		local part = Instance.new("Part")
+		part.Name = "FarmPlatform"
+		part.Size = Vector3.new(50, 1, 50)
+		part.Anchored = true
+		part.CanCollide = true
+		part.Transparency = 1
+		part.CFrame = CFrame.new(9558, 125, 91)
+		part.Parent = Workspace
 	end,
 })
 
-UpgradeGroup:AddDivider()
-
-UpgradeGroup:AddButton({
-	Text = "Teleport To King Of Hill",
-	Func = function()
-		pcall(function()
-			if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
-				LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(3621, 130, 91)
-				
-				-- Create anchor locked part below character (invisible)
-				local part = Instance.new("Part")
-				part.Shape = Enum.PartType.Block
-				part.Size = Vector3.new(10, 1, 10)
-				part.CanCollide = false
-				part.CFrame = CFrame.new(3621, 125, 91)
-				part.Anchored = true
-				part.Visible = false
-				part.Name = "FarmPlatform"
-				part.Parent = Workspace
-			end
-		end)
-	end,
-	Tooltip = "Teleport to King of Hill area",
-})
-
-local InfoGroup = Tabs.Main:AddLeftGroupbox("Script Info", "book")
-
-InfoGroup:AddLabel("Game Name : +1 Stand Power Evolution")
-InfoGroup:AddLabel("Developer : LuaU")
-InfoGroup:AddLabel("Last Updated : 8/14/2026")
-InfoGroup:AddDivider()
-InfoGroup:AddLabel("YouTube : AntiGodHub")
-
-local FeaturesGroup = Tabs.Main:AddRightGroupbox("Features", "star")
-
-FeaturesGroup:AddLabel("✓ Auto Farm Wins")
-FeaturesGroup:AddLabel("✓ Auto Train")
-FeaturesGroup:AddLabel("✓ Auto Rebirth")
-FeaturesGroup:AddLabel("✓ Auto Buy Lucky Block")
-FeaturesGroup:AddLabel("✓ Auto Buy Stand")
-FeaturesGroup:AddLabel("✓ Auto Buy Trail")
-FeaturesGroup:AddLabel("✓ Auto Buy Aura")
-FeaturesGroup:AddLabel("✓ Anti-AFK")
-
-local PlayerInfoGroup = Tabs.Player:AddLeftGroupbox("Player Information", "user")
-
-PlayerInfoGroup:AddLabel("Username : " .. LocalPlayer.Name)
-PlayerInfoGroup:AddLabel("User ID : " .. LocalPlayer.UserId)
-PlayerInfoGroup:AddLabel("Premium : " .. GetPremiumStatus())
-
-local DiscordGroup = Tabs.Player:AddRightGroupbox("Community Support", "users")
-
-DiscordGroup:AddLabel("Join our Discord server for support and script updates!", true)
-DiscordGroup:AddDivider()
-
-DiscordGroup:AddButton({
-	Text = "Copy Discord Link",
-	Func = function()
-		setclipboard("https://discord.gg/jdJvZm6VdK")
-	end,
-	Tooltip = "Copy Discord invite link to clipboard",
-})
-
-DiscordGroup:AddLabel("Link: discord.gg/jdJvZm6VdK", true)
-DiscordGroup:AddDivider()
-DiscordGroup:AddLabel("✓ Get Support", true)
-DiscordGroup:AddLabel("✓ Script Updates", true)
-DiscordGroup:AddLabel("✓ Feature Requests", true)
-DiscordGroup:AddLabel("✓ Community Tips", true)
-
-local MenuGroup = Tabs.Settings:AddLeftGroupbox("Menu", "wrench")
-
-MenuGroup:AddToggle("KeybindMenuOpen", {
-	Default = Library.KeybindFrame.Visible,
-	Text = "Open Keybind Menu",
-	Callback = function(value)
-		Library.KeybindFrame.Visible = value
-	end,
-})
-
-MenuGroup:AddToggle("ShowCustomCursor", {
-	Text = "Custom Cursor",
-	Default = Library.ShowCustomCursor,
-	Callback = function(Value)
-		Library.ShowCustomCursor = Value
-	end,
-})
-
-MenuGroup:AddDropdown("NotificationSide", {
-	Values = {"Left", "Right"},
-	Default = "Right",
-	Text = "Notification Side",
-	Callback = function(Value)
-		Library:SetNotifySide(Value)
-	end,
-})
-
-MenuGroup:AddDropdown("DPIDropdown", {
-	Values = {"50%", "75%", "100%", "125%", "150%", "175%", "200%"},
-	Default = "100%",
-	Text = "DPI Scale",
-	Callback = function(Value)
-		Value = Value:gsub("%%", "")
-		local DPI = tonumber(Value)
-		Library:SetDPIScale(DPI)
-	end,
-})
-
-MenuGroup:AddDivider()
-MenuGroup:AddLabel("Menu Keybind"):AddKeyPicker("MenuKeybind", {
-	Default = "RightShift",
-	NoUI = true,
-	Text = "Menu Keybind"
-})
-
-local UtilityGroup = Tabs.Settings:AddRightGroupbox("Utility", "tools")
-
-UtilityGroup:AddButton({
-	Text = "Fix Camera",
-	Func = function()
-		pcall(function()
-			if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Head") then
-				local camera = Workspace.CurrentCamera
-				camera.CFrame = LocalPlayer.Character.Head.CFrame + LocalPlayer.Character.Head.CFrame.LookVector * 5
-				camera.Focus = LocalPlayer.Character.Head.CFrame
-			end
-		end)
-	end,
-	Tooltip = "Restore and fix camera position"
-})
-
-UtilityGroup:AddButton({
-	Text = "Force Respawn",
-	Func = function()
-		pcall(function()
-			if LocalPlayer.Character then
-				local humanoid = LocalPlayer.Character:FindFirstChild("Humanoid")
-				if humanoid then
-					humanoid.Health = 0
-				end
-			end
-		end)
-	end,
-	Tooltip = "Force reset and respawn character"
-})
-
-UtilityGroup:AddDivider()
-
-UtilityGroup:AddButton({
-	Text = "Unload Script",
-	Func = function()
-		Library:Unload()
-	end,
-	Tooltip = "Unload the entire script"
-})
-
-ThemeManager:SetLibrary(Library)
-SaveManager:SetLibrary(Library)
-SaveManager:IgnoreThemeSettings()
-SaveManager:SetIgnoreIndexes({"MenuKeybind"})
-ThemeManager:SetFolder("AntiGodHub")
-SaveManager:SetFolder("AntiGodHub/StandsOnline")
-SaveManager:BuildConfigSection(Tabs.Settings)
-ThemeManager:ApplyToTab(Tabs.Settings)
-
-task.wait(0.1)
-ThemeManager:ApplyTheme("DarkWhite")
+lib:Init()
