@@ -1,402 +1,297 @@
--- +1 Speed Slime Escape | Obsidian UI (Clean)
-local repo = "https://raw.githubusercontent.com/deividcomsono/Obsidian/main/"
-local Library = loadstring(game:HttpGet(repo .. "Library.lua"))()
-local ThemeManager = loadstring(game:HttpGet(repo .. "addons/ThemeManager.lua"))()
-local SaveManager = loadstring(game:HttpGet(repo .. "addons/SaveManager.lua"))()
+local lib = loadstring(game:HttpGet("https://raw.githubusercontent.com/LuaUScrip/OMG/refs/heads/main/LOL.lua"))()
 
-local Options = Library.Options
-local Toggles = Library.Toggles
-
--- Services
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local RunService = game:GetService("RunService")
+local VirtualUser = game:GetService("VirtualUser")
 
-local player = Players.LocalPlayer
+local LocalPlayer = Players.LocalPlayer
+local Remotes = ReplicatedStorage:WaitForChild("Remotes")
+local ClientState = require(ReplicatedStorage:WaitForChild("ClientState"))
 
--- Configuration
-local CONFIG = {
-	AutoFarmWins = false,
-	SelectedWorld = "World 1",
-	AutoTrain = false,
-	AutoRebirth = false,
-	AutoBuyTrail = false,
-	AutoBuyAura = false,
-	AutoBuyBestItems = false,
-	AutoEquipBestItems = false,
-}
+local running = {}
+local loops = {}
 
--- Win Positions
-local WinPositions = {
-	["World 1"] = CFrame.new(-499.937134, 582.330933, 7579.62256, 0, 0, -1, 0, 1, 0, 1, 0, 0),
-	["World 2"] = CFrame.new(-509.266724, 172.690475, 464.342407, -1, 0, 0, 0, 1, 0, 0, 0, -1),
-}
-
--- Trail List
-local TrailList = {
-	"GreenTrail",
-	"BlueTrail",
-	"PurpleTrail",
-	"RedTrail",
-	"RainbowTrail",
-	"CosmicTrail",
-	"VoidTrail",
-	"SupernovaTrail",
-	"GodlikeTrail"
-}
-
--- Aura List
-local AuraList = {
-	"GlowAura",
-	"WindAura",
-	"WaterAura",
-	"FireAura",
-	"ElectricAura",
-	"CandyAura",
-	"ChocolateAura",
-	"StormAura"
-}
-
-local function GetRebirths()
-	local leaderstats = player:FindFirstChild("leaderstats")
-	if leaderstats then
-		local rebirths = leaderstats:FindFirstChild("\240\159\148\132 Rebirth")
-		if rebirths then
-			return rebirths.Value
+local function loop(name, fn, wait_time)
+	if loops[name] then return end
+	loops[name] = true
+	task.spawn(function()
+		while loops[name] and running[name] do
+			pcall(fn)
+			task.wait(wait_time or 0.01)
 		end
-	end
-	return 0
+	end)
 end
 
--- Bypass Gameplay Pause
+local function stop(name)
+	loops[name] = false
+end
+
+local function getHRP()
+	local char = LocalPlayer.Character
+	return char and char:FindFirstChild("HumanoidRootPart")
+end
+
+local function getWinCFrame()
+	local id = game.PlaceId
+	if id == 135039703249004 then
+		return CFrame.new(-499.937134, 582.330933, 7579.62256, 0, 0, -1, 0, 1, 0, 1, 0, 0)
+	elseif id == 102674673429018 then
+		return CFrame.new(-509.266724, 172.690475, 464.342407, -1, 0, 0, 0, 1, 0, 0, 0, -1)
+	end
+end
+
+local function loadAuraConfig()
+	local ok, data = pcall(function()
+		return require(ReplicatedStorage:WaitForChild("FeatureConfigs"):WaitForChild("AuraConfig"))
+	end)
+	if ok and data and data.AURAS then
+		local items = {}
+		for key, aura in pairs(data.AURAS) do
+			if aura.available ~= false and aura.price and aura.price > 0 then
+				items[#items + 1] = { key = key, name = aura.name or key, multiplier = aura.multiplier or 1, price = aura.price }
+			end
+		end
+		table.sort(items, function(a, b) return a.multiplier < b.multiplier end)
+		return items
+	end
+	return {}
+end
+
+local function loadTrailConfig()
+	local ok, data = pcall(function()
+		return require(ReplicatedStorage:WaitForChild("Config"))
+	end)
+	if ok and data and data.TRAILS then
+		local items = {}
+		for name, trail in pairs(data.TRAILS) do
+			if trail.Wins and trail.Wins > 0 then
+				items[#items + 1] = { name = name, multiplier = trail.Multiplier or 1, wins = trail.Wins }
+			end
+		end
+		table.sort(items, function(a, b) return a.multiplier < b.multiplier end)
+		return items
+	end
+	return {}
+end
+
+local function loadItemsConfig()
+	local ok, data = pcall(function()
+		return require(ReplicatedStorage:WaitForChild("FeatureConfigs"):WaitForChild("Items"))
+	end)
+	if ok and data and data.ITEMS then
+		local rarityOrder = { Exotic = 0, Secret = 1, Mythic = 2, Legendary = 3, Epic = 4, Rare = 5, Uncommon = 6, Common = 7 }
+		local items = {}
+		for key, item in pairs(data.ITEMS) do
+			if item.shopExcluded ~= true then
+				items[#items + 1] = { key = key, name = item.name or key, multiplier = item.multiplier or 0, rarity = item.rarity or "Common" }
+			end
+		end
+		table.sort(items, function(a, b)
+			if a.multiplier ~= b.multiplier then return a.multiplier > b.multiplier end
+			return (rarityOrder[a.rarity] or 7) < (rarityOrder[b.rarity] or 7)
+		end)
+		return items
+	end
+	return {}
+end
+
+local function doFarmWins()
+	local hrp = getHRP()
+	if not hrp then return end
+	hrp.CFrame = getWinCFrame()
+	hrp.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
+end
+
+local function doTrain()
+	pcall(function()
+		Remotes:WaitForChild("UpdateSpeed"):FireServer("Walking")
+		task.wait(0.01)
+		Remotes:WaitForChild("UpdateSpeed"):FireServer("Treadmill")
+	end)
+end
+
+local function doRebirth()
+	pcall(function() Remotes:WaitForChild("Rebirth"):FireServer() end)
+end
+
+local function doBuyAndEquipBestAura()
+	local data = loadAuraConfig()
+	if #data == 0 then return end
+	local state = ClientState:Get()
+	local owned = state.OwnedAuras or {}
+	local equipped = state.EquippedAura or "None"
+	local ownedSet = {}
+	for _, name in ipairs(owned) do ownedSet[name] = true end
+	local firstUnowned = nil
+	local bestOwned = nil
+	local bestMult = 0
+	for i = #data, 1, -1 do
+		local item = data[i]
+		if ownedSet[item.key] then
+			if item.multiplier > bestMult then
+				bestMult = item.multiplier
+				bestOwned = item.key
+			end
+		else
+			if not firstUnowned then firstUnowned = item.key end
+		end
+	end
+	if firstUnowned then
+		pcall(function() Remotes:WaitForChild("BuyAura"):InvokeServer(firstUnowned, "Wins") end)
+		task.wait(1)
+		state = ClientState:Get()
+		owned = state.OwnedAuras or {}
+		ownedSet = {}
+		for _, name in ipairs(owned) do ownedSet[name] = true end
+		for i = #data, 1, -1 do
+			if ownedSet[data[i].key] then
+				if data[i].multiplier > bestMult then
+					bestMult = data[i].multiplier
+					bestOwned = data[i].key
+				end
+			end
+		end
+	end
+	if bestOwned and bestOwned ~= equipped then
+		pcall(function() Remotes:WaitForChild("EquipAura"):FireServer(bestOwned) end)
+	end
+end
+
+local function doBuyAndEquipBestTrail()
+	local data = loadTrailConfig()
+	if #data == 0 then return end
+	local state = ClientState:Get()
+	local owned = state.OwnedTrails or {}
+	local equipped = state.EquippedTrail or "None"
+	local ownedSet = {}
+	for _, name in ipairs(owned) do ownedSet[name] = true end
+	local firstUnowned = nil
+	local bestOwned = nil
+	local bestMult = 0
+	for i = #data, 1, -1 do
+		local item = data[i]
+		if ownedSet[item.name] then
+			if item.multiplier > bestMult then
+				bestMult = item.multiplier
+				bestOwned = item.name
+			end
+		else
+			if not firstUnowned then firstUnowned = item.name end
+		end
+	end
+	if firstUnowned then
+		pcall(function() Remotes:WaitForChild("BuyTrail"):InvokeServer(firstUnowned, "Wins") end)
+		task.wait(1)
+		state = ClientState:Get()
+		owned = state.OwnedTrails or {}
+		ownedSet = {}
+		for _, name in ipairs(owned) do ownedSet[name] = true end
+		for i = #data, 1, -1 do
+			if ownedSet[data[i].name] then
+				if data[i].multiplier > bestMult then
+					bestMult = data[i].multiplier
+					bestOwned = data[i].name
+				end
+			end
+		end
+	end
+	if bestOwned and bestOwned ~= equipped then
+		pcall(function() Remotes:WaitForChild("EquipTrail"):FireServer(bestOwned) end)
+	end
+end
+
+local function doBuyBestItems()
+	for _, rarity in ipairs({"Rare", "Mysterious"}) do
+		pcall(function() Remotes:WaitForChild("ItemsShopAction"):FireServer("BuyWins", rarity) end)
+		task.wait(0.3)
+	end
+end
+
+local function doEquipBestItems()
+	pcall(function() Remotes:WaitForChild("ItemAction"):FireServer("EquipBest") end)
+end
+
+LocalPlayer.Idled:Connect(function()
+	pcall(function()
+		VirtualUser:CaptureController()
+		VirtualUser:ClickButton2(Vector2.new())
+	end)
+end)
+
 task.spawn(function()
-	while task.wait() do
+	while true do
 		pcall(function()
-			if player.GameplayPaused then
-				player.GameplayPaused = false
+			if LocalPlayer.GameplayPaused then
+				LocalPlayer.GameplayPaused = false
 			end
 		end)
+		task.wait()
 	end
 end)
 
--- UI Creation
-local Window = Library:CreateWindow({
-	Title = "AntiGodHub",
-	Footer = "Version: 2.0 - YouTube AntiGodHub Subscribe",
-	Icon = nil,
-	NotifySide = "Right",
-	ShowCustomCursor = true,
-})
+local ui = lib:CreateWindow("AntiGodHub")
 
-local Tabs = {
-	Main = Window:AddTab("Main", "star"),
-	Player = Window:AddTab("Player", "user"),
-	Settings = Window:AddTab("UI Settings", "settings"),
-}
-
--- Main Tab - Left Side (Farming)
-local FarmingGroup = Tabs.Main:AddLeftGroupbox("Auto Farming", "cpu")
-
-FarmingGroup:AddDropdown("WorldSelect", {
-	Values = {"World 1", "World 2"},
-	Default = 1,
-	Text = "Select World",
-	Tooltip = "Choose which world to farm",
-	Callback = function(Value)
-		CONFIG.SelectedWorld = Value
+ui:AddToggle({
+	text = "Farm Wins",
+	state = false,
+	callback = function(s)
+		running.farmWins = s
+		if s then loop("farmWins", doFarmWins, 1) else stop("farmWins") end
 	end,
 })
 
-FarmingGroup:AddToggle("AutoFarmWins", {
-	Text = "Auto Farm Wins",
-	Default = false,
-	Tooltip = "Automatically farm wins",
-	Callback = function(Value)
-		CONFIG.AutoFarmWins = Value
-		if Value then
-			task.spawn(function()
-				while CONFIG.AutoFarmWins do
-					pcall(function()
-						if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
-							local winCFrame = WinPositions[CONFIG.SelectedWorld]
-							if winCFrame then
-								player.Character.HumanoidRootPart.CFrame = winCFrame
-								player.Character.HumanoidRootPart.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
-							end
-						end
-					end)
-					task.wait(0.5)
-				end
-			end)
-		end
+ui:AddToggle({
+	text = "Fast Train",
+	state = false,
+	callback = function(s)
+		running.train = s
+		if s then loop("train", doTrain, 0.00001) else stop("train") end
 	end,
 })
 
-FarmingGroup:AddToggle("AutoTrain", {
-	Text = "Auto Train",
-	Default = false,
-	Tooltip = "Automatically train",
-	Callback = function(Value)
-		CONFIG.AutoTrain = Value
-		if Value then
-			task.spawn(function()
-				while CONFIG.AutoTrain do
-					pcall(function()
-						local Event = ReplicatedStorage:FindFirstChild("Remotes"):FindFirstChild("UpdateSpeed")
-						if Event then
-							Event:FireServer("Walking")
-							task.wait(0.01)
-							Event:FireServer("Treadmill")
-						end
-					end)
-					task.wait(0.00001)
-				end
-			end)
-		end
+ui:AddToggle({
+	text = "Auto Rebirth",
+	state = false,
+	callback = function(s)
+		running.rebirth = s
+		if s then loop("rebirth", doRebirth, 0.5) else stop("rebirth") end
 	end,
 })
 
-FarmingGroup:AddToggle("AutoRebirth", {
-	Text = "Auto Rebirth",
-	Default = false,
-	Tooltip = "Automatically rebirth",
-	Callback = function(Value)
-		CONFIG.AutoRebirth = Value
-		if Value then
-			task.spawn(function()
-				while CONFIG.AutoRebirth do
-					pcall(function()
-						local Event = ReplicatedStorage:FindFirstChild("Remotes"):FindFirstChild("Rebirth")
-						if Event then
-							Event:FireServer()
-						end
-					end)
-					task.wait(0.5)
-				end
-			end)
-		end
+ui:AddToggle({
+	text = "Buy Aura",
+	state = false,
+	callback = function(s)
+		running.buyAura = s
+		if s then loop("buyAura", doBuyAndEquipBestAura, 0.1) else stop("buyAura") end
 	end,
 })
 
--- Main Tab - Right Side (Upgrades)
-local UpgradeGroup = Tabs.Main:AddRightGroupbox("Auto Upgrades", "star")
-
-UpgradeGroup:AddToggle("AutoBuyTrail", {
-	Text = "Auto Buy Trail",
-	Default = false,
-	Tooltip = "Automatically buy all trails",
-	Callback = function(Value)
-		CONFIG.AutoBuyTrail = Value
-		if Value then
-			task.spawn(function()
-				while CONFIG.AutoBuyTrail do
-					pcall(function()
-						for _, trail in ipairs(TrailList) do
-							local Event = ReplicatedStorage:FindFirstChild("Remotes"):FindFirstChild("BuyTrail")
-							if Event then
-								Event:InvokeServer(trail, "Wins")
-								task.wait(0.3)
-							end
-						end
-					end)
-					task.wait(1)
-				end
-			end)
-		end
+ui:AddToggle({
+	text = "Buy Trail",
+	state = false,
+	callback = function(s)
+		running.buyTrail = s
+		if s then loop("buyTrail", doBuyAndEquipBestTrail, 0.1) else stop("buyTrail") end
 	end,
 })
 
-UpgradeGroup:AddToggle("AutoBuyAura", {
-	Text = "Auto Buy Aura",
-	Default = false,
-	Tooltip = "Automatically buy all auras",
-	Callback = function(Value)
-		CONFIG.AutoBuyAura = Value
-		if Value then
-			task.spawn(function()
-				while CONFIG.AutoBuyAura do
-					pcall(function()
-						for _, aura in ipairs(AuraList) do
-							local Event = ReplicatedStorage:FindFirstChild("Remotes"):FindFirstChild("BuyAura")
-							if Event then
-								Event:InvokeServer(aura, "Wins")
-								task.wait(0.3)
-							end
-						end
-					end)
-					task.wait(1)
-				end
-			end)
-		end
+ui:AddToggle({
+	text = "Buy Best Items",
+	state = false,
+	callback = function(s)
+		running.buyItems = s
+		if s then loop("buyItems", doBuyBestItems, 0.1) else stop("buyItems") end
 	end,
 })
 
-UpgradeGroup:AddToggle("AutoBuyBestItems", {
-	Text = "Auto Buy Best Items",
-	Default = false,
-	Tooltip = "Automatically buy best items",
-	Callback = function(Value)
-		CONFIG.AutoBuyBestItems = Value
-		if Value then
-			task.spawn(function()
-				while CONFIG.AutoBuyBestItems do
-					pcall(function()
-						local Event = ReplicatedStorage:FindFirstChild("Remotes"):FindFirstChild("ItemsShopAction")
-						if Event then
-							Event:FireServer("BuyWins", "Mysterious")
-						end
-					end)
-					task.wait(0.5)
-				end
-			end)
-		end
+ui:AddToggle({
+	text = "Equip Best Items",
+	state = false,
+	callback = function(s)
+		running.equipItems = s
+		if s then loop("equipItems", doEquipBestItems, 0.5) else stop("equipItems") end
 	end,
 })
 
-UpgradeGroup:AddToggle("AutoEquipBestItems", {
-	Text = "Auto Equip Best Items",
-	Default = false,
-	Tooltip = "Automatically equip best items",
-	Callback = function(Value)
-		CONFIG.AutoEquipBestItems = Value
-		if Value then
-			task.spawn(function()
-				while CONFIG.AutoEquipBestItems do
-					pcall(function()
-						local Event = ReplicatedStorage:FindFirstChild("Remotes"):FindFirstChild("ItemAction")
-						if Event then
-							Event:FireServer("EquipBest")
-						end
-					end)
-					task.wait(0.5)
-				end
-			end)
-		end
-	end,
-})
-
--- Main Tab - Script Info (Left Bottom)
-local InfoGroup = Tabs.Main:AddLeftGroupbox("Script Info", "book")
-
-InfoGroup:AddLabel("Game Name : +1 Speed Slime Escape")
-InfoGroup:AddLabel("Developer : LuaU")
-InfoGroup:AddLabel("Last Updated : 8/8/2026")
-InfoGroup:AddDivider()
-InfoGroup:AddLabel("YouTube : AntiGodHub", true)
-
--- Main Tab - Features (Right Bottom)
-local FeaturesGroup = Tabs.Main:AddRightGroupbox("Features", "star")
-
-FeaturesGroup:AddLabel("✓ Auto Farm Wins")
-FeaturesGroup:AddLabel("✓ Auto Train")
-FeaturesGroup:AddLabel("✓ Auto Rebirth")
-FeaturesGroup:AddLabel("✓ Auto Buy Trail")
-FeaturesGroup:AddLabel("✓ Auto Buy Aura")
-FeaturesGroup:AddLabel("✓ Auto Buy Best Items")
-FeaturesGroup:AddLabel("✓ Auto Equip Best Items")
-
--- Player Tab - Player Information
-local PlayerInfoGroup = Tabs.Player:AddLeftGroupbox("Player Information", "user")
-
-PlayerInfoGroup:AddLabel("Username : " .. player.Name)
-PlayerInfoGroup:AddLabel("User ID : " .. player.UserId)
-PlayerInfoGroup:AddLabel("Premium : " .. (player.MembershipType == Enum.MembershipType.Premium and "Yes Premium" or "No Premium"))
-
--- Player Tab - Discord Support
-local DiscordGroup = Tabs.Player:AddRightGroupbox("Community Support", "users")
-
-DiscordGroup:AddLabel("Join our Discord server for support and script updates!", true)
-DiscordGroup:AddDivider()
-
-DiscordGroup:AddButton({
-	Text = "Copy Discord Link",
-	Func = function()
-		setclipboard("https://discord.gg/jdJvZm6VdK")
-	end,
-	Tooltip = "Copy Discord invite link to clipboard",
-})
-
-DiscordGroup:AddLabel("Link: discord.gg/jdJvZm6VdK", true)
-DiscordGroup:AddDivider()
-DiscordGroup:AddLabel("✓ Get Support", true)
-DiscordGroup:AddLabel("✓ Script Updates", true)
-DiscordGroup:AddLabel("✓ Feature Requests", true)
-DiscordGroup:AddLabel("✓ Community Tips", true)
-
--- UI Settings Tab
-local MenuGroup = Tabs.Settings:AddLeftGroupbox("Menu", "wrench")
-
-MenuGroup:AddToggle("KeybindMenuOpen", {
-	Default = Library.KeybindFrame.Visible,
-	Text = "Open Keybind Menu",
-	Callback = function(value)
-		Library.KeybindFrame.Visible = value
-	end,
-})
-
-MenuGroup:AddToggle("ShowCustomCursor", {
-	Text = "Custom Cursor",
-	Default = Library.ShowCustomCursor,
-	Callback = function(Value)
-		Library.ShowCustomCursor = Value
-	end,
-})
-
-MenuGroup:AddDropdown("NotificationSide", {
-	Values = {"Left", "Right"},
-	Default = "Right",
-	Text = "Notification Side",
-	Callback = function(Value)
-		Library:SetNotifySide(Value)
-	end,
-})
-
-MenuGroup:AddDropdown("DPIDropdown", {
-	Values = {"50%", "75%", "100%", "125%", "150%", "175%", "200%"},
-	Default = "100%",
-	Text = "DPI Scale",
-	Callback = function(Value)
-		Value = Value:gsub("%%", "")
-		local DPI = tonumber(Value)
-		Library:SetDPIScale(DPI)
-	end,
-})
-
-MenuGroup:AddSlider("UICornerSlider", {
-	Text = "Corner Radius",
-	Default = 20,
-	Min = 0,
-	Max = 20,
-	Rounding = 0,
-	Callback = function(value)
-		Window:SetCornerRadius(value)
-	end
-})
-
-MenuGroup:AddDivider()
-MenuGroup:AddLabel("Menu Keybind"):AddKeyPicker("MenuKeybind", {
-	Default = "RightShift",
-	NoUI = true,
-	Text = "Menu Keybind"
-})
-
-MenuGroup:AddButton({
-	Text = "Unload Script",
-	Func = function()
-		Library:Unload()
-	end,
-	Tooltip = "Unload the entire script"
-})
-
--- Theme & Save System
-ThemeManager:SetLibrary(Library)
-SaveManager:SetLibrary(Library)
-SaveManager:IgnoreThemeSettings()
-SaveManager:SetIgnoreIndexes({"MenuKeybind"})
-ThemeManager:SetFolder("AntiGodHub")
-SaveManager:SetFolder("AntiGodHub/SpeedSlimeEscape")
-SaveManager:BuildConfigSection(Tabs.Settings)
-ThemeManager:ApplyToTab(Tabs.Settings)
-
-task.wait(0.1)
-ThemeManager:ApplyTheme("DarkWhite")
+lib:Init()
