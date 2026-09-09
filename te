@@ -1,0 +1,878 @@
+-- Script Path: game:GetService("ReplicatedStorage").Framework.Features.Selling.SellController
+-- Took 0.02s to decompile.
+-- Executor: Delta (1.1.736.1408)
+
+local v_u_1 = game:GetService("ReplicatedStorage")
+local v_u_2 = require(v_u_1.Framework.Features.Buffs.BuffController)
+local v_u_3 = require(v_u_1.Framework.Features.UI.Components.Button)
+local v_u_4 = require(v_u_1.Framework.Features.Data.DataController)
+local v_u_5 = require(v_u_1.Framework.Features.Inventory.EntryIcon)
+local v_u_6 = require(v_u_1.Framework.Features.UI.MenuController)
+local v_u_7 = require(v_u_1.Framework.Features.Selling.SellUtil)
+local v8 = require(v_u_1.Framework.Features.UI.UIReferences)
+local v9 = require(v_u_1.Framework.Utils.ZoneUtil)
+local v_u_10 = require(v_u_1.Framework.Utils.AudioUtil)
+local v_u_11 = require(v_u_1.Packages.NumberFormatter)
+local v_u_12 = require(v_u_1.Packages.Ripple)
+local v_u_13 = require(v_u_1.Packages.State)
+local v14 = require(v_u_1.Packages.Network)
+local v_u_15 = v8.Root
+local v_u_16 = v_u_15.Menus.ConfirmSell
+local v17 = v_u_16.Content.Options
+local v_u_18 = v_u_16.Content.CanvasGroup.ScrollingFrame
+local _, v_u_19 = v_u_3.init(v17.Sell)
+local _, v20 = v_u_3.init(v17.Cancel)
+local v_u_21 = v_u_19.Frame.Info.TextLabel
+local v22 = v14.ClientComm.new(v_u_1.Network, false, "SellService")
+local v_u_23 = v22:GetFunction("SellEquipped")
+local v_u_24 = v22:GetFunction("SellInventory")
+local v_u_25 = v_u_15.Selling.Frame
+local v_u_26 = v_u_25.Template
+v_u_26.Visible = false
+local v_u_27 = v_u_13.new(false)
+local v_u_28 = false
+local v_u_29 = false
+local v_u_30 = {}
+local v_u_31 = nil
+local v_u_39 = {
+    {
+        ["text"] = "I want to sell this!",
+        ["action"] = nil,
+        ["action"] = function() -- name: action
+            -- upvalues: (copy) v_u_23, (copy) v_u_10, (copy) v_u_1, (copy) v_u_27
+            local _, v32 = v_u_23()
+            if v32 > 0 then
+                v_u_10.play(v_u_1.Assets.Sounds.Sell)
+            end
+            v_u_27(false)
+        end
+    },
+    {
+        ["text"] = "I want to sell my inventory!",
+        ["action"] = nil,
+        ["action"] = function() -- name: openInventoryConfirmation
+            -- upvalues: (copy) v_u_30, (ref) v_u_31, (copy) v_u_7, (copy) v_u_4, (copy) v_u_21, (copy) v_u_11, (copy) v_u_2, (copy) v_u_19, (copy) v_u_5, (copy) v_u_18, (copy) v_u_27, (copy) v_u_6, (copy) v_u_16
+            for _, v33 in v_u_30 do
+                v33:Destroy()
+            end
+            table.clear(v_u_30)
+            v_u_31 = nil
+            local v34 = v_u_7.CreateSummary(v_u_4.Inventory(), v_u_4.Slots())
+            v_u_31 = v34
+            v_u_21.Text = "$" .. v_u_11.FormatCompact(v34.totalPrice * v_u_2.GetBuff("Sell Multiplier"))
+            v_u_19.Interactable = v34.totalUnits > 0
+            for _, v35 in v34.sales do
+                local v37 = v_u_5.new({
+                    ["key"] = v35.key,
+                    ["callback"] = function(p36) -- name: callback
+                        -- upvalues: (ref) v_u_18
+                        p36.Parent = v_u_18
+                    end
+                })
+                local v38 = v_u_30
+                table.insert(v38, v37)
+            end
+            v_u_27(false)
+            v_u_6.OpenMenu(v_u_16)
+        end
+    },
+    {
+        ["text"] = "Edit auto sell settings!",
+        ["action"] = nil,
+        ["action"] = function() -- name: action
+            -- upvalues: (copy) v_u_6, (copy) v_u_27, (copy) v_u_15
+            v_u_6.CloseMenu()
+            v_u_27(false)
+            v_u_6.OpenMenu(v_u_15.Menus.AutoSell)
+        end
+    },
+    {
+        ["text"] = "Goodbye!",
+        ["action"] = nil,
+        ["action"] = function() -- name: action
+            -- upvalues: (copy) v_u_27
+            v_u_27(false)
+        end
+    }
+}
+v_u_19.Activated:Connect(function()
+    -- upvalues: (ref) v_u_31, (copy) v_u_30, (copy) v_u_6, (copy) v_u_24, (copy) v_u_10, (copy) v_u_1, (copy) v_u_27
+    local v40 = v_u_31
+    if v40 and v40.totalUnits ~= 0 then
+        local v41 = {}
+        for _, v42 in v40.sales do
+            local v43 = v42.key
+            table.insert(v41, v43)
+        end
+        for _, v44 in v_u_30 do
+            v44:Destroy()
+        end
+        table.clear(v_u_30)
+        v_u_31 = nil
+        v_u_6.CloseMenu()
+        local _, v45 = v_u_24(v41)
+        if v45 > 0 then
+            v_u_10.play(v_u_1.Assets.Sounds.Sell)
+        end
+        v_u_27(false)
+    end
+end)
+v20.Activated:Connect(function()
+    -- upvalues: (copy) v_u_6, (copy) v_u_27, (ref) v_u_29
+    v_u_6.CloseMenu()
+    v_u_27(v_u_29)
+end)
+v_u_6.Closed:Connect(function(p46)
+    -- upvalues: (copy) v_u_16, (copy) v_u_30, (ref) v_u_31
+    if p46 == v_u_16 then
+        for _, v47 in v_u_30 do
+            v47:Destroy()
+        end
+        table.clear(v_u_30)
+        v_u_31 = nil
+    end
+end)
+local v_u_48 = {
+    3,
+    2.4,
+    1.8,
+    1.4
+}
+local function v_u_58() -- name: createOptionScreen
+    -- upvalues: (copy) v_u_39, (copy) v_u_26, (copy) v_u_25, (copy) v_u_3, (copy) v_u_12, (copy) v_u_48, (copy) v_u_13, (copy) v_u_27, (ref) v_u_28
+    for v49, v_u_50 in ipairs(v_u_39) do
+        local v_u_51 = v_u_26:Clone()
+        v_u_51.CanvasGroup.Info.Number.Text = v49 .. ".)"
+        v_u_51.CanvasGroup.Info.OptionName.Text = v_u_50.text
+        v_u_51.Parent = v_u_25
+        v_u_51.Activated:Connect(function()
+            -- upvalues: (copy) v_u_50
+            v_u_50.action()
+        end)
+        v_u_3.init(v_u_51)
+        v_u_51.Visible = true
+        local v_u_52 = UDim2.new(0, 0, 0, (v49 - 1) * (v_u_51.Size.Y.Offset + 5))
+        local v_u_53 = v_u_52 - UDim2.new(0, 25, 0, 0)
+        local v_u_54 = v_u_12.createSpring(v_u_53, {
+            ["frequency"] = nil,
+            ["dampingRatio"] = 0.8,
+            ["start"] = true,
+            ["frequency"] = v_u_48[v49]
+        })
+        local v_u_55 = v_u_12.createSpring(1, {
+            ["frequency"] = nil,
+            ["dampingRatio"] = 1,
+            ["start"] = true,
+            ["frequency"] = v_u_48[v49]
+        })
+        v_u_54:onChange(function(p56)
+            -- upvalues: (copy) v_u_51
+            v_u_51.Position = p56
+        end)
+        v_u_55:onChange(function(p57)
+            -- upvalues: (copy) v_u_51
+            v_u_51.CanvasGroup.GroupTransparency = p57
+        end)
+        v_u_13.effect(function()
+            -- upvalues: (ref) v_u_27, (copy) v_u_54, (copy) v_u_52, (copy) v_u_55, (copy) v_u_51, (copy) v_u_53
+            if v_u_27() == true then
+                v_u_54:setGoal(v_u_52)
+                v_u_55:setGoal(0)
+                v_u_51.Interactable = true
+                v_u_51.Active = true
+            else
+                v_u_54:setGoal(v_u_53)
+                v_u_55:setGoal(1)
+                v_u_51.Interactable = false
+                v_u_51.Active = false
+            end
+        end)
+    end
+    v_u_28 = true
+end
+v_u_13.effect(function()
+    -- upvalues: (copy) v_u_27, (copy) v_u_25
+    if v_u_27() == true then
+        v_u_25.Visible = true
+    end
+end)
+v9.InitPlayerZone(workspace.Zones, "Selling", function(_)
+    -- upvalues: (ref) v_u_29, (ref) v_u_28, (copy) v_u_58, (copy) v_u_27
+    v_u_29 = true
+    if not v_u_28 then
+        v_u_58()
+    end
+    v_u_27(true)
+end, function(_)
+    -- upvalues: (ref) v_u_29, (copy) v_u_27, (copy) v_u_6, (copy) v_u_16
+    v_u_29 = false
+    v_u_27(false)
+    if v_u_6.ActiveMenu() == v_u_16 then
+        v_u_6.CloseMenu()
+    end
+end)
+return {}
+
+
+-- Script Path: game:GetService("ReplicatedStorage").Framework.Features.Selling.SellService
+-- Took 0.01s to decompile.
+-- Executor: Delta (1.1.736.1408)
+
+local v1 = game:GetService("ReplicatedStorage")
+local v_u_2 = require(v1.Framework.Features.Data.DataService)
+local v_u_3 = require(v1.Framework.Features.Buffs.BuffService)
+local v_u_4 = require(v1.Framework.Features.Inventory.Kinds.Unit.UnitService)
+local v_u_5 = require(v1.Framework.Features.Notifications.NotificationService)
+local v_u_6 = require(v1.Framework.Features.Player.PlayerService)
+local v_u_7 = require(v1.Framework.Features.Selling.SellUtil)
+local v_u_8 = require(v1.Framework.Utils.DebounceUtil)
+local v_u_9 = require(v1.Framework.Utils.NumberUtil)
+local v10 = require(v1.Packages.Network).ServerComm.new(v1.Network, "SellService")
+local v11 = v10:CreateSignal("UpdateAutoSell")
+local v_u_12 = require(v1.Framework.Features.Quests.QuestService)
+local v13 = {}
+local function v_u_26(p14, p15) -- name: completeSales
+    -- upvalues: (copy) v_u_2, (copy) v_u_4, (copy) v_u_3, (copy) v_u_12
+    if #p15 == 0 then
+        return 0, 0
+    end
+    local v16 = v_u_2[p14]
+    if not v16 then
+        return 0, 0
+    end
+    local v17 = v_u_4.GetEquippedUnit(p14)
+    local v18 = 0
+    local v19 = 0
+    local v20 = false
+    for _, v21 in p15 do
+        v18 = v18 + v21.price
+        v19 = v19 + v21.amount
+        if v21.key == v17 then
+            v20 = true
+        end
+    end
+    local v22 = v18 * v_u_3.GetBuff(p14, "Sell Multiplier")
+    local v_u_23 = math.floor(v22)
+    for _, v24 in p15 do
+        v16.Inventory[v24.key](nil)
+    end
+    if v20 then
+        v_u_4.ClearEquippedUnit(p14)
+    end
+    v16.Money(function(p25)
+        -- upvalues: (ref) v_u_23
+        return p25 + v_u_23
+    end)
+    v_u_12.AddProgress(p14, "UnitsSold", v19)
+    return v_u_23, v19
+end
+function v13.Sell(p27, p28, p29) -- name: Sell
+    -- upvalues: (copy) v_u_6, (copy) v_u_8, (copy) v_u_2, (copy) v_u_7, (copy) v_u_26
+    if not p29 then
+        local v30 = v_u_6.IsLoaded(p27)
+        if v30 then
+            v30 = v_u_8.Try(p27, "SellUnits", 0.1)
+        end
+        if not v30 then
+            return 0, 0
+        end
+    end
+    local v31 = v_u_2[p27]
+    if v31 then
+        if typeof(p28) == "table" then
+            return v_u_26(p27, v_u_7.CreateSummary(v31.Inventory(), v31.Slots(), p28).sales)
+        else
+            return 0, 0
+        end
+    else
+        return 0, 0
+    end
+end
+function v13.SellEquipped(p32) -- name: SellEquipped
+    -- upvalues: (copy) v_u_6, (copy) v_u_8, (copy) v_u_2, (copy) v_u_4, (copy) v_u_5, (copy) v_u_7, (copy) v_u_26
+    local v33 = v_u_6.IsLoaded(p32)
+    if v33 then
+        v33 = v_u_8.Try(p32, "SellUnits", 0.1)
+    end
+    if v33 then
+        local v34 = v_u_2[p32]
+        local v35 = v_u_4.GetEquippedUnit(p32)
+        if v34 and v35 then
+            local v36 = v_u_7.CreateSummary(v34.Inventory(), v34.Slots(), { v35 })
+            if #v36.sales == 0 then
+                return 0, 0
+            else
+                return v_u_26(p32, v36.sales)
+            end
+        else
+            v_u_5.SendTextNotification(p32, {
+                ["message"] = "You aren\'t holding a unit to sell.",
+                ["notificationType"] = "error"
+            })
+            return 0, 0
+        end
+    else
+        return 0, 0
+    end
+end
+function v13.SellInventory(p37, p38) -- name: SellInventory
+    -- upvalues: (copy) v_u_6, (copy) v_u_8, (copy) v_u_2, (copy) v_u_7, (copy) v_u_26
+    local v39 = v_u_6.IsLoaded(p37)
+    if v39 then
+        v39 = v_u_8.Try(p37, "SellUnits", 0.1)
+    end
+    if v39 then
+        local v40 = v_u_2[p37]
+        if v40 then
+            if typeof(p38) == "table" then
+                return v_u_26(p37, v_u_7.CreateSummary(v40.Inventory(), v40.Slots(), p38).sales)
+            else
+                return 0, 0
+            end
+        else
+            return 0, 0
+        end
+    else
+        return 0, 0
+    end
+end
+v11:Connect(function(p41, p42)
+    -- upvalues: (copy) v_u_6, (copy) v_u_9, (copy) v_u_2
+    if v_u_6.IsLoaded(p41) and typeof(p42) == "number" then
+        local v43 = v_u_9.IsValid(p42, 0, 1e18)
+        if v43 then
+            local v44 = v_u_2[p41]
+            if v44 then
+                v44.AutoSell(v43)
+            end
+        end
+    else
+        return
+    end
+end)
+v10:BindFunction("SellEquipped", v13.SellEquipped)
+v10:BindFunction("SellInventory", v13.SellInventory)
+return v13
+
+-- Script Path: game:GetService("ReplicatedStorage").Framework.Features.Selling.SellUtil
+-- Took 0s to decompile.
+-- Executor: Delta (1.1.736.1408)
+
+local v1 = game:GetService("ReplicatedStorage")
+require(v1.Framework.Features.Data.DataSettings)
+local v_u_2 = require(v1.Framework.Features.Inventory.EntryRegistry)
+require(v1.Framework.Features.Inventory.EntryTypes)
+local v_u_29 = {
+    ["GetSellPrice"] = function(p3, p4) -- name: GetSellPrice
+        -- upvalues: (copy) v_u_2
+        local v5 = v_u_2.getEntryConfig(p3)
+        return (not v5 or v5.kind ~= "Unit") and 0 or v5.income(p4) * 40
+    end,
+    ["GetPlottedUnits"] = function(p6) -- name: GetPlottedUnits
+        local v7 = {}
+        for _, v8 in p6 do
+            if v8.unitId then
+                v7[v8.unitId] = true
+            end
+        end
+        return v7
+    end,
+    ["CreateSale"] = function(p9, p10, p11) -- name: CreateSale
+        -- upvalues: (copy) v_u_2, (copy) v_u_29
+        if not p10 or (p10.amount <= 0 or (p11[p9] or p10.attributes.locked)) then
+            return nil
+        end
+        local v12 = v_u_2.getEntryConfig(p10.name)
+        if not v12 or v12.kind ~= "Unit" then
+            return nil
+        end
+        local v13 = p10.attributes
+        local v14 = p10.amount
+        return {
+            ["key"] = p9,
+            ["name"] = p10.name,
+            ["amount"] = v14,
+            ["level"] = v13.level or 1,
+            ["price"] = v_u_29.GetSellPrice(p10.name, v13) * v14
+        }
+    end,
+    ["CreateSummary"] = function(p15, p16, p17) -- name: CreateSummary
+        -- upvalues: (copy) v_u_29
+        local v18 = v_u_29.GetPlottedUnits(p16)
+        local v19 = {}
+        local v20 = {}
+        local v21 = 0
+        local v22 = 0
+        if p17 then
+            for _, v23 in p17 do
+                if typeof(v23) == "string" then
+                    if not v20[v23] then
+                        v20[v23] = true
+                        local v24 = v_u_29.CreateSale(v23, p15[v23], v18)
+                        if v24 then
+                            table.insert(v19, v24)
+                            v21 = v21 + v24.price
+                            v22 = v22 + v24.amount
+                        end
+                    end
+                end
+            end
+        else
+            for v25 in p15 do
+                if not v20[v25] then
+                    v20[v25] = true
+                    local v26 = v_u_29.CreateSale(v25, p15[v25], v18)
+                    if v26 then
+                        table.insert(v19, v26)
+                        v21 = v21 + v26.price
+                        v22 = v22 + v26.amount
+                    end
+                end
+            end
+        end
+        table.sort(v19, function(p27, p28)
+            if p27.name == p28.name then
+                return p27.key < p28.key
+            else
+                return p27.name < p28.name
+            end
+        end)
+        return {
+            ["sales"] = v19,
+            ["totalPrice"] = v21,
+            ["totalUnits"] = v22
+        }
+    end
+}
+return v_u_29
+
+-- Script Path: game:GetService("ReplicatedStorage").Framework.Features.Selling.AutoSellController
+-- Took 0s to decompile.
+-- Executor: Delta (1.1.736.1408)
+
+local v1 = game:GetService("ReplicatedStorage")
+local v_u_2 = require(v1.Framework.Features.Data.DataController)
+local v3 = require(v1.Framework.Features.UI.UIReferences)
+local v_u_4 = require(v1.Framework.Utils.NumberUtil)
+local v_u_5 = require(v1.Packages.NumberFormatter)
+local v6 = require(v1.Packages.Network)
+local v_u_7 = v3.Menus.AutoSell.Frame.TextBox
+local v_u_8 = v6.ClientComm.new(v1.Network, false, "SellService"):GetSignal("UpdateAutoSell")
+v_u_7.FocusLost:Connect(function()
+    -- upvalues: (copy) v_u_7, (copy) v_u_4, (copy) v_u_5, (copy) v_u_2, (copy) v_u_8
+    local v9 = v_u_7.Text:gsub(",", "")
+    local v10 = v9 == "" and 0 or tonumber(v9)
+    local v11
+    if v10 then
+        v11 = v_u_4.IsValid(v10, 0, 1e18)
+    else
+        v11 = nil
+    end
+    if not v10 then
+        v11 = v_u_5.ParseCompact(v9) or v11
+    end
+    if v11 then
+        v_u_8:Fire(v11)
+        if v11 > 0 then
+            v_u_7.Text = v_u_5.FormatCompact(v11)
+        else
+            v_u_7.Text = ""
+        end
+    else
+        local v12 = v_u_2.AutoSell()
+        if v12 > 0 then
+            v_u_7.Text = v_u_5.FormatCompact(v12)
+        else
+            v_u_7.Text = ""
+        end
+    end
+end)
+v_u_2.AutoSell.Observe(function() -- name: updateTextBox
+    -- upvalues: (copy) v_u_2, (copy) v_u_7, (copy) v_u_5
+    local v13 = v_u_2.AutoSell()
+    if v13 > 0 then
+        v_u_7.Text = v_u_5.FormatCompact(v13)
+    else
+        v_u_7.Text = ""
+    end
+end)
+return {}
+
+-- Script Path: game:GetService("ReplicatedStorage").Framework.Features.Rolling.DiceShopService
+-- Took 0s to decompile.
+-- Executor: Delta (1.1.736.1408)
+
+local v1 = game:GetService("ReplicatedStorage")
+local v_u_2 = require(v1.Framework.Features.Data.DataService)
+local v_u_3 = require(v1.Framework.Features.Notifications.NotificationService)
+local v_u_4 = require(v1.Framework.Features.Player.PlayerService)
+local v_u_5 = require(v1.Framework.Utils.DebounceUtil)
+local v6 = require(v1.Packages.Network)
+local v_u_7 = require(script.Parent.Dice)
+local v8 = v6.ServerComm.new(v1.Network, "DiceShopService")
+local v9 = v8:CreateSignal("BuyDice")
+local v10 = v8:CreateSignal("EquipDice")
+v9:Connect(function(p11, p12)
+    -- upvalues: (copy) v_u_4, (copy) v_u_5, (copy) v_u_7, (copy) v_u_2, (copy) v_u_3
+    if v_u_4.IsLoaded(p11) and (type(p12) == "string" and v_u_5.Try(p11, "DiceShop", 0.5)) then
+        local v_u_13 = v_u_7.Get(p12)
+        if v_u_13 and v_u_13.price then
+            local v14 = v_u_2[p11]
+            if v14.OwnedDice[p12]() or v14.Money() < v_u_13.price then
+                v_u_3.SendTextNotification(p11, {
+                    ["message"] = "You can\'t afford this dice!",
+                    ["notificationType"] = "error"
+                })
+            else
+                v14.Money(function(p15)
+                    -- upvalues: (copy) v_u_13
+                    return p15 - v_u_13.price
+                end)
+                v14.OwnedDice[p12](true)
+                v14.Dice(p12)
+            end
+        else
+            return
+        end
+    else
+        return
+    end
+end)
+v10:Connect(function(p16, p17)
+    -- upvalues: (copy) v_u_4, (copy) v_u_5, (copy) v_u_7, (copy) v_u_2
+    if v_u_4.IsLoaded(p16) and (type(p17) == "string" and (v_u_5.Try(p16, "DiceShop", 0.5) and v_u_7.Get(p17))) then
+        local v18 = v_u_2[p16]
+        if v18.OwnedDice[p17]() then
+            v18.Dice(p17)
+        end
+    else
+        return
+    end
+end)
+return {}
+
+-- Script Path: game:GetService("ReplicatedStorage").Framework.Features.Rolling.DiceShopController
+-- Took 0.01s to decompile.
+-- Executor: Delta (1.1.736.1408)
+
+local v1 = game:GetService("ReplicatedStorage")
+local v_u_2 = require(v1.Framework.Features.UI.Components.Button)
+local v_u_3 = require(v1.Framework.Features.Data.DataController)
+local v_u_4 = require(v1.Framework.Features.UI.MenuController)
+local v_u_5 = require(script.Parent.Dice)
+local v6 = require(v1.Framework.Features.UI.UIReferences)
+local v7 = require(v1.Framework.Features.UI.Indicator)
+local v_u_8 = require(v1.Framework.Other.Rarities)
+local v9 = require(v1.Framework.Utils.ZoneUtil)
+local v10 = require(v1.Packages.Network)
+local v_u_11 = require(v1.Packages.NumberFormatter)
+local v12 = v10.ClientComm.new(v1.Network, false, "DiceShopService")
+local v_u_13 = v12:GetSignal("BuyDice")
+local v_u_14 = v12:GetSignal("EquipDice")
+local v_u_15 = v6.Menus.DiceShop
+local v_u_16 = v_u_15.Content.ScrollingFrame
+local v_u_17 = v_u_16.Template
+v_u_17.Visible = false
+local v_u_18 = v7(v6.HUD.Top.Shop)
+local v_u_19 = false
+local function v22() -- name: updateIndicator
+    -- upvalues: (copy) v_u_18, (copy) v_u_5, (copy) v_u_3
+    v_u_18.reset()
+    for v20, v21 in pairs(v_u_5.GetAll()) do
+        if v21.price and (not v_u_3.OwnedDice[v20]() and v_u_3.Money() >= v21.price) then
+            v_u_18.genericAlert()
+            return
+        end
+    end
+end
+local function v_u_41() -- name: initShop
+    -- upvalues: (ref) v_u_19, (copy) v_u_5, (copy) v_u_17, (copy) v_u_8, (copy) v_u_11, (copy) v_u_2, (copy) v_u_3, (copy) v_u_14, (copy) v_u_13, (copy) v_u_16
+    if not v_u_19 then
+        v_u_19 = true
+        local v23 = {}
+        for v24, v25 in pairs(v_u_5.GetAll()) do
+            if v25.price then
+                table.insert(v23, {
+                    ["name"] = v24,
+                    ["data"] = v25
+                })
+            end
+        end
+        table.sort(v23, function(p26, p27)
+            if p26.data.luck == p27.data.luck then
+                return p26.name < p27.name
+            else
+                return p26.data.luck < p27.data.luck
+            end
+        end)
+        for v28, v29 in ipairs(v23) do
+            local v_u_30 = v29.name
+            local v_u_31 = v29.data
+            local v32 = v_u_17:Clone()
+            v32.Name = v_u_30
+            v32.LayoutOrder = v28
+            v32.Info.Title.Dice.Text = v_u_30
+            v32.Info.Title.Rarity.Text = v_u_31.rarity
+            v32.Info.Title.Rarity.UIGradient.Color = v_u_8.Get(v_u_31.rarity).gradient
+            v32.Info.Luck.Luck.Text = v_u_11.FormatInt(v_u_31.luck) .. "x Luck"
+            v32.Display.DiceImage.Image = v_u_31.image
+            v32.Display.LightRay.UIGradient.Color = v_u_8.Get(v_u_31.rarity).gradient
+            local v_u_33, v_u_34 = v_u_2.init(v32.Buttons.Buy)
+            local v_u_35 = v32.Buttons.Buy.Frame.Info.Price
+            local function v40() -- name: updateButton
+                -- upvalues: (ref) v_u_3, (copy) v_u_30, (copy) v_u_34, (copy) v_u_35, (copy) v_u_33, (ref) v_u_11, (copy) v_u_31
+                local v36 = v_u_3.OwnedDice[v_u_30]() == true
+                local v37 = v_u_3.Dice() == v_u_30
+                local v38 = v_u_34.Frame.Info.ImageLabel
+                local v39 = not v36
+                if v39 then
+                    v39 = not v37
+                end
+                v38.Visible = v39
+                if v37 then
+                    v_u_35.Text = "Equipped"
+                    v_u_33:ChangeColor(ColorSequence.new(Color3.fromRGB(32, 184, 235), Color3.fromRGB(59, 180, 255)))
+                elseif v36 then
+                    v_u_35.Text = "Equip"
+                    v_u_33:ChangeColor(ColorSequence.new(Color3.fromRGB(32, 184, 235), Color3.fromRGB(59, 180, 255)))
+                else
+                    v_u_35.Text = "$" .. v_u_11.FormatCompact(v_u_31.price)
+                end
+                v_u_34.Interactable = not v37
+            end
+            v_u_34.Activated:Connect(function()
+                -- upvalues: (ref) v_u_3, (copy) v_u_30, (ref) v_u_14, (ref) v_u_13
+                if v_u_3.OwnedDice[v_u_30]() then
+                    v_u_14:Fire(v_u_30)
+                else
+                    v_u_13:Fire(v_u_30)
+                end
+            end)
+            v_u_3.OwnedDice[v_u_30].Observe(v40)
+            v_u_3.Dice.Observe(v40)
+            v32.Visible = true
+            v32.Parent = v_u_16
+        end
+    end
+end
+v_u_3.Money.Changed(v22)
+v_u_3.OwnedDice.Observe(v22)
+v22()
+v_u_4.Opening:Connect(function(p42)
+    -- upvalues: (copy) v_u_15, (copy) v_u_41
+    if p42 == v_u_15 then
+        v_u_41()
+    end
+end)
+v9.InitPlayerZone(workspace.Zones, "DiceShop", function(_)
+    -- upvalues: (copy) v_u_4, (copy) v_u_15
+    v_u_4.OpenMenu(v_u_15)
+end, function(_)
+    -- upvalues: (copy) v_u_4
+    v_u_4.CloseMenu()
+end)
+return {}
+
+-- Script Path: game:GetService("ReplicatedStorage").Framework.Features.Rolling.DiceController
+-- Took 0s to decompile.
+-- Executor: Delta (1.1.736.1408)
+
+local v1 = game:GetService("ReplicatedStorage")
+local v_u_2 = require(script.Parent.Dice)
+local v3 = require(v1.Framework.Features.Data.DataController)
+local v4 = require(v1.Framework.Features.UI.UIReferences)
+local v_u_5 = require(v1.Framework.Other.Rarities)
+local v_u_6 = v4.HUD
+v3.Dice.Observe(function(p7)
+    -- upvalues: (copy) v_u_2, (copy) v_u_6, (copy) v_u_5
+    local v8 = v_u_2.Get(p7)
+    if v8 then
+        v_u_6.Bottom.Roll.Dice.Image = v8.image
+        v_u_6.Bottom.Roll.Ray.UIGradient.Color = v_u_5.Get(v8.rarity).gradient
+    end
+end)
+return {}
+local v_u_6 = v4.HUD
+v3.Dice.Observe(function(p7)
+    -- upvalues: (copy) v_u_2, (copy) v_u_6, (copy) v_u_5
+    local v8 = v_u_2.Get(p7)
+    if v8 then
+        v_u_6.Bottom.Roll.Dice.Image = v8.image
+        v_u_6.Bottom.Roll.Ray.UIGradient.Color = v_u_5.Get(v8.rarity).gradient
+    end
+end)
+return {}
+
+-- Script Path: game:GetService("ReplicatedStorage").Framework.Features.Rolling.Dice
+-- Took 0s to decompile.
+-- Executor: Delta (1.1.736.1408)
+
+local v1 = game:GetService("ReplicatedStorage")
+local v2 = require(v1.Framework.Other.Rarities)
+local v_u_3 = {
+    ["Basic"] = {
+        ["luck"] = 1,
+        ["rarity"] = "Common",
+        ["image"] = "rbxassetid://134876970337785"
+    },
+    ["Normal"] = {
+        ["luck"] = 2,
+        ["rarity"] = "Common",
+        ["image"] = "rbxassetid://134876970337785",
+        ["price"] = 1
+    },
+    ["Fire"] = {
+        ["luck"] = 5,
+        ["rarity"] = "Uncommon",
+        ["image"] = "rbxassetid://107584758470187",
+        ["price"] = 2500
+    },
+    ["Water"] = {
+        ["luck"] = 10,
+        ["rarity"] = "Uncommon",
+        ["image"] = "rbxassetid://107625282990508",
+        ["price"] = 10000
+    },
+    ["Nature"] = {
+        ["luck"] = 20,
+        ["rarity"] = "Rare",
+        ["image"] = "rbxassetid://112899446526334",
+        ["price"] = 75000
+    },
+    ["Lightning"] = {
+        ["luck"] = 42.5,
+        ["rarity"] = "Rare",
+        ["image"] = "rbxassetid://120765961091114",
+        ["price"] = 500000
+    },
+    ["Ice"] = {
+        ["luck"] = 100,
+        ["rarity"] = "Rare",
+        ["image"] = "rbxassetid://72989315871791",
+        ["price"] = 4000000
+    },
+    ["Magma"] = {
+        ["luck"] = 200,
+        ["rarity"] = "Epic",
+        ["image"] = "rbxassetid://103280550394904",
+        ["price"] = 30000000
+    },
+    ["Storm"] = {
+        ["luck"] = 400,
+        ["rarity"] = "Epic",
+        ["image"] = "rbxassetid://112829857583094",
+        ["price"] = 200000000
+    },
+    ["Shadow"] = {
+        ["luck"] = 750,
+        ["rarity"] = "Epic",
+        ["image"] = "rbxassetid://133489178472335",
+        ["price"] = 1500000000
+    },
+    ["Light"] = {
+        ["luck"] = 1500,
+        ["rarity"] = "Legendary",
+        ["image"] = "rbxassetid://91219086543206",
+        ["price"] = 12000000000
+    },
+    ["Blood Moon"] = {
+        ["luck"] = 3000,
+        ["rarity"] = "Legendary",
+        ["image"] = "rbxassetid://87152364704836",
+        ["price"] = 100000000000
+    },
+    ["Void"] = {
+        ["luck"] = 6000,
+        ["rarity"] = "Legendary",
+        ["image"] = "rbxassetid://134047270790894",
+        ["price"] = 750000000000
+    },
+    ["Solar"] = {
+        ["luck"] = 12500,
+        ["rarity"] = "Mythical",
+        ["image"] = "rbxassetid://103966927109104",
+        ["price"] = 5000000000000
+    },
+    ["Lunar"] = {
+        ["luck"] = 25000,
+        ["rarity"] = "Mythical",
+        ["image"] = "rbxassetid://98062406949774",
+        ["price"] = 37500000000000
+    },
+    ["Galaxy"] = {
+        ["luck"] = 50000,
+        ["rarity"] = "Divine",
+        ["image"] = "rbxassetid://91185634172436",
+        ["price"] = 150000000000000
+    },
+    ["Black Hole"] = {
+        ["luck"] = 100000,
+        ["rarity"] = "Divine",
+        ["image"] = "rbxassetid://97247214661606",
+        ["price"] = 1000000000000000
+    },
+    ["Dragon"] = {
+        ["luck"] = 200000,
+        ["rarity"] = "Exotic",
+        ["image"] = "rbxassetid://72339701378301",
+        ["price"] = 8500000000000000
+    },
+    ["Royal"] = {
+        ["luck"] = 400000,
+        ["rarity"] = "Exotic",
+        ["image"] = "rbxassetid://129331882004972",
+        ["price"] = 1e17
+    },
+    ["Prismatic"] = {
+        ["luck"] = 1000000,
+        ["rarity"] = "Celestial",
+        ["image"] = "rbxassetid://100284944801383",
+        ["price"] = 1e18
+    },
+    ["Arcane"] = {
+        ["luck"] = 2000000,
+        ["rarity"] = "Celestial",
+        ["image"] = "rbxassetid://92630730379347",
+        ["price"] = 1.25e19
+    },
+    ["Corrupted"] = {
+        ["luck"] = 5000000,
+        ["rarity"] = nil,
+        ["image"] = "rbxassetid://87917869781148",
+        ["price"] = 1.5e20,
+        ["rarity"] = v2.Refs.Secret1
+    },
+    ["Titan"] = {
+        ["luck"] = 10000000,
+        ["rarity"] = nil,
+        ["image"] = "rbxassetid://125423800047833",
+        ["price"] = 1e21,
+        ["rarity"] = v2.Refs.Secret1
+    },
+    ["Chrono"] = {
+        ["luck"] = 25000000,
+        ["rarity"] = nil,
+        ["image"] = "rbxassetid://86463060513242",
+        ["price"] = 1.5e22,
+        ["rarity"] = v2.Refs.Secret1
+    }
+}
+return {
+    ["Get"] = function(p4) -- name: Get
+        -- upvalues: (copy) v_u_3
+        return v_u_3[p4]
+    end,
+    ["GetAll"] = function() -- name: GetAll
+        -- upvalues: (copy) v_u_3
+        return v_u_3
+    end,
+    ["GetDefault"] = function() -- name: GetDefault
+        return "Basic"
+    end
+}
+
+
+
+Equip Best Anime
+local Event = game:GetService("ReplicatedStorage").Network.PlotService.RE.EquipBest
+Event:FireServer()
