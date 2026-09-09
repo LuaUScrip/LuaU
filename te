@@ -871,8 +871,1028 @@ return {
     end
 }
 
+-- Script Path: game:GetService("ReplicatedStorage").Framework.Features.Inventory.Kinds.Unit.UnitConfig
+-- Took 0.03s to decompile.
+-- Executor: Delta (1.1.736.1408)
 
+local v1 = game:GetService("ReplicatedStorage")
+local v_u_2 = game:GetService("RunService")
+local v_u_3 = require(script.Parent.Mutations)
+local v_u_4 = require(script.Parent.Variants)
+require(v1.Framework.Features.Inventory.EntryTypes)
+local v_u_5 = require(v1.Framework.Features.Traits.Traits)
+local v_u_6 = require(v1.Framework.Features.Grades.Grades)
+local v_u_7 = require(v1.Framework.Other.Rarities)
+local v_u_8 = {}
+local v_u_9 = {
+    [v_u_7.Refs.Common] = 0,
+    [v_u_7.Refs.Uncommon] = 100,
+    [v_u_7.Refs.Rare] = 1000,
+    [v_u_7.Refs.Epic] = 100000,
+    [v_u_7.Refs.Legendary] = 10000000,
+    [v_u_7.Refs.Mythical] = 1000000000,
+    [v_u_7.Refs.Divine] = 100000000000,
+    [v_u_7.Refs.Exotic] = 10000000000000,
+    [v_u_7.Refs.Celestial] = 1000000000000000,
+    [v_u_7.Refs.Secret1] = 1e17
+}
+local function v102(p_u_10, p_u_11) -- name: createUnitEntry
+    -- upvalues: (copy) v_u_3, (copy) v_u_5, (copy) v_u_6, (copy) v_u_7, (copy) v_u_9, (copy) v_u_2, (copy) v_u_4, (copy) v_u_8
+    local function v100(p12) -- name: createUnitEntry
+        -- upvalues: (ref) v_u_4, (copy) p_u_11, (copy) p_u_10, (ref) v_u_8, (ref) v_u_3, (ref) v_u_7, (ref) v_u_9, (ref) v_u_2, (ref) v_u_5, (ref) v_u_6
+        local v13 = p12 and (v_u_4[p12] or {}) or {}
+        local v_u_14 = p_u_11.model:Clone()
+        if v13.modelScale then
+            v_u_14:ScaleTo(v13.modelScale)
+        end
+        local v15 = p12 and p12 .. " " .. p_u_10 or p_u_10
+        local v16 = v13.chanceMultiplier or 1
+        local v17 = p_u_11.chance
+        if not v17 then
+            local v18 = p_u_11.income
+            v17 = assert(v18) ^ 1.3793103448275863
+        end
+        local v_u_19 = v17 * v16
+        local v20 = p_u_11.income and p_u_11.income ^ 1.3793103448275863
+        if not v20 then
+            local v21 = p_u_11.chance
+            v20 = assert(v21)
+        end
+        local v_u_22 = v20 * v16
+        local v23 = v_u_8
+        local v73 = {
+            ["getRarity"] = function(p24)
+                -- upvalues: (ref) p_u_11, (copy) v_u_19, (ref) v_u_3, (ref) v_u_7, (ref) v_u_9
+                if p_u_11.rarity then
+                    return p_u_11.rarity
+                end
+                local v_u_25 = v_u_19
+                local v30 = (function(p26)
+                    -- upvalues: (copy) v_u_25, (ref) v_u_3
+                    local v27 = v_u_25
+                    local v28 = (p26 or {}).mutation
+                    if v28 then
+                        local v29 = v_u_3[v28]
+                        if v29 then
+                            v27 = v27 * v29.chance
+                        end
+                    end
+                    return v27
+                end)(p24)
+                local v31 = v_u_7.Refs.Common
+                local v32 = 0
+                for v33, v34 in pairs(v_u_9) do
+                    if v34 <= v30 and v32 < v34 then
+                        v31 = v33
+                        v32 = v34
+                    end
+                end
+                return v31
+            end,
+            ["rarity"] = (function(p35)
+                -- upvalues: (ref) p_u_11, (copy) v_u_19, (ref) v_u_3, (ref) v_u_7, (ref) v_u_9
+                if p_u_11.rarity then
+                    return p_u_11.rarity
+                end
+                local v_u_36 = v_u_19
+                local v41 = (function(p37)
+                    -- upvalues: (copy) v_u_36, (ref) v_u_3
+                    local v38 = v_u_36
+                    local v39 = (p37 or {}).mutation
+                    if v39 then
+                        local v40 = v_u_3[v39]
+                        if v40 then
+                            v38 = v38 * v40.chance
+                        end
+                    end
+                    return v38
+                end)(p35)
+                local v42 = v_u_7.Refs.Common
+                local v43 = 0
+                for v44, v45 in pairs(v_u_9) do
+                    if v45 <= v41 and v43 < v45 then
+                        v42 = v44
+                        v43 = v45
+                    end
+                end
+                return v42
+            end)(nil),
+            ["model"] = function(p46)
+                -- upvalues: (ref) v_u_3, (copy) v_u_14, (ref) v_u_2
+                local v47 = (p46 or {}).mutation
+                if v47 then
+                    v47 = v_u_3[v47]
+                end
+                local v48 = v_u_14:Clone()
+                if v47 then
+                    local v_u_49 = v47.color.Keypoints
+                    local v_u_50 = script.Highlight:Clone()
+                    v_u_50.Parent = v48
+                    local v_u_51 = 0
+                    local v_u_59 = v_u_2.Heartbeat:Connect(function(p52)
+                        -- upvalues: (ref) v_u_51, (copy) v_u_49, (copy) v_u_50
+                        v_u_51 = v_u_51 + p52
+                        local v53 = v_u_51 % 8 / 8 * #v_u_49
+                        local v54 = math.floor(v53) + 1
+                        local v55 = v54 % #v_u_49 + 1
+                        local v56 = v53 % 1
+                        local v57 = v_u_49[v54].Value
+                        local v58 = v_u_49[v55].Value
+                        v_u_50.FillColor = v57:Lerp(v58, v56)
+                        v_u_50.OutlineColor = v57:Lerp(v58, v56)
+                    end)
+                    v48.Destroying:Connect(function()
+                        -- upvalues: (ref) v_u_59
+                        v_u_59:Disconnect()
+                    end)
+                end
+                return v48
+            end,
+            ["baseModel"] = p_u_11.model,
+            ["variant"] = p12,
+            ["income"] = function(p60)
+                -- upvalues: (copy) v_u_22, (ref) v_u_3, (ref) v_u_5, (ref) v_u_6
+                local v61 = p60 or {}
+                local v_u_62 = v_u_22
+                local v67 = (function(p63)
+                    -- upvalues: (copy) v_u_62, (ref) v_u_3
+                    local v64 = v_u_62
+                    local v65 = (p63 or {}).mutation
+                    if v65 then
+                        local v66 = v_u_3[v65]
+                        if v66 then
+                            v64 = v64 * v66.chance
+                        end
+                    end
+                    return v64
+                end)(v61) ^ 0.725
+                local v68 = v61.level or 1
+                local v69 = v61.trait
+                local v70 = v61.grade
+                if v69 then
+                    local v71 = v_u_5[v69]
+                    if v71.incomeMultiplier then
+                        v67 = v67 * v71.incomeMultiplier
+                    end
+                end
+                if v70 then
+                    v67 = v67 * v_u_6[v70].incomeMultiplier
+                end
+                local v72 = v67 * (1 + 0.25 * (v68 - 1))
+                return math.floor(v72)
+            end
+        }
+        local v74
+        if p_u_11.chance then
+            local v_u_75 = p_u_11.chance * v16
+            v74 = function(p76)
+                -- upvalues: (copy) v_u_75, (ref) v_u_3
+                local v77 = v_u_75
+                local v78 = (p76 or {}).mutation
+                if v78 then
+                    local v79 = v_u_3[v78]
+                    if v79 then
+                        v77 = v77 * v79.chance
+                    end
+                end
+                return v77
+            end
+        else
+            v74 = nil
+        end
+        v73.chance = v74
+        function v73.damage(p80)
+            -- upvalues: (copy) v_u_19, (ref) v_u_3, (ref) v_u_5
+            local v81 = p80 or {}
+            local v_u_82 = v_u_19
+            local v87 = (function(p83)
+                -- upvalues: (copy) v_u_82, (ref) v_u_3
+                local v84 = v_u_82
+                local v85 = (p83 or {}).mutation
+                if v85 then
+                    local v86 = v_u_3[v85]
+                    if v86 then
+                        v84 = v84 * v86.chance
+                    end
+                end
+                return v84
+            end)(v81) ^ 0.58
+            local v88 = v81.trait
+            if v88 then
+                local v89 = v_u_5[v88]
+                if v89.damageMultiplier then
+                    v87 = v87 * v89.damageMultiplier
+                end
+            end
+            return v87
+        end
+        function v73.health(p90)
+            -- upvalues: (copy) v_u_19, (ref) v_u_3, (ref) v_u_5
+            local v91 = p90 or {}
+            local v_u_92 = v_u_19
+            local v97 = (function(p93)
+                -- upvalues: (copy) v_u_92, (ref) v_u_3
+                local v94 = v_u_92
+                local v95 = (p93 or {}).mutation
+                if v95 then
+                    local v96 = v_u_3[v95]
+                    if v96 then
+                        v94 = v94 * v96.chance
+                    end
+                end
+                return v94
+            end)(v91) ^ 0.58
+            local v98 = v91.trait
+            if v98 then
+                local v99 = v_u_5[v98]
+                if v99.healthMultiplier then
+                    v97 = v97 * v99.healthMultiplier
+                end
+            end
+            return v97
+        end
+        v73.order = p_u_11.order
+        v73.limited = p_u_11.limited
+        v23[v15] = v73
+    end
+    for v101, _ in pairs(v_u_4) do
+        v100(v101)
+    end
+    v100(nil)
+end
+local v103 = {
+    ["sortOrder"] = 1,
+    ["stackable"] = false,
+    ["defaultAttributes"] = nil,
+    ["entries"] = nil,
+    ["defaultAttributes"] = {
+        ["level"] = 1
+    },
+    ["entries"] = v_u_8
+}
+for v104, v105 in ipairs({
+    {
+        ["id"] = "Naroto",
+        ["chance"] = 2
+    },
+    {
+        ["id"] = "Ichiga",
+        ["chance"] = 3
+    },
+    {
+        ["id"] = "Ginyou",
+        ["chance"] = 4
+    },
+    {
+        ["id"] = "Aizan",
+        ["chance"] = 6
+    },
+    {
+        ["id"] = "Krillan",
+        ["chance"] = 11
+    },
+    {
+        ["id"] = "Inasuke",
+        ["chance"] = 15
+    },
+    {
+        ["id"] = "Tien",
+        ["chance"] = 20
+    },
+    {
+        ["id"] = "Nezuka",
+        ["chance"] = 28
+    },
+    {
+        ["id"] = "Pikolo",
+        ["chance"] = 38
+    },
+    {
+        ["id"] = "Friza",
+        ["chance"] = 52
+    },
+    {
+        ["id"] = "Kakeshi",
+        ["chance"] = 95
+    },
+    {
+        ["id"] = "Perfect Zell",
+        ["chance"] = 130
+    },
+    {
+        ["id"] = "Zenitsa",
+        ["chance"] = 175
+    },
+    {
+        ["id"] = "Tanjuro",
+        ["chance"] = 240
+    },
+    {
+        ["id"] = "Todoraki",
+        ["chance"] = 325
+    },
+    {
+        ["id"] = "Bakuga",
+        ["chance"] = 450
+    },
+    {
+        ["id"] = "Deko",
+        ["chance"] = 850
+    },
+    {
+        ["id"] = "Hasoka",
+        ["chance"] = 1200
+    },
+    {
+        ["id"] = "Zaro",
+        ["chance"] = 1700
+    },
+    {
+        ["id"] = "Levy",
+        ["chance"] = 2400
+    },
+    {
+        ["id"] = "Goko",
+        ["chance"] = 3500
+    },
+    {
+        ["id"] = "Super Saiyen",
+        ["chance"] = 5000
+    },
+    {
+        ["id"] = "Todoh",
+        ["chance"] = 11000
+    },
+    {
+        ["id"] = "Maheto",
+        ["chance"] = 16500
+    },
+    {
+        ["id"] = "Madera",
+        ["chance"] = 25000
+    },
+    {
+        ["id"] = "Sakuna",
+        ["chance"] = 38000
+    },
+    {
+        ["id"] = "Gujo",
+        ["chance"] = 57500
+    },
+    {
+        ["id"] = "Namee",
+        ["chance"] = 85000
+    },
+    {
+        ["id"] = "Usop",
+        ["chance"] = 125000
+    },
+    {
+        ["id"] = "Enol",
+        ["chance"] = 290000
+    },
+    {
+        ["id"] = "Buu",
+        ["chance"] = 450000
+    },
+    {
+        ["id"] = "Vegata",
+        ["chance"] = 700000
+    },
+    {
+        ["id"] = "Yuju",
+        ["chance"] = 1100000
+    },
+    {
+        ["id"] = "Jogu",
+        ["chance"] = 1750000
+    },
+    {
+        ["id"] = "Mahorago",
+        ["chance"] = 2750000
+    },
+    {
+        ["id"] = "Itacha",
+        ["chance"] = 4500000
+    },
+    {
+        ["id"] = "Kaidon",
+        ["chance"] = 12500000
+    },
+    {
+        ["id"] = "Loffy",
+        ["chance"] = 22500000
+    },
+    {
+        ["id"] = "Saytama",
+        ["chance"] = 40000000
+    },
+    {
+        ["id"] = "Bills",
+        ["chance"] = 75000000
+    },
+    {
+        ["id"] = "Obita",
+        ["chance"] = 135000000
+    },
+    {
+        ["id"] = "Killer",
+        ["chance"] = 240000000
+    },
+    {
+        ["id"] = "Gon",
+        ["chance"] = 430000000
+    },
+    {
+        ["id"] = "Eskanar",
+        ["chance"] = 775000000
+    },
+    {
+        ["id"] = "Asto",
+        ["chance"] = 1400000000
+    },
+    {
+        ["id"] = "Jin-woo",
+        ["chance"] = 2500000000
+    },
+    {
+        ["id"] = "Angel",
+        ["chance"] = 4500000000
+    },
+    {
+        ["id"] = "UI Goko",
+        ["chance"] = 8000000000
+    },
+    {
+        ["id"] = "Arin",
+        ["chance"] = 14500000000
+    },
+    {
+        ["id"] = "Ginus",
+        ["chance"] = 26000000000
+    },
+    {
+        ["id"] = "Android 17",
+        ["chance"] = 47000000000
+    },
+    {
+        ["id"] = "Mikasu",
+        ["chance"] = 85000000000
+    },
+    {
+        ["id"] = "Beast Gokan",
+        ["chance"] = 150000000000
+    },
+    {
+        ["id"] = "Denjo",
+        ["chance"] = 270000000000
+    },
+    {
+        ["id"] = "Okarin",
+        ["chance"] = 490000000000
+    },
+    {
+        ["id"] = "Ryek",
+        ["chance"] = 880000000000
+    },
+    {
+        ["id"] = "Dio",
+        ["chance"] = 1600000000000
+    },
+    {
+        ["id"] = "Isago",
+        ["chance"] = 2900000000000
+    },
+    {
+        ["id"] = "Mobb",
+        ["chance"] = 5200000000000
+    },
+    {
+        ["id"] = "Thorfyn",
+        ["chance"] = 9400000000000
+    },
+    {
+        ["id"] = "Kafko",
+        ["chance"] = 17000000000000
+    },
+    {
+        ["id"] = "Kiritoe",
+        ["chance"] = 31000000000000
+    },
+    {
+        ["id"] = "Gilgamash",
+        ["chance"] = 56000000000000
+    },
+    {
+        ["id"] = "Fused Zamatsu",
+        ["income"] = 125000000000,
+        ["limited"] = true,
+        ["rarity"] = "Exclusive"
+    },
+    {
+        ["id"] = "Emelia",
+        ["income"] = 500000000,
+        ["limited"] = true,
+        ["rarity"] = "Exclusive"
+    }
+}) do
+    v102(v105.id, {
+        ["rarity"] = v105.rarity,
+        ["model"] = v1.Assets.Models.Units[v105.id],
+        ["chance"] = v105.chance,
+        ["income"] = v105.income,
+        ["order"] = v104,
+        ["limited"] = v105.limited
+    })
+end
+return v103
 
-Equip Best Anime
-local Event = game:GetService("ReplicatedStorage").Network.PlotService.RE.EquipBest
-Event:FireServer()
+-- Script Path: game:GetService("ReplicatedStorage").Framework.Features.Inventory.Kinds.Unit.UnitUtil
+-- Took 0s to decompile.
+-- Executor: Delta (1.1.736.1408)
+
+local v_u_1 = game:GetService("ReplicatedStorage")
+local v_u_2 = require(v_u_1.Framework.Features.Inventory.EntryRegistry)
+require(v_u_1.Framework.Features.Inventory.EntryTypes)
+local v_u_14 = {
+    ["PlayAnimation"] = function(p3, p4) -- name: PlayAnimation
+        -- upvalues: (copy) v_u_1
+        local v5 = p3:FindFirstChildOfClass("Humanoid")
+        local v6 = (v5:FindFirstChildOfClass("Animator") or Instance.new("Animator", v5)):LoadAnimation(p4 and v_u_1.Assets.Animations.Idle:FindFirstChild((tostring(p4))) or v_u_1.Assets.Animations.Idle:GetChildren()[math.random(1, #v_u_1.Assets.Animations.Idle:GetChildren())])
+        v6:Play(0)
+        return v6
+    end,
+    ["PlayCalmAnimtion"] = function(p7) -- name: PlayCalmAnimtion
+        -- upvalues: (copy) v_u_14
+        local v8 = {
+            1,
+            2,
+            5,
+            8
+        }
+        return v_u_14.PlayAnimation(p7, v8[math.random(1, #v8)])
+    end,
+    ["GetLevelPrice"] = function(p9, p10) -- name: GetLevelPrice
+        -- upvalues: (copy) v_u_2
+        local v11 = v_u_2.getEntryConfig(p9)
+        local v12 = p10.level or 1
+        local v13 = v11.income({
+            ["mutation"] = p10.mutation
+        }) * 1.6 ^ (v12 - 1)
+        return math.floor(v13)
+    end
+}
+return v_u_14
+
+-- Script Path: game:GetService("ReplicatedStorage").Framework.Features.Inventory.Kinds.Unit.UnitService
+-- Took 0.02s to decompile.
+-- Executor: Delta (1.1.736.1408)
+
+local v1 = game:GetService("ReplicatedStorage")
+local v_u_2 = require(script.Parent.Mutations)
+local v_u_3 = require(script.Parent.UnitUtil)
+local v_u_4 = require(v1.Framework.Features.Data.DataService)
+local v_u_5 = require(v1.Framework.Features.Inventory.EntryRegistry)
+require(v1.Framework.Features.Inventory.EntryTypes)
+local v_u_6 = require(v1.Framework.Features.Notifications.NotificationService)
+local v_u_7 = require(v1.Framework.Features.Player.PlayerService)
+local v_u_8 = require(v1.Framework.Other.Rarities)
+local v_u_9 = require(v1.Framework.Utils.DebounceUtil)
+local v_u_10 = require(v1.Packages.Maid)
+local v11 = require(v1.Packages.Network)
+local v_u_12 = require(v1.Packages.NumberFormatter)
+local v13 = v11.ServerComm.new(v1.Network, "UnitService")
+local v_u_14 = v13:CreateProperty("EquippedUnit", nil)
+local v_u_15 = {}
+local v_u_16 = {}
+local v_u_63 = {
+    ["GetEquippedUnit"] = function(p17) -- name: GetEquippedUnit
+        -- upvalues: (copy) v_u_16
+        return v_u_16[p17]
+    end,
+    ["ClearEquippedUnit"] = function(p18) -- name: ClearEquippedUnit
+        -- upvalues: (copy) v_u_15, (copy) v_u_16, (copy) v_u_14
+        local v19 = v_u_15[p18]
+        v_u_15[p18] = nil
+        v_u_16[p18] = nil
+        v_u_14:SetFor(p18, nil)
+        if v19 then
+            v19:Destroy()
+        end
+    end,
+    ["GetUnitModel"] = function(p20, p21) -- name: GetUnitModel
+        -- upvalues: (copy) v_u_4, (copy) v_u_5, (copy) v_u_10, (copy) v_u_12, (copy) v_u_8, (copy) v_u_2
+        local v22 = v_u_4[p20].Inventory[p21]()
+        if v22 then
+            local v23 = v22.name
+            local v24 = v22.attributes
+            local v_u_25 = v_u_5.getEntryConfig(v23)
+            if v_u_25 and v_u_25.kind == "Unit" then
+                local v_u_26 = v_u_10.new()
+                local v_u_27 = v_u_25.model(v24)
+                v_u_26:Add(v_u_27.Destroying:Connect(function()
+                    -- upvalues: (copy) v_u_26
+                    v_u_26:Destroy()
+                end))
+                local v28
+                if v_u_27.PrimaryPart then
+                    v28 = v_u_27.PrimaryPart
+                else
+                    v28 = v_u_27:FindFirstChild("HumanoidRootPart")
+                    if not (v28 and v28:IsA("BasePart")) then
+                        v28 = v_u_27:FindFirstChildWhichIsA("BasePart", true)
+                    end
+                end
+                local v29 = script.Info:Clone()
+                local v_u_30 = v29.UnitInfo
+                v_u_26:Add(v_u_4[p20].Inventory[p21].attributes.Observe(function(p31)
+                    -- upvalues: (copy) v_u_25, (copy) v_u_30, (ref) v_u_12, (copy) v_u_27
+                    if p31 then
+                        if v_u_25.chance then
+                            v_u_30.Chance.Text = "1 in " .. v_u_12.FormatCompact(v_u_25.chance(p31))
+                        elseif v_u_25.limited then
+                            v_u_30.Chance.Text = "Limited"
+                            v_u_30.Chance.TextColor3 = Color3.fromRGB(85, 255, 127)
+                        else
+                            v_u_30.Chance.Text = ""
+                        end
+                        v_u_30.Income.Text = "$" .. v_u_12.FormatCompact(v_u_25.income(p31)) .. "/s"
+                    else
+                        v_u_27:Destroy()
+                    end
+                end))
+                local v32 = v_u_25.getRarity(v24)
+                local v33 = v_u_8.Get(v32)
+                v_u_30.DisplayName.Text = v23
+                v_u_30.Rarity.Text = v32
+                v_u_30.Rarity.UIGradient.Color = v33.gradient
+                if v24.mutation then
+                    local v34 = v_u_2[v24.mutation]
+                    v_u_30.Mutation.Text = v24.mutation
+                    v_u_30.Mutation.UIGradient.Color = v34.color
+                    v_u_30.Mutation.Visible = true
+                else
+                    v_u_30.Mutation.Visible = false
+                end
+                v29.Parent = v28
+                return v_u_27
+            end
+        end
+    end,
+    ["Equip"] = function(p_u_35, p36) -- name: Equip
+        -- upvalues: (copy) v_u_9, (copy) v_u_7, (copy) v_u_4, (copy) v_u_5, (copy) v_u_15, (copy) v_u_16, (copy) v_u_14, (copy) v_u_63, (copy) v_u_3
+        if not v_u_9.Try(p_u_35, "UnitAction", 0.5) or (not v_u_7.IsLoaded(p_u_35) or type(p36) ~= "string") then
+            return false
+        end
+        local v37 = v_u_4[p_u_35].Inventory[p36]()
+        if not v37 then
+            return false
+        end
+        local v38 = v37.name
+        local v39 = v_u_5.getEntryConfig(v38)
+        if not v39 or v39.kind ~= "Unit" then
+            return false
+        end
+        local v40 = p_u_35.Character
+        local v41
+        if v40 then
+            v41 = v40:FindFirstChildOfClass("Humanoid")
+        else
+            v41 = v40
+        end
+        if not v40 or (not v41 or v41.Health <= 0) then
+            return false
+        end
+        local v42 = v_u_15[p_u_35]
+        v_u_15[p_u_35] = nil
+        v_u_16[p_u_35] = nil
+        v_u_14:SetFor(p_u_35, nil)
+        if v42 then
+            v42:Destroy()
+        end
+        local v43 = v_u_63.GetUnitModel(p_u_35, p36)
+        if not v43 then
+            return false
+        end
+        local v44
+        if v43.PrimaryPart then
+            v44 = v43.PrimaryPart
+        else
+            v44 = v43:FindFirstChild("HumanoidRootPart")
+            if not (v44 and v44:IsA("BasePart")) then
+                v44 = v43:FindFirstChildWhichIsA("BasePart", true)
+            end
+        end
+        local v45 = v43:FindFirstChildOfClass("Humanoid")
+        if not v44 then
+            v43:Destroy()
+            warn((("Unit \"%*\" does not contain a BasePart"):format(p36)))
+            return false
+        end
+        if v45 then
+            v45.AutoRotate = false
+            v45:ChangeState(Enum.HumanoidStateType.Physics)
+            v45.PlatformStand = true
+            v45.EvaluateStateMachine = false
+        end
+        v43.Name = "EquippedUnit"
+        v43:ScaleTo(v43:GetScale() * 0.85)
+        local v_u_46 = Instance.new("Tool")
+        v_u_46.Name = v38
+        v_u_46.CanBeDropped = false
+        v_u_46.ManualActivationOnly = true
+        v_u_46.RequiresHandle = true
+        local v47 = Instance.new("Part")
+        v47.Name = "Handle"
+        v47.Size = Vector3.new(0.2, 0.2, 0.2)
+        v47.Transparency = 1
+        v47.CanCollide = false
+        v47.CanQuery = false
+        v47.CanTouch = false
+        v47.Massless = true
+        v47.CollisionGroup = "Units"
+        v47.CFrame = CFrame.new()
+        v47.Parent = v_u_46
+        for _, v48 in v43:GetDescendants() do
+            if v48:IsA("BaseScript") then
+                v48.Enabled = false
+            elseif v48:IsA("BasePart") then
+                v48.CanCollide = false
+                v48.CanQuery = false
+                v48.CanTouch = false
+                v48.Massless = true
+                v48.Anchored = false
+                v48.CollisionGroup = "UnitTools"
+            end
+        end
+        local v49 = v43:GetBoundingBox():ToObjectSpace(v43:GetPivot())
+        v43:PivotTo(CFrame.new(v47.Position) * v49)
+        v43.Parent = v_u_46
+        local v50 = Instance.new("Weld")
+        v50.Name = "UnitCarryWeld"
+        v50.Part0 = v47
+        v50.Part1 = v44
+        v50.Parent = v47
+        v_u_46.Unequipped:Connect(function()
+            -- upvalues: (ref) v_u_15, (copy) p_u_35, (copy) v_u_46
+            task.defer(function()
+                -- upvalues: (ref) v_u_15, (ref) p_u_35, (ref) v_u_46
+                if v_u_15[p_u_35] == v_u_46 and v_u_46.Parent then
+                    local v51 = p_u_35.Character
+                    if v51 then
+                        v51 = v51:FindFirstChildOfClass("Humanoid")
+                    end
+                    if v51 and v51.Health > 0 then
+                        v51:EquipTool(v_u_46)
+                    end
+                end
+            end)
+        end)
+        v_u_46.Destroying:Connect(function()
+            -- upvalues: (ref) v_u_15, (copy) p_u_35, (copy) v_u_46, (ref) v_u_16, (ref) v_u_14
+            if v_u_15[p_u_35] == v_u_46 then
+                v_u_15[p_u_35] = nil
+                v_u_16[p_u_35] = nil
+                v_u_14:SetFor(p_u_35, nil)
+            end
+        end)
+        v_u_15[p_u_35] = v_u_46
+        v_u_16[p_u_35] = p36
+        v_u_14:SetFor(p_u_35, p36)
+        v_u_46.Parent = p_u_35:WaitForChild("Backpack")
+        v41:EquipTool(v_u_46)
+        v_u_3.PlayAnimation(v43)
+        return true
+    end,
+    ["Unequip"] = function(p52) -- name: Unequip
+        -- upvalues: (copy) v_u_9, (copy) v_u_15, (copy) v_u_16, (copy) v_u_14
+        if not v_u_9.Try(p52, "UnitAction", 0.5) then
+            return false
+        end
+        local v53 = v_u_15[p52]
+        v_u_15[p52] = nil
+        v_u_16[p52] = nil
+        v_u_14:SetFor(p52, nil)
+        if v53 then
+            v53:Destroy()
+        end
+        return true
+    end,
+    ["LevelUp"] = function(p54, p55) -- name: LevelUp
+        -- upvalues: (copy) v_u_9, (copy) v_u_4, (copy) v_u_5, (copy) v_u_3, (copy) v_u_6
+        if type(p55) ~= "string" or not v_u_9.Try(p54, "level_up_unit", 0.1) then
+            return false
+        end
+        local v56 = v_u_4[p54]
+        if not v56 then
+            return false
+        end
+        local v57 = v56.Inventory[p55]()
+        if not v57 then
+            return false
+        end
+        local v58 = v57.name
+        local v59 = v_u_5.getEntryConfig(v58)
+        if not v59 or v59.kind ~= "Unit" then
+            return false
+        end
+        local v_u_60 = v_u_3.GetLevelPrice(v58, v57.attributes)
+        if v56.Money() < v_u_60 then
+            v_u_6.SendTextNotification(p54, {
+                ["message"] = "You can\'t afford to level this up!",
+                ["notificationType"] = "error"
+            })
+            return false
+        end
+        v56.Money(function(p61)
+            -- upvalues: (copy) v_u_60
+            return p61 - v_u_60
+        end)
+        v56.Inventory[p55].attributes.level(function(p62)
+            return (p62 or 1) + 1
+        end)
+        return true
+    end
+}
+v13:CreateSignal("SetLocked"):Connect(function(p64, p65)
+    -- upvalues: (copy) v_u_7, (copy) v_u_9, (copy) v_u_4, (copy) v_u_5
+    if v_u_7.IsLoaded(p64) and (type(p65) == "table" and v_u_9.Try(p64, "SetUnitLocks", 0.2)) then
+        local v66 = v_u_4[p64]
+        for v67, v68 in p65 do
+            if type(v67) == "string" and type(v68) == "boolean" then
+                local v69 = v66.Inventory[v67]()
+                if v69 then
+                    local v70 = v_u_5.getEntryConfig(v69.name)
+                    if v70 and v70.kind == "Unit" then
+                        v66.Inventory[v67].attributes.locked(v68)
+                    end
+                end
+            end
+        end
+    end
+end)
+v13:BindFunction("Equip", v_u_63.Equip)
+v13:BindFunction("Unequip", v_u_63.Unequip)
+v_u_7.AddLoadEvent(function(p_u_71)
+    -- upvalues: (copy) v_u_15, (copy) v_u_16, (copy) v_u_14
+    p_u_71.CharacterRemoving:Connect(function()
+        -- upvalues: (copy) p_u_71, (ref) v_u_15, (ref) v_u_16, (ref) v_u_14
+        local v72 = p_u_71
+        local v73 = v_u_15[v72]
+        v_u_15[v72] = nil
+        v_u_16[v72] = nil
+        v_u_14:SetFor(v72, nil)
+        if v73 then
+            v73:Destroy()
+        end
+    end)
+end)
+v_u_7.PlayerRemoving:Connect(function(p74)
+    -- upvalues: (copy) v_u_15, (copy) v_u_16, (copy) v_u_14
+    local v75 = v_u_15[p74]
+    v_u_15[p74] = nil
+    v_u_16[p74] = nil
+    v_u_14:SetFor(p74, nil)
+    if v75 then
+        v75:Destroy()
+    end
+end)
+return v_u_63
+
+-- Script Path: game:GetService("ReplicatedStorage").Framework.Features.Inventory.Kinds.Unit.UnitSelectController
+-- Took 0s to decompile.
+-- Executor: Delta (1.1.736.1408)
+
+local v1 = game:GetService("ReplicatedStorage")
+local v_u_2 = require(v1.Framework.Features.Data.DataController)
+local v_u_3 = require(v1.Framework.Features.Inventory.EntryIcon)
+local v_u_4 = require(v1.Framework.Features.Inventory.EntryRegistry)
+local v_u_5 = require(v1.Framework.Features.UI.MenuController)
+local v6 = require(v1.Framework.Features.UI.UIReferences)
+local v_u_7 = require(v1.Packages.Maid)
+local v_u_8 = v6.Menus.SelectUnit
+local v9 = {}
+local v_u_10 = {}
+local function v_u_16() -- name: updateMenu
+    -- upvalues: (copy) v_u_10, (copy) v_u_2, (copy) v_u_4, (copy) v_u_3, (copy) v_u_8
+    for v11, v12 in pairs(v_u_10) do
+        if not v_u_2.Inventory[v11]() then
+            v12:Destroy()
+            v_u_10[v11] = nil
+        end
+        if not v12 or (v12.destroyed or not v12.icon.Parent) then
+            v_u_10[v11] = nil
+        end
+    end
+    for v13, v14 in pairs(v_u_2.Inventory()) do
+        if v_u_4.getEntryConfig(v14.name).kind == "Unit" and not v_u_10[v13] then
+            local v15 = v_u_3.new({
+                ["key"] = nil,
+                ["tooltip"] = true,
+                ["key"] = v13
+            })
+            v_u_10[v13] = v15
+            v15.icon.Parent = v_u_8.Content.ScrollingFrame
+        end
+    end
+end
+local v_u_17 = nil
+function v9.OpenSelectMenu(p_u_18, p19) -- name: OpenSelectMenu
+    -- upvalues: (ref) v_u_17, (copy) v_u_16, (copy) v_u_5, (copy) v_u_8, (copy) v_u_7, (copy) v_u_10
+    if v_u_17 then
+        v_u_17:Destroy()
+        v_u_17 = nil
+    end
+    v_u_16()
+    v_u_5.OpenMenu(v_u_8)
+    v_u_17 = v_u_7.new()
+    for _, v_u_20 in pairs(v_u_10) do
+        if p19 then
+            p19(v_u_20)
+        end
+        v_u_17:Add(v_u_20.icon.Activated:Connect(function()
+            -- upvalues: (copy) p_u_18, (copy) v_u_20, (ref) v_u_17
+            p_u_18(v_u_20)
+            v_u_17:Destroy()
+        end))
+    end
+    v_u_17:Add(v_u_5.Closed:Connect(function()
+        -- upvalues: (ref) v_u_17
+        if v_u_17 then
+            v_u_17:Destroy()
+        end
+    end))
+end
+return v9
+
+-- Script Path: game:GetService("ReplicatedStorage").Framework.Features.Inventory.Kinds.Unit.UnitController
+-- Took 0s to decompile.
+-- Executor: Delta (1.1.736.1408)
+
+local v1 = game:GetService("ReplicatedStorage")
+local v_u_2 = game:GetService("StarterGui")
+local v3 = require(v1.Framework.Features.UI.Components.Button)
+local v_u_4 = require(v1.Framework.Features.UI.MenuController)
+local v5 = require(v1.Framework.Features.UI.UIReferences)
+local v6 = require(v1.Packages.Network)
+local v7 = require(v1.Packages.Ripple)
+local v8 = require(v1.Packages.State)
+local v9 = v6.ClientComm.new(v1.Network, false, "UnitService")
+local v_u_10 = v9:GetFunction("Equip")
+local v_u_11 = v9:GetFunction("Unequip")
+local v12 = v9:GetProperty("EquippedUnit")
+local v_u_13 = {}
+local v_u_14 = v8.new(nil)
+v12:Observe(function(p15)
+    -- upvalues: (copy) v_u_14
+    v_u_14(p15)
+end)
+task.spawn(function()
+    -- upvalues: (copy) v_u_2
+    while not pcall(function()
+        -- upvalues: (ref) v_u_2
+        v_u_2:SetCoreGuiEnabled(Enum.CoreGuiType.Backpack, false)
+    end) do
+        task.wait()
+    end
+end)
+function v_u_13.Equip(p16) -- name: Equip
+    -- upvalues: (copy) v_u_10
+    return v_u_10(p16)
+end
+function v_u_13.Unequip() -- name: Unequip
+    -- upvalues: (copy) v_u_11
+    return v_u_11()
+end
+local _, v_u_17 = v3.init(v5.HUD.PutBack)
+local v_u_18 = v7.createSpring(UDim2.new(0.5, 0, 1, -160), {
+    ["frequency"] = 2.2,
+    ["dampingRatio"] = 0.75,
+    ["start"] = true
+})
+v8.effect(function()
+    -- upvalues: (copy) v_u_14, (copy) v_u_17, (copy) v_u_4, (copy) v_u_18
+    if v_u_14() then
+        v_u_17.Visible = true
+        if v_u_4.ActiveMenu() then
+            v_u_18:setGoal(UDim2.new(0.5, 0, 1, -50))
+            v_u_18:setPosition(UDim2.new(0.5, 0, 1, -50))
+        else
+            v_u_18:setGoal(UDim2.new(0.5, 0, 1, -160))
+        end
+    else
+        v_u_17.Visible = false
+        return
+    end
+end)
+v_u_18:onChange(function(p19)
+    -- upvalues: (copy) v_u_17
+    v_u_17.Position = p19
+end)
+v_u_17.Activated:Connect(function()
+    -- upvalues: (copy) v_u_13
+    v_u_13.Unequip()
+end)
+v_u_13.EquippedUnit = v_u_14
+return v_u_13
+
