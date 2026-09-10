@@ -1208,12 +1208,12 @@ pcall(function()
 	Tabs.Main:SetSubTabAlignment("Center")
 end)
 
-local FarmTab = Tabs.Main:AddSubTab({ Name = "Farm", Icon = "sprout" })
+local FarmTab = Tabs.Main:AddSubTab({ Name = "Farm", Icon = "star" })
 local ShopTab = Tabs.Main:AddSubTab({ Name = "Shop", Icon = "shopping-cart" })
 local TowerTab = Tabs.Main:AddSubTab({ Name = "Tower", Icon = "castle" })
 
-local FarmingBox = box(FarmTab, "Farming", "sprout", "Left")
-FarmingBox:AddToggle("RollDice", { Text = "Fast Roll", Default = false, Callback = function(value)
+local FarmingBox = box(FarmTab, "Farming", "star", "Left")
+FarmingBox:AddToggle("RollDice", { Text = "Auto Roll", Default = false, Callback = function(value)
 	enabled.roll = value
 end })
 FarmingBox:AddToggle("CollectBalance", { Text = "Collect Cash", Default = false, Callback = function(value)
@@ -1508,8 +1508,8 @@ local function loop(name, func, interval)
 	end)
 end
 
---// Fast Roll — 0.01s (as fast as possible)
-loop("roll", autoRoll, 0.01)
+--// Fast Roll — 1s (as fast as possible)
+loop("roll", autoRoll, 1)
 --// Instan Tower — PlayTower (starts/selects the tower) — 0.5s
 loop("tower", autoTowerPlay, 0.5)
 --// Instan Tower — CompleteTowerFloor — 0.1s
