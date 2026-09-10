@@ -87,7 +87,7 @@ end
 
 local boughtTrails = {}
 local function doBuyTrail()
-	for _, name in ipairs({ "Green", "Orange", "Blue", "Purple", "Rainbow", "Admin" "Owner" }) do
+	for _, name in ipairs({ "Green", "Orange", "Blue", "Purple", "Rainbow", "Admin" }) do
 		if not boughtTrails[name] then
 			boughtTrails[name] = true
 			pcall(function() Net:WaitForChild("RE/Trails/BuyViaWins"):FireServer(name) end)
