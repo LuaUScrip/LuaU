@@ -1,1898 +1,1500 @@
--- Script Path: game:GetService("ReplicatedStorage").Framework.Features.Selling.SellController
--- Took 0.02s to decompile.
--- Executor: Delta (1.1.736.1408)
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local VirtualUser = game:GetService("VirtualUser")
+local HttpService = game:GetService("HttpService")
+local GuiService = game:GetService("GuiService")
+local CoreGui = game:GetService("CoreGui")
+local Workspace = game:GetService("Workspace")
 
-local v_u_1 = game:GetService("ReplicatedStorage")
-local v_u_2 = require(v_u_1.Framework.Features.Buffs.BuffController)
-local v_u_3 = require(v_u_1.Framework.Features.UI.Components.Button)
-local v_u_4 = require(v_u_1.Framework.Features.Data.DataController)
-local v_u_5 = require(v_u_1.Framework.Features.Inventory.EntryIcon)
-local v_u_6 = require(v_u_1.Framework.Features.UI.MenuController)
-local v_u_7 = require(v_u_1.Framework.Features.Selling.SellUtil)
-local v8 = require(v_u_1.Framework.Features.UI.UIReferences)
-local v9 = require(v_u_1.Framework.Utils.ZoneUtil)
-local v_u_10 = require(v_u_1.Framework.Utils.AudioUtil)
-local v_u_11 = require(v_u_1.Packages.NumberFormatter)
-local v_u_12 = require(v_u_1.Packages.Ripple)
-local v_u_13 = require(v_u_1.Packages.State)
-local v14 = require(v_u_1.Packages.Network)
-local v_u_15 = v8.Root
-local v_u_16 = v_u_15.Menus.ConfirmSell
-local v17 = v_u_16.Content.Options
-local v_u_18 = v_u_16.Content.CanvasGroup.ScrollingFrame
-local _, v_u_19 = v_u_3.init(v17.Sell)
-local _, v20 = v_u_3.init(v17.Cancel)
-local v_u_21 = v_u_19.Frame.Info.TextLabel
-local v22 = v14.ClientComm.new(v_u_1.Network, false, "SellService")
-local v_u_23 = v22:GetFunction("SellEquipped")
-local v_u_24 = v22:GetFunction("SellInventory")
-local v_u_25 = v_u_15.Selling.Frame
-local v_u_26 = v_u_25.Template
-v_u_26.Visible = false
-local v_u_27 = v_u_13.new(false)
-local v_u_28 = false
-local v_u_29 = false
-local v_u_30 = {}
-local v_u_31 = nil
-local v_u_39 = {
-    {
-        ["text"] = "I want to sell this!",
-        ["action"] = nil,
-        ["action"] = function() -- name: action
-            -- upvalues: (copy) v_u_23, (copy) v_u_10, (copy) v_u_1, (copy) v_u_27
-            local _, v32 = v_u_23()
-            if v32 > 0 then
-                v_u_10.play(v_u_1.Assets.Sounds.Sell)
-            end
-            v_u_27(false)
-        end
-    },
-    {
-        ["text"] = "I want to sell my inventory!",
-        ["action"] = nil,
-        ["action"] = function() -- name: openInventoryConfirmation
-            -- upvalues: (copy) v_u_30, (ref) v_u_31, (copy) v_u_7, (copy) v_u_4, (copy) v_u_21, (copy) v_u_11, (copy) v_u_2, (copy) v_u_19, (copy) v_u_5, (copy) v_u_18, (copy) v_u_27, (copy) v_u_6, (copy) v_u_16
-            for _, v33 in v_u_30 do
-                v33:Destroy()
-            end
-            table.clear(v_u_30)
-            v_u_31 = nil
-            local v34 = v_u_7.CreateSummary(v_u_4.Inventory(), v_u_4.Slots())
-            v_u_31 = v34
-            v_u_21.Text = "$" .. v_u_11.FormatCompact(v34.totalPrice * v_u_2.GetBuff("Sell Multiplier"))
-            v_u_19.Interactable = v34.totalUnits > 0
-            for _, v35 in v34.sales do
-                local v37 = v_u_5.new({
-                    ["key"] = v35.key,
-                    ["callback"] = function(p36) -- name: callback
-                        -- upvalues: (ref) v_u_18
-                        p36.Parent = v_u_18
-                    end
-                })
-                local v38 = v_u_30
-                table.insert(v38, v37)
-            end
-            v_u_27(false)
-            v_u_6.OpenMenu(v_u_16)
-        end
-    },
-    {
-        ["text"] = "Edit auto sell settings!",
-        ["action"] = nil,
-        ["action"] = function() -- name: action
-            -- upvalues: (copy) v_u_6, (copy) v_u_27, (copy) v_u_15
-            v_u_6.CloseMenu()
-            v_u_27(false)
-            v_u_6.OpenMenu(v_u_15.Menus.AutoSell)
-        end
-    },
-    {
-        ["text"] = "Goodbye!",
-        ["action"] = nil,
-        ["action"] = function() -- name: action
-            -- upvalues: (copy) v_u_27
-            v_u_27(false)
-        end
-    }
-}
-v_u_19.Activated:Connect(function()
-    -- upvalues: (ref) v_u_31, (copy) v_u_30, (copy) v_u_6, (copy) v_u_24, (copy) v_u_10, (copy) v_u_1, (copy) v_u_27
-    local v40 = v_u_31
-    if v40 and v40.totalUnits ~= 0 then
-        local v41 = {}
-        for _, v42 in v40.sales do
-            local v43 = v42.key
-            table.insert(v41, v43)
-        end
-        for _, v44 in v_u_30 do
-            v44:Destroy()
-        end
-        table.clear(v_u_30)
-        v_u_31 = nil
-        v_u_6.CloseMenu()
-        local _, v45 = v_u_24(v41)
-        if v45 > 0 then
-            v_u_10.play(v_u_1.Assets.Sounds.Sell)
-        end
-        v_u_27(false)
-    end
-end)
-v20.Activated:Connect(function()
-    -- upvalues: (copy) v_u_6, (copy) v_u_27, (ref) v_u_29
-    v_u_6.CloseMenu()
-    v_u_27(v_u_29)
-end)
-v_u_6.Closed:Connect(function(p46)
-    -- upvalues: (copy) v_u_16, (copy) v_u_30, (ref) v_u_31
-    if p46 == v_u_16 then
-        for _, v47 in v_u_30 do
-            v47:Destroy()
-        end
-        table.clear(v_u_30)
-        v_u_31 = nil
-    end
-end)
-local v_u_48 = {
-    3,
-    2.4,
-    1.8,
-    1.4
-}
-local function v_u_58() -- name: createOptionScreen
-    -- upvalues: (copy) v_u_39, (copy) v_u_26, (copy) v_u_25, (copy) v_u_3, (copy) v_u_12, (copy) v_u_48, (copy) v_u_13, (copy) v_u_27, (ref) v_u_28
-    for v49, v_u_50 in ipairs(v_u_39) do
-        local v_u_51 = v_u_26:Clone()
-        v_u_51.CanvasGroup.Info.Number.Text = v49 .. ".)"
-        v_u_51.CanvasGroup.Info.OptionName.Text = v_u_50.text
-        v_u_51.Parent = v_u_25
-        v_u_51.Activated:Connect(function()
-            -- upvalues: (copy) v_u_50
-            v_u_50.action()
-        end)
-        v_u_3.init(v_u_51)
-        v_u_51.Visible = true
-        local v_u_52 = UDim2.new(0, 0, 0, (v49 - 1) * (v_u_51.Size.Y.Offset + 5))
-        local v_u_53 = v_u_52 - UDim2.new(0, 25, 0, 0)
-        local v_u_54 = v_u_12.createSpring(v_u_53, {
-            ["frequency"] = nil,
-            ["dampingRatio"] = 0.8,
-            ["start"] = true,
-            ["frequency"] = v_u_48[v49]
-        })
-        local v_u_55 = v_u_12.createSpring(1, {
-            ["frequency"] = nil,
-            ["dampingRatio"] = 1,
-            ["start"] = true,
-            ["frequency"] = v_u_48[v49]
-        })
-        v_u_54:onChange(function(p56)
-            -- upvalues: (copy) v_u_51
-            v_u_51.Position = p56
-        end)
-        v_u_55:onChange(function(p57)
-            -- upvalues: (copy) v_u_51
-            v_u_51.CanvasGroup.GroupTransparency = p57
-        end)
-        v_u_13.effect(function()
-            -- upvalues: (ref) v_u_27, (copy) v_u_54, (copy) v_u_52, (copy) v_u_55, (copy) v_u_51, (copy) v_u_53
-            if v_u_27() == true then
-                v_u_54:setGoal(v_u_52)
-                v_u_55:setGoal(0)
-                v_u_51.Interactable = true
-                v_u_51.Active = true
-            else
-                v_u_54:setGoal(v_u_53)
-                v_u_55:setGoal(1)
-                v_u_51.Interactable = false
-                v_u_51.Active = false
-            end
-        end)
-    end
-    v_u_28 = true
-end
-v_u_13.effect(function()
-    -- upvalues: (copy) v_u_27, (copy) v_u_25
-    if v_u_27() == true then
-        v_u_25.Visible = true
-    end
-end)
-v9.InitPlayerZone(workspace.Zones, "Selling", function(_)
-    -- upvalues: (ref) v_u_29, (ref) v_u_28, (copy) v_u_58, (copy) v_u_27
-    v_u_29 = true
-    if not v_u_28 then
-        v_u_58()
-    end
-    v_u_27(true)
-end, function(_)
-    -- upvalues: (ref) v_u_29, (copy) v_u_27, (copy) v_u_6, (copy) v_u_16
-    v_u_29 = false
-    v_u_27(false)
-    if v_u_6.ActiveMenu() == v_u_16 then
-        v_u_6.CloseMenu()
-    end
-end)
-return {}
+local LocalPlayer = Players.LocalPlayer
 
+local GAME_NAME = "+1 Skinny Per Step"
+local DISCORD_INVITE = "https://discord.gg/ehKVq7pf7v"
+local RSCRIPTS_LINK = "https://rscripts.net/@Ouroboros"
 
--- Script Path: game:GetService("ReplicatedStorage").Framework.Features.Selling.SellService
--- Took 0.01s to decompile.
--- Executor: Delta (1.1.736.1408)
+local LTC_ADDRESS = "LSZPqKSsD1x6QXea2H8JS17nXMLnmtew3w"
+local BTC_ADDRESS = "bc1qwc9exvcn3ykjqnsa0t9gakuccr494ljjuuqj99"
+local ETH_ADDRESS = "0xaE95A405D007a6F858E5d35714111B075fEFb40a"
+local USDT_ADDRESS = "0xaE95A405D007a6F858E5d35714111B075fEFb40a"
+local SOL_ADDRESS = "Hq5jPHKDKjyHhccc6UULcbYTK6aKBBbTDmHNRXGKBKGp"
+local PAYPAL_LINK = "https://paypal.me/TheTruckerGOD"
+local VENMO_LINK = "https://venmo.com/u/miserablemusic"
 
-local v1 = game:GetService("ReplicatedStorage")
-local v_u_2 = require(v1.Framework.Features.Data.DataService)
-local v_u_3 = require(v1.Framework.Features.Buffs.BuffService)
-local v_u_4 = require(v1.Framework.Features.Inventory.Kinds.Unit.UnitService)
-local v_u_5 = require(v1.Framework.Features.Notifications.NotificationService)
-local v_u_6 = require(v1.Framework.Features.Player.PlayerService)
-local v_u_7 = require(v1.Framework.Features.Selling.SellUtil)
-local v_u_8 = require(v1.Framework.Utils.DebounceUtil)
-local v_u_9 = require(v1.Framework.Utils.NumberUtil)
-local v10 = require(v1.Packages.Network).ServerComm.new(v1.Network, "SellService")
-local v11 = v10:CreateSignal("UpdateAutoSell")
-local v_u_12 = require(v1.Framework.Features.Quests.QuestService)
-local v13 = {}
-local function v_u_26(p14, p15) -- name: completeSales
-    -- upvalues: (copy) v_u_2, (copy) v_u_4, (copy) v_u_3, (copy) v_u_12
-    if #p15 == 0 then
-        return 0, 0
-    end
-    local v16 = v_u_2[p14]
-    if not v16 then
-        return 0, 0
-    end
-    local v17 = v_u_4.GetEquippedUnit(p14)
-    local v18 = 0
-    local v19 = 0
-    local v20 = false
-    for _, v21 in p15 do
-        v18 = v18 + v21.price
-        v19 = v19 + v21.amount
-        if v21.key == v17 then
-            v20 = true
-        end
-    end
-    local v22 = v18 * v_u_3.GetBuff(p14, "Sell Multiplier")
-    local v_u_23 = math.floor(v22)
-    for _, v24 in p15 do
-        v16.Inventory[v24.key](nil)
-    end
-    if v20 then
-        v_u_4.ClearEquippedUnit(p14)
-    end
-    v16.Money(function(p25)
-        -- upvalues: (ref) v_u_23
-        return p25 + v_u_23
-    end)
-    v_u_12.AddProgress(p14, "UnitsSold", v19)
-    return v_u_23, v19
-end
-function v13.Sell(p27, p28, p29) -- name: Sell
-    -- upvalues: (copy) v_u_6, (copy) v_u_8, (copy) v_u_2, (copy) v_u_7, (copy) v_u_26
-    if not p29 then
-        local v30 = v_u_6.IsLoaded(p27)
-        if v30 then
-            v30 = v_u_8.Try(p27, "SellUnits", 0.1)
-        end
-        if not v30 then
-            return 0, 0
-        end
-    end
-    local v31 = v_u_2[p27]
-    if v31 then
-        if typeof(p28) == "table" then
-            return v_u_26(p27, v_u_7.CreateSummary(v31.Inventory(), v31.Slots(), p28).sales)
-        else
-            return 0, 0
-        end
-    else
-        return 0, 0
-    end
-end
-function v13.SellEquipped(p32) -- name: SellEquipped
-    -- upvalues: (copy) v_u_6, (copy) v_u_8, (copy) v_u_2, (copy) v_u_4, (copy) v_u_5, (copy) v_u_7, (copy) v_u_26
-    local v33 = v_u_6.IsLoaded(p32)
-    if v33 then
-        v33 = v_u_8.Try(p32, "SellUnits", 0.1)
-    end
-    if v33 then
-        local v34 = v_u_2[p32]
-        local v35 = v_u_4.GetEquippedUnit(p32)
-        if v34 and v35 then
-            local v36 = v_u_7.CreateSummary(v34.Inventory(), v34.Slots(), { v35 })
-            if #v36.sales == 0 then
-                return 0, 0
-            else
-                return v_u_26(p32, v36.sales)
-            end
-        else
-            v_u_5.SendTextNotification(p32, {
-                ["message"] = "You aren\'t holding a unit to sell.",
-                ["notificationType"] = "error"
-            })
-            return 0, 0
-        end
-    else
-        return 0, 0
-    end
-end
-function v13.SellInventory(p37, p38) -- name: SellInventory
-    -- upvalues: (copy) v_u_6, (copy) v_u_8, (copy) v_u_2, (copy) v_u_7, (copy) v_u_26
-    local v39 = v_u_6.IsLoaded(p37)
-    if v39 then
-        v39 = v_u_8.Try(p37, "SellUnits", 0.1)
-    end
-    if v39 then
-        local v40 = v_u_2[p37]
-        if v40 then
-            if typeof(p38) == "table" then
-                return v_u_26(p37, v_u_7.CreateSummary(v40.Inventory(), v40.Slots(), p38).sales)
-            else
-                return 0, 0
-            end
-        else
-            return 0, 0
-        end
-    else
-        return 0, 0
-    end
-end
-v11:Connect(function(p41, p42)
-    -- upvalues: (copy) v_u_6, (copy) v_u_9, (copy) v_u_2
-    if v_u_6.IsLoaded(p41) and typeof(p42) == "number" then
-        local v43 = v_u_9.IsValid(p42, 0, 1e18)
-        if v43 then
-            local v44 = v_u_2[p41]
-            if v44 then
-                v44.AutoSell(v43)
-            end
-        end
-    else
-        return
-    end
-end)
-v10:BindFunction("SellEquipped", v13.SellEquipped)
-v10:BindFunction("SellInventory", v13.SellInventory)
-return v13
+local LTC = "#345d9d"
+local BTC = "#f7931a"
+local ETH = "#627eea"
+local USDT = "#26a17b"
+local SOL = "#14f195"
+local PAYPAL = "#0070ba"
+local VENMO = "#008cff"
 
--- Script Path: game:GetService("ReplicatedStorage").Framework.Features.Selling.SellUtil
--- Took 0s to decompile.
--- Executor: Delta (1.1.736.1408)
+local GREEN = "#7fd47f"
+local BLUE = "#6ec1ff"
+local ORANGE = "#e8a34d"
+local GREY = "#8b93a3"
 
-local v1 = game:GetService("ReplicatedStorage")
-require(v1.Framework.Features.Data.DataSettings)
-local v_u_2 = require(v1.Framework.Features.Inventory.EntryRegistry)
-require(v1.Framework.Features.Inventory.EntryTypes)
-local v_u_29 = {
-    ["GetSellPrice"] = function(p3, p4) -- name: GetSellPrice
-        -- upvalues: (copy) v_u_2
-        local v5 = v_u_2.getEntryConfig(p3)
-        return (not v5 or v5.kind ~= "Unit") and 0 or v5.income(p4) * 40
-    end,
-    ["GetPlottedUnits"] = function(p6) -- name: GetPlottedUnits
-        local v7 = {}
-        for _, v8 in p6 do
-            if v8.unitId then
-                v7[v8.unitId] = true
-            end
-        end
-        return v7
-    end,
-    ["CreateSale"] = function(p9, p10, p11) -- name: CreateSale
-        -- upvalues: (copy) v_u_2, (copy) v_u_29
-        if not p10 or (p10.amount <= 0 or (p11[p9] or p10.attributes.locked)) then
-            return nil
-        end
-        local v12 = v_u_2.getEntryConfig(p10.name)
-        if not v12 or v12.kind ~= "Unit" then
-            return nil
-        end
-        local v13 = p10.attributes
-        local v14 = p10.amount
-        return {
-            ["key"] = p9,
-            ["name"] = p10.name,
-            ["amount"] = v14,
-            ["level"] = v13.level or 1,
-            ["price"] = v_u_29.GetSellPrice(p10.name, v13) * v14
-        }
-    end,
-    ["CreateSummary"] = function(p15, p16, p17) -- name: CreateSummary
-        -- upvalues: (copy) v_u_29
-        local v18 = v_u_29.GetPlottedUnits(p16)
-        local v19 = {}
-        local v20 = {}
-        local v21 = 0
-        local v22 = 0
-        if p17 then
-            for _, v23 in p17 do
-                if typeof(v23) == "string" then
-                    if not v20[v23] then
-                        v20[v23] = true
-                        local v24 = v_u_29.CreateSale(v23, p15[v23], v18)
-                        if v24 then
-                            table.insert(v19, v24)
-                            v21 = v21 + v24.price
-                            v22 = v22 + v24.amount
-                        end
-                    end
-                end
-            end
-        else
-            for v25 in p15 do
-                if not v20[v25] then
-                    v20[v25] = true
-                    local v26 = v_u_29.CreateSale(v25, p15[v25], v18)
-                    if v26 then
-                        table.insert(v19, v26)
-                        v21 = v21 + v26.price
-                        v22 = v22 + v26.amount
-                    end
-                end
-            end
-        end
-        table.sort(v19, function(p27, p28)
-            if p27.name == p28.name then
-                return p27.key < p28.key
-            else
-                return p27.name < p28.name
-            end
-        end)
-        return {
-            ["sales"] = v19,
-            ["totalPrice"] = v21,
-            ["totalUnits"] = v22
-        }
-    end
-}
-return v_u_29
+local AutoWinsRoute = ReplicatedStorage:WaitForChild("AutoWinsRoute")
+local Resources = ReplicatedStorage:WaitForChild("Resources")
+local EggsFolder = Resources:WaitForChild("Eggs")
+local Remotes = ReplicatedStorage:WaitForChild("Remotes")
+local BuyEgg = Remotes:WaitForChild("Eggs"):WaitForChild("BuyEgg")
+local EquipBestPets = Remotes:WaitForChild("Pets"):WaitForChild("EquipBest")
 
--- Script Path: game:GetService("ReplicatedStorage").Framework.Features.Selling.AutoSellController
--- Took 0s to decompile.
--- Executor: Delta (1.1.736.1408)
+local RebirthRequest = ReplicatedStorage:WaitForChild("RebirthRequest")
+local TrailEquipRequest = ReplicatedStorage:WaitForChild("TrailEquipRequest")
+local TeleportRequest = ReplicatedStorage:WaitForChild("TeleportRequest")
 
-local v1 = game:GetService("ReplicatedStorage")
-local v_u_2 = require(v1.Framework.Features.Data.DataController)
-local v3 = require(v1.Framework.Features.UI.UIReferences)
-local v_u_4 = require(v1.Framework.Utils.NumberUtil)
-local v_u_5 = require(v1.Packages.NumberFormatter)
-local v6 = require(v1.Packages.Network)
-local v_u_7 = v3.Menus.AutoSell.Frame.TextBox
-local v_u_8 = v6.ClientComm.new(v1.Network, false, "SellService"):GetSignal("UpdateAutoSell")
-v_u_7.FocusLost:Connect(function()
-    -- upvalues: (copy) v_u_7, (copy) v_u_4, (copy) v_u_5, (copy) v_u_2, (copy) v_u_8
-    local v9 = v_u_7.Text:gsub(",", "")
-    local v10 = v9 == "" and 0 or tonumber(v9)
-    local v11
-    if v10 then
-        v11 = v_u_4.IsValid(v10, 0, 1e18)
-    else
-        v11 = nil
-    end
-    if not v10 then
-        v11 = v_u_5.ParseCompact(v9) or v11
-    end
-    if v11 then
-        v_u_8:Fire(v11)
-        if v11 > 0 then
-            v_u_7.Text = v_u_5.FormatCompact(v11)
-        else
-            v_u_7.Text = ""
-        end
-    else
-        local v12 = v_u_2.AutoSell()
-        if v12 > 0 then
-            v_u_7.Text = v_u_5.FormatCompact(v12)
-        else
-            v_u_7.Text = ""
-        end
-    end
-end)
-v_u_2.AutoSell.Observe(function() -- name: updateTextBox
-    -- upvalues: (copy) v_u_2, (copy) v_u_7, (copy) v_u_5
-    local v13 = v_u_2.AutoSell()
-    if v13 > 0 then
-        v_u_7.Text = v_u_5.FormatCompact(v13)
-    else
-        v_u_7.Text = ""
-    end
-end)
-return {}
-
--- Script Path: game:GetService("ReplicatedStorage").Framework.Features.Rolling.DiceShopService
--- Took 0s to decompile.
--- Executor: Delta (1.1.736.1408)
-
-local v1 = game:GetService("ReplicatedStorage")
-local v_u_2 = require(v1.Framework.Features.Data.DataService)
-local v_u_3 = require(v1.Framework.Features.Notifications.NotificationService)
-local v_u_4 = require(v1.Framework.Features.Player.PlayerService)
-local v_u_5 = require(v1.Framework.Utils.DebounceUtil)
-local v6 = require(v1.Packages.Network)
-local v_u_7 = require(script.Parent.Dice)
-local v8 = v6.ServerComm.new(v1.Network, "DiceShopService")
-local v9 = v8:CreateSignal("BuyDice")
-local v10 = v8:CreateSignal("EquipDice")
-v9:Connect(function(p11, p12)
-    -- upvalues: (copy) v_u_4, (copy) v_u_5, (copy) v_u_7, (copy) v_u_2, (copy) v_u_3
-    if v_u_4.IsLoaded(p11) and (type(p12) == "string" and v_u_5.Try(p11, "DiceShop", 0.5)) then
-        local v_u_13 = v_u_7.Get(p12)
-        if v_u_13 and v_u_13.price then
-            local v14 = v_u_2[p11]
-            if v14.OwnedDice[p12]() or v14.Money() < v_u_13.price then
-                v_u_3.SendTextNotification(p11, {
-                    ["message"] = "You can\'t afford this dice!",
-                    ["notificationType"] = "error"
-                })
-            else
-                v14.Money(function(p15)
-                    -- upvalues: (copy) v_u_13
-                    return p15 - v_u_13.price
-                end)
-                v14.OwnedDice[p12](true)
-                v14.Dice(p12)
-            end
-        else
-            return
-        end
-    else
-        return
-    end
-end)
-v10:Connect(function(p16, p17)
-    -- upvalues: (copy) v_u_4, (copy) v_u_5, (copy) v_u_7, (copy) v_u_2
-    if v_u_4.IsLoaded(p16) and (type(p17) == "string" and (v_u_5.Try(p16, "DiceShop", 0.5) and v_u_7.Get(p17))) then
-        local v18 = v_u_2[p16]
-        if v18.OwnedDice[p17]() then
-            v18.Dice(p17)
-        end
-    else
-        return
-    end
-end)
-return {}
-
--- Script Path: game:GetService("ReplicatedStorage").Framework.Features.Rolling.DiceShopController
--- Took 0.01s to decompile.
--- Executor: Delta (1.1.736.1408)
-
-local v1 = game:GetService("ReplicatedStorage")
-local v_u_2 = require(v1.Framework.Features.UI.Components.Button)
-local v_u_3 = require(v1.Framework.Features.Data.DataController)
-local v_u_4 = require(v1.Framework.Features.UI.MenuController)
-local v_u_5 = require(script.Parent.Dice)
-local v6 = require(v1.Framework.Features.UI.UIReferences)
-local v7 = require(v1.Framework.Features.UI.Indicator)
-local v_u_8 = require(v1.Framework.Other.Rarities)
-local v9 = require(v1.Framework.Utils.ZoneUtil)
-local v10 = require(v1.Packages.Network)
-local v_u_11 = require(v1.Packages.NumberFormatter)
-local v12 = v10.ClientComm.new(v1.Network, false, "DiceShopService")
-local v_u_13 = v12:GetSignal("BuyDice")
-local v_u_14 = v12:GetSignal("EquipDice")
-local v_u_15 = v6.Menus.DiceShop
-local v_u_16 = v_u_15.Content.ScrollingFrame
-local v_u_17 = v_u_16.Template
-v_u_17.Visible = false
-local v_u_18 = v7(v6.HUD.Top.Shop)
-local v_u_19 = false
-local function v22() -- name: updateIndicator
-    -- upvalues: (copy) v_u_18, (copy) v_u_5, (copy) v_u_3
-    v_u_18.reset()
-    for v20, v21 in pairs(v_u_5.GetAll()) do
-        if v21.price and (not v_u_3.OwnedDice[v20]() and v_u_3.Money() >= v21.price) then
-            v_u_18.genericAlert()
-            return
-        end
-    end
-end
-local function v_u_41() -- name: initShop
-    -- upvalues: (ref) v_u_19, (copy) v_u_5, (copy) v_u_17, (copy) v_u_8, (copy) v_u_11, (copy) v_u_2, (copy) v_u_3, (copy) v_u_14, (copy) v_u_13, (copy) v_u_16
-    if not v_u_19 then
-        v_u_19 = true
-        local v23 = {}
-        for v24, v25 in pairs(v_u_5.GetAll()) do
-            if v25.price then
-                table.insert(v23, {
-                    ["name"] = v24,
-                    ["data"] = v25
-                })
-            end
-        end
-        table.sort(v23, function(p26, p27)
-            if p26.data.luck == p27.data.luck then
-                return p26.name < p27.name
-            else
-                return p26.data.luck < p27.data.luck
-            end
-        end)
-        for v28, v29 in ipairs(v23) do
-            local v_u_30 = v29.name
-            local v_u_31 = v29.data
-            local v32 = v_u_17:Clone()
-            v32.Name = v_u_30
-            v32.LayoutOrder = v28
-            v32.Info.Title.Dice.Text = v_u_30
-            v32.Info.Title.Rarity.Text = v_u_31.rarity
-            v32.Info.Title.Rarity.UIGradient.Color = v_u_8.Get(v_u_31.rarity).gradient
-            v32.Info.Luck.Luck.Text = v_u_11.FormatInt(v_u_31.luck) .. "x Luck"
-            v32.Display.DiceImage.Image = v_u_31.image
-            v32.Display.LightRay.UIGradient.Color = v_u_8.Get(v_u_31.rarity).gradient
-            local v_u_33, v_u_34 = v_u_2.init(v32.Buttons.Buy)
-            local v_u_35 = v32.Buttons.Buy.Frame.Info.Price
-            local function v40() -- name: updateButton
-                -- upvalues: (ref) v_u_3, (copy) v_u_30, (copy) v_u_34, (copy) v_u_35, (copy) v_u_33, (ref) v_u_11, (copy) v_u_31
-                local v36 = v_u_3.OwnedDice[v_u_30]() == true
-                local v37 = v_u_3.Dice() == v_u_30
-                local v38 = v_u_34.Frame.Info.ImageLabel
-                local v39 = not v36
-                if v39 then
-                    v39 = not v37
-                end
-                v38.Visible = v39
-                if v37 then
-                    v_u_35.Text = "Equipped"
-                    v_u_33:ChangeColor(ColorSequence.new(Color3.fromRGB(32, 184, 235), Color3.fromRGB(59, 180, 255)))
-                elseif v36 then
-                    v_u_35.Text = "Equip"
-                    v_u_33:ChangeColor(ColorSequence.new(Color3.fromRGB(32, 184, 235), Color3.fromRGB(59, 180, 255)))
-                else
-                    v_u_35.Text = "$" .. v_u_11.FormatCompact(v_u_31.price)
-                end
-                v_u_34.Interactable = not v37
-            end
-            v_u_34.Activated:Connect(function()
-                -- upvalues: (ref) v_u_3, (copy) v_u_30, (ref) v_u_14, (ref) v_u_13
-                if v_u_3.OwnedDice[v_u_30]() then
-                    v_u_14:Fire(v_u_30)
-                else
-                    v_u_13:Fire(v_u_30)
-                end
-            end)
-            v_u_3.OwnedDice[v_u_30].Observe(v40)
-            v_u_3.Dice.Observe(v40)
-            v32.Visible = true
-            v32.Parent = v_u_16
-        end
-    end
-end
-v_u_3.Money.Changed(v22)
-v_u_3.OwnedDice.Observe(v22)
-v22()
-v_u_4.Opening:Connect(function(p42)
-    -- upvalues: (copy) v_u_15, (copy) v_u_41
-    if p42 == v_u_15 then
-        v_u_41()
-    end
-end)
-v9.InitPlayerZone(workspace.Zones, "DiceShop", function(_)
-    -- upvalues: (copy) v_u_4, (copy) v_u_15
-    v_u_4.OpenMenu(v_u_15)
-end, function(_)
-    -- upvalues: (copy) v_u_4
-    v_u_4.CloseMenu()
-end)
-return {}
-
--- Script Path: game:GetService("ReplicatedStorage").Framework.Features.Rolling.DiceController
--- Took 0s to decompile.
--- Executor: Delta (1.1.736.1408)
-
-local v1 = game:GetService("ReplicatedStorage")
-local v_u_2 = require(script.Parent.Dice)
-local v3 = require(v1.Framework.Features.Data.DataController)
-local v4 = require(v1.Framework.Features.UI.UIReferences)
-local v_u_5 = require(v1.Framework.Other.Rarities)
-local v_u_6 = v4.HUD
-v3.Dice.Observe(function(p7)
-    -- upvalues: (copy) v_u_2, (copy) v_u_6, (copy) v_u_5
-    local v8 = v_u_2.Get(p7)
-    if v8 then
-        v_u_6.Bottom.Roll.Dice.Image = v8.image
-        v_u_6.Bottom.Roll.Ray.UIGradient.Color = v_u_5.Get(v8.rarity).gradient
-    end
-end)
-return {}
-local v_u_6 = v4.HUD
-v3.Dice.Observe(function(p7)
-    -- upvalues: (copy) v_u_2, (copy) v_u_6, (copy) v_u_5
-    local v8 = v_u_2.Get(p7)
-    if v8 then
-        v_u_6.Bottom.Roll.Dice.Image = v8.image
-        v_u_6.Bottom.Roll.Ray.UIGradient.Color = v_u_5.Get(v8.rarity).gradient
-    end
-end)
-return {}
-
--- Script Path: game:GetService("ReplicatedStorage").Framework.Features.Rolling.Dice
--- Took 0s to decompile.
--- Executor: Delta (1.1.736.1408)
-
-local v1 = game:GetService("ReplicatedStorage")
-local v2 = require(v1.Framework.Other.Rarities)
-local v_u_3 = {
-    ["Basic"] = {
-        ["luck"] = 1,
-        ["rarity"] = "Common",
-        ["image"] = "rbxassetid://134876970337785"
-    },
-    ["Normal"] = {
-        ["luck"] = 2,
-        ["rarity"] = "Common",
-        ["image"] = "rbxassetid://134876970337785",
-        ["price"] = 1
-    },
-    ["Fire"] = {
-        ["luck"] = 5,
-        ["rarity"] = "Uncommon",
-        ["image"] = "rbxassetid://107584758470187",
-        ["price"] = 2500
-    },
-    ["Water"] = {
-        ["luck"] = 10,
-        ["rarity"] = "Uncommon",
-        ["image"] = "rbxassetid://107625282990508",
-        ["price"] = 10000
-    },
-    ["Nature"] = {
-        ["luck"] = 20,
-        ["rarity"] = "Rare",
-        ["image"] = "rbxassetid://112899446526334",
-        ["price"] = 75000
-    },
-    ["Lightning"] = {
-        ["luck"] = 42.5,
-        ["rarity"] = "Rare",
-        ["image"] = "rbxassetid://120765961091114",
-        ["price"] = 500000
-    },
-    ["Ice"] = {
-        ["luck"] = 100,
-        ["rarity"] = "Rare",
-        ["image"] = "rbxassetid://72989315871791",
-        ["price"] = 4000000
-    },
-    ["Magma"] = {
-        ["luck"] = 200,
-        ["rarity"] = "Epic",
-        ["image"] = "rbxassetid://103280550394904",
-        ["price"] = 30000000
-    },
-    ["Storm"] = {
-        ["luck"] = 400,
-        ["rarity"] = "Epic",
-        ["image"] = "rbxassetid://112829857583094",
-        ["price"] = 200000000
-    },
-    ["Shadow"] = {
-        ["luck"] = 750,
-        ["rarity"] = "Epic",
-        ["image"] = "rbxassetid://133489178472335",
-        ["price"] = 1500000000
-    },
-    ["Light"] = {
-        ["luck"] = 1500,
-        ["rarity"] = "Legendary",
-        ["image"] = "rbxassetid://91219086543206",
-        ["price"] = 12000000000
-    },
-    ["Blood Moon"] = {
-        ["luck"] = 3000,
-        ["rarity"] = "Legendary",
-        ["image"] = "rbxassetid://87152364704836",
-        ["price"] = 100000000000
-    },
-    ["Void"] = {
-        ["luck"] = 6000,
-        ["rarity"] = "Legendary",
-        ["image"] = "rbxassetid://134047270790894",
-        ["price"] = 750000000000
-    },
-    ["Solar"] = {
-        ["luck"] = 12500,
-        ["rarity"] = "Mythical",
-        ["image"] = "rbxassetid://103966927109104",
-        ["price"] = 5000000000000
-    },
-    ["Lunar"] = {
-        ["luck"] = 25000,
-        ["rarity"] = "Mythical",
-        ["image"] = "rbxassetid://98062406949774",
-        ["price"] = 37500000000000
-    },
-    ["Galaxy"] = {
-        ["luck"] = 50000,
-        ["rarity"] = "Divine",
-        ["image"] = "rbxassetid://91185634172436",
-        ["price"] = 150000000000000
-    },
-    ["Black Hole"] = {
-        ["luck"] = 100000,
-        ["rarity"] = "Divine",
-        ["image"] = "rbxassetid://97247214661606",
-        ["price"] = 1000000000000000
-    },
-    ["Dragon"] = {
-        ["luck"] = 200000,
-        ["rarity"] = "Exotic",
-        ["image"] = "rbxassetid://72339701378301",
-        ["price"] = 8500000000000000
-    },
-    ["Royal"] = {
-        ["luck"] = 400000,
-        ["rarity"] = "Exotic",
-        ["image"] = "rbxassetid://129331882004972",
-        ["price"] = 1e17
-    },
-    ["Prismatic"] = {
-        ["luck"] = 1000000,
-        ["rarity"] = "Celestial",
-        ["image"] = "rbxassetid://100284944801383",
-        ["price"] = 1e18
-    },
-    ["Arcane"] = {
-        ["luck"] = 2000000,
-        ["rarity"] = "Celestial",
-        ["image"] = "rbxassetid://92630730379347",
-        ["price"] = 1.25e19
-    },
-    ["Corrupted"] = {
-        ["luck"] = 5000000,
-        ["rarity"] = nil,
-        ["image"] = "rbxassetid://87917869781148",
-        ["price"] = 1.5e20,
-        ["rarity"] = v2.Refs.Secret1
-    },
-    ["Titan"] = {
-        ["luck"] = 10000000,
-        ["rarity"] = nil,
-        ["image"] = "rbxassetid://125423800047833",
-        ["price"] = 1e21,
-        ["rarity"] = v2.Refs.Secret1
-    },
-    ["Chrono"] = {
-        ["luck"] = 25000000,
-        ["rarity"] = nil,
-        ["image"] = "rbxassetid://86463060513242",
-        ["price"] = 1.5e22,
-        ["rarity"] = v2.Refs.Secret1
-    }
-}
-return {
-    ["Get"] = function(p4) -- name: Get
-        -- upvalues: (copy) v_u_3
-        return v_u_3[p4]
-    end,
-    ["GetAll"] = function() -- name: GetAll
-        -- upvalues: (copy) v_u_3
-        return v_u_3
-    end,
-    ["GetDefault"] = function() -- name: GetDefault
-        return "Basic"
-    end
+local WORLD_REBIRTHS = {
+	[1] = 0,
+	[2] = 16,
+	[3] = 33,
 }
 
--- Script Path: game:GetService("ReplicatedStorage").Framework.Features.Inventory.Kinds.Unit.UnitConfig
--- Took 0.03s to decompile.
--- Executor: Delta (1.1.736.1408)
-
-local v1 = game:GetService("ReplicatedStorage")
-local v_u_2 = game:GetService("RunService")
-local v_u_3 = require(script.Parent.Mutations)
-local v_u_4 = require(script.Parent.Variants)
-require(v1.Framework.Features.Inventory.EntryTypes)
-local v_u_5 = require(v1.Framework.Features.Traits.Traits)
-local v_u_6 = require(v1.Framework.Features.Grades.Grades)
-local v_u_7 = require(v1.Framework.Other.Rarities)
-local v_u_8 = {}
-local v_u_9 = {
-    [v_u_7.Refs.Common] = 0,
-    [v_u_7.Refs.Uncommon] = 100,
-    [v_u_7.Refs.Rare] = 1000,
-    [v_u_7.Refs.Epic] = 100000,
-    [v_u_7.Refs.Legendary] = 10000000,
-    [v_u_7.Refs.Mythical] = 1000000000,
-    [v_u_7.Refs.Divine] = 100000000000,
-    [v_u_7.Refs.Exotic] = 10000000000000,
-    [v_u_7.Refs.Celestial] = 1000000000000000,
-    [v_u_7.Refs.Secret1] = 1e17
+local TRAIL_ORDER = {
+	{ Name = "WhiteTrail", Cost = 5, Speed = 17 },
+	{ Name = "RedTrail", Cost = 100, Speed = 22 },
+	{ Name = "BlueTrail", Cost = 1000, Speed = 25 },
+	{ Name = "YellowTrail", Cost = 50000, Speed = 28 },
+	{ Name = "GreenTrail", Cost = 500000, Speed = 31 },
+	{ Name = "PurpleTrail", Cost = 1000000, Speed = 35 },
+	{ Name = "RainbowTrail", Cost = 10000000, Speed = 40 },
+	{ Name = "AuroraTrail", Cost = 50000000, Speed = 45 },
+	{ Name = "LavaTrail", Cost = 100000000, Speed = 50 },
+	{ Name = "BeachTrail", Cost = 1000000000, Speed = 54 },
+	{ Name = "ObsidianTrail", Cost = 1e12, Speed = 59 },
+	{ Name = "DiamondTrail", Cost = 1e15, Speed = 65 },
 }
-local function v102(p_u_10, p_u_11) -- name: createUnitEntry
-    -- upvalues: (copy) v_u_3, (copy) v_u_5, (copy) v_u_6, (copy) v_u_7, (copy) v_u_9, (copy) v_u_2, (copy) v_u_4, (copy) v_u_8
-    local function v100(p12) -- name: createUnitEntry
-        -- upvalues: (ref) v_u_4, (copy) p_u_11, (copy) p_u_10, (ref) v_u_8, (ref) v_u_3, (ref) v_u_7, (ref) v_u_9, (ref) v_u_2, (ref) v_u_5, (ref) v_u_6
-        local v13 = p12 and (v_u_4[p12] or {}) or {}
-        local v_u_14 = p_u_11.model:Clone()
-        if v13.modelScale then
-            v_u_14:ScaleTo(v13.modelScale)
-        end
-        local v15 = p12 and p12 .. " " .. p_u_10 or p_u_10
-        local v16 = v13.chanceMultiplier or 1
-        local v17 = p_u_11.chance
-        if not v17 then
-            local v18 = p_u_11.income
-            v17 = assert(v18) ^ 1.3793103448275863
-        end
-        local v_u_19 = v17 * v16
-        local v20 = p_u_11.income and p_u_11.income ^ 1.3793103448275863
-        if not v20 then
-            local v21 = p_u_11.chance
-            v20 = assert(v21)
-        end
-        local v_u_22 = v20 * v16
-        local v23 = v_u_8
-        local v73 = {
-            ["getRarity"] = function(p24)
-                -- upvalues: (ref) p_u_11, (copy) v_u_19, (ref) v_u_3, (ref) v_u_7, (ref) v_u_9
-                if p_u_11.rarity then
-                    return p_u_11.rarity
-                end
-                local v_u_25 = v_u_19
-                local v30 = (function(p26)
-                    -- upvalues: (copy) v_u_25, (ref) v_u_3
-                    local v27 = v_u_25
-                    local v28 = (p26 or {}).mutation
-                    if v28 then
-                        local v29 = v_u_3[v28]
-                        if v29 then
-                            v27 = v27 * v29.chance
-                        end
-                    end
-                    return v27
-                end)(p24)
-                local v31 = v_u_7.Refs.Common
-                local v32 = 0
-                for v33, v34 in pairs(v_u_9) do
-                    if v34 <= v30 and v32 < v34 then
-                        v31 = v33
-                        v32 = v34
-                    end
-                end
-                return v31
-            end,
-            ["rarity"] = (function(p35)
-                -- upvalues: (ref) p_u_11, (copy) v_u_19, (ref) v_u_3, (ref) v_u_7, (ref) v_u_9
-                if p_u_11.rarity then
-                    return p_u_11.rarity
-                end
-                local v_u_36 = v_u_19
-                local v41 = (function(p37)
-                    -- upvalues: (copy) v_u_36, (ref) v_u_3
-                    local v38 = v_u_36
-                    local v39 = (p37 or {}).mutation
-                    if v39 then
-                        local v40 = v_u_3[v39]
-                        if v40 then
-                            v38 = v38 * v40.chance
-                        end
-                    end
-                    return v38
-                end)(p35)
-                local v42 = v_u_7.Refs.Common
-                local v43 = 0
-                for v44, v45 in pairs(v_u_9) do
-                    if v45 <= v41 and v43 < v45 then
-                        v42 = v44
-                        v43 = v45
-                    end
-                end
-                return v42
-            end)(nil),
-            ["model"] = function(p46)
-                -- upvalues: (ref) v_u_3, (copy) v_u_14, (ref) v_u_2
-                local v47 = (p46 or {}).mutation
-                if v47 then
-                    v47 = v_u_3[v47]
-                end
-                local v48 = v_u_14:Clone()
-                if v47 then
-                    local v_u_49 = v47.color.Keypoints
-                    local v_u_50 = script.Highlight:Clone()
-                    v_u_50.Parent = v48
-                    local v_u_51 = 0
-                    local v_u_59 = v_u_2.Heartbeat:Connect(function(p52)
-                        -- upvalues: (ref) v_u_51, (copy) v_u_49, (copy) v_u_50
-                        v_u_51 = v_u_51 + p52
-                        local v53 = v_u_51 % 8 / 8 * #v_u_49
-                        local v54 = math.floor(v53) + 1
-                        local v55 = v54 % #v_u_49 + 1
-                        local v56 = v53 % 1
-                        local v57 = v_u_49[v54].Value
-                        local v58 = v_u_49[v55].Value
-                        v_u_50.FillColor = v57:Lerp(v58, v56)
-                        v_u_50.OutlineColor = v57:Lerp(v58, v56)
-                    end)
-                    v48.Destroying:Connect(function()
-                        -- upvalues: (ref) v_u_59
-                        v_u_59:Disconnect()
-                    end)
-                end
-                return v48
-            end,
-            ["baseModel"] = p_u_11.model,
-            ["variant"] = p12,
-            ["income"] = function(p60)
-                -- upvalues: (copy) v_u_22, (ref) v_u_3, (ref) v_u_5, (ref) v_u_6
-                local v61 = p60 or {}
-                local v_u_62 = v_u_22
-                local v67 = (function(p63)
-                    -- upvalues: (copy) v_u_62, (ref) v_u_3
-                    local v64 = v_u_62
-                    local v65 = (p63 or {}).mutation
-                    if v65 then
-                        local v66 = v_u_3[v65]
-                        if v66 then
-                            v64 = v64 * v66.chance
-                        end
-                    end
-                    return v64
-                end)(v61) ^ 0.725
-                local v68 = v61.level or 1
-                local v69 = v61.trait
-                local v70 = v61.grade
-                if v69 then
-                    local v71 = v_u_5[v69]
-                    if v71.incomeMultiplier then
-                        v67 = v67 * v71.incomeMultiplier
-                    end
-                end
-                if v70 then
-                    v67 = v67 * v_u_6[v70].incomeMultiplier
-                end
-                local v72 = v67 * (1 + 0.25 * (v68 - 1))
-                return math.floor(v72)
-            end
-        }
-        local v74
-        if p_u_11.chance then
-            local v_u_75 = p_u_11.chance * v16
-            v74 = function(p76)
-                -- upvalues: (copy) v_u_75, (ref) v_u_3
-                local v77 = v_u_75
-                local v78 = (p76 or {}).mutation
-                if v78 then
-                    local v79 = v_u_3[v78]
-                    if v79 then
-                        v77 = v77 * v79.chance
-                    end
-                end
-                return v77
-            end
-        else
-            v74 = nil
-        end
-        v73.chance = v74
-        function v73.damage(p80)
-            -- upvalues: (copy) v_u_19, (ref) v_u_3, (ref) v_u_5
-            local v81 = p80 or {}
-            local v_u_82 = v_u_19
-            local v87 = (function(p83)
-                -- upvalues: (copy) v_u_82, (ref) v_u_3
-                local v84 = v_u_82
-                local v85 = (p83 or {}).mutation
-                if v85 then
-                    local v86 = v_u_3[v85]
-                    if v86 then
-                        v84 = v84 * v86.chance
-                    end
-                end
-                return v84
-            end)(v81) ^ 0.58
-            local v88 = v81.trait
-            if v88 then
-                local v89 = v_u_5[v88]
-                if v89.damageMultiplier then
-                    v87 = v87 * v89.damageMultiplier
-                end
-            end
-            return v87
-        end
-        function v73.health(p90)
-            -- upvalues: (copy) v_u_19, (ref) v_u_3, (ref) v_u_5
-            local v91 = p90 or {}
-            local v_u_92 = v_u_19
-            local v97 = (function(p93)
-                -- upvalues: (copy) v_u_92, (ref) v_u_3
-                local v94 = v_u_92
-                local v95 = (p93 or {}).mutation
-                if v95 then
-                    local v96 = v_u_3[v95]
-                    if v96 then
-                        v94 = v94 * v96.chance
-                    end
-                end
-                return v94
-            end)(v91) ^ 0.58
-            local v98 = v91.trait
-            if v98 then
-                local v99 = v_u_5[v98]
-                if v99.healthMultiplier then
-                    v97 = v97 * v99.healthMultiplier
-                end
-            end
-            return v97
-        end
-        v73.order = p_u_11.order
-        v73.limited = p_u_11.limited
-        v23[v15] = v73
-    end
-    for v101, _ in pairs(v_u_4) do
-        v100(v101)
-    end
-    v100(nil)
+
+local repo = "https://raw.githubusercontent.com/joustingmatch/ObsidianUltra/main/"
+local Library = loadstring(game:HttpGet(repo .. "Library.lua"))()
+local ThemeManager = loadstring(game:HttpGet(repo .. "addons/ThemeManager.lua"))()
+local SaveManager = loadstring(game:HttpGet(repo .. "addons/SaveManager.lua"))()
+
+local Toggles = Library.Toggles
+local Options = Library.Options
+
+local function copyText(text, message)
+	if setclipboard then
+		setclipboard(text)
+	elseif toclipboard then
+		toclipboard(text)
+	end
+	Library:Notify(message)
 end
-local v103 = {
-    ["sortOrder"] = 1,
-    ["stackable"] = false,
-    ["defaultAttributes"] = nil,
-    ["entries"] = nil,
-    ["defaultAttributes"] = {
-        ["level"] = 1
-    },
-    ["entries"] = v_u_8
-}
-for v104, v105 in ipairs({
-    {
-        ["id"] = "Naroto",
-        ["chance"] = 2
-    },
-    {
-        ["id"] = "Ichiga",
-        ["chance"] = 3
-    },
-    {
-        ["id"] = "Ginyou",
-        ["chance"] = 4
-    },
-    {
-        ["id"] = "Aizan",
-        ["chance"] = 6
-    },
-    {
-        ["id"] = "Krillan",
-        ["chance"] = 11
-    },
-    {
-        ["id"] = "Inasuke",
-        ["chance"] = 15
-    },
-    {
-        ["id"] = "Tien",
-        ["chance"] = 20
-    },
-    {
-        ["id"] = "Nezuka",
-        ["chance"] = 28
-    },
-    {
-        ["id"] = "Pikolo",
-        ["chance"] = 38
-    },
-    {
-        ["id"] = "Friza",
-        ["chance"] = 52
-    },
-    {
-        ["id"] = "Kakeshi",
-        ["chance"] = 95
-    },
-    {
-        ["id"] = "Perfect Zell",
-        ["chance"] = 130
-    },
-    {
-        ["id"] = "Zenitsa",
-        ["chance"] = 175
-    },
-    {
-        ["id"] = "Tanjuro",
-        ["chance"] = 240
-    },
-    {
-        ["id"] = "Todoraki",
-        ["chance"] = 325
-    },
-    {
-        ["id"] = "Bakuga",
-        ["chance"] = 450
-    },
-    {
-        ["id"] = "Deko",
-        ["chance"] = 850
-    },
-    {
-        ["id"] = "Hasoka",
-        ["chance"] = 1200
-    },
-    {
-        ["id"] = "Zaro",
-        ["chance"] = 1700
-    },
-    {
-        ["id"] = "Levy",
-        ["chance"] = 2400
-    },
-    {
-        ["id"] = "Goko",
-        ["chance"] = 3500
-    },
-    {
-        ["id"] = "Super Saiyen",
-        ["chance"] = 5000
-    },
-    {
-        ["id"] = "Todoh",
-        ["chance"] = 11000
-    },
-    {
-        ["id"] = "Maheto",
-        ["chance"] = 16500
-    },
-    {
-        ["id"] = "Madera",
-        ["chance"] = 25000
-    },
-    {
-        ["id"] = "Sakuna",
-        ["chance"] = 38000
-    },
-    {
-        ["id"] = "Gujo",
-        ["chance"] = 57500
-    },
-    {
-        ["id"] = "Namee",
-        ["chance"] = 85000
-    },
-    {
-        ["id"] = "Usop",
-        ["chance"] = 125000
-    },
-    {
-        ["id"] = "Enol",
-        ["chance"] = 290000
-    },
-    {
-        ["id"] = "Buu",
-        ["chance"] = 450000
-    },
-    {
-        ["id"] = "Vegata",
-        ["chance"] = 700000
-    },
-    {
-        ["id"] = "Yuju",
-        ["chance"] = 1100000
-    },
-    {
-        ["id"] = "Jogu",
-        ["chance"] = 1750000
-    },
-    {
-        ["id"] = "Mahorago",
-        ["chance"] = 2750000
-    },
-    {
-        ["id"] = "Itacha",
-        ["chance"] = 4500000
-    },
-    {
-        ["id"] = "Kaidon",
-        ["chance"] = 12500000
-    },
-    {
-        ["id"] = "Loffy",
-        ["chance"] = 22500000
-    },
-    {
-        ["id"] = "Saytama",
-        ["chance"] = 40000000
-    },
-    {
-        ["id"] = "Bills",
-        ["chance"] = 75000000
-    },
-    {
-        ["id"] = "Obita",
-        ["chance"] = 135000000
-    },
-    {
-        ["id"] = "Killer",
-        ["chance"] = 240000000
-    },
-    {
-        ["id"] = "Gon",
-        ["chance"] = 430000000
-    },
-    {
-        ["id"] = "Eskanar",
-        ["chance"] = 775000000
-    },
-    {
-        ["id"] = "Asto",
-        ["chance"] = 1400000000
-    },
-    {
-        ["id"] = "Jin-woo",
-        ["chance"] = 2500000000
-    },
-    {
-        ["id"] = "Angel",
-        ["chance"] = 4500000000
-    },
-    {
-        ["id"] = "UI Goko",
-        ["chance"] = 8000000000
-    },
-    {
-        ["id"] = "Arin",
-        ["chance"] = 14500000000
-    },
-    {
-        ["id"] = "Ginus",
-        ["chance"] = 26000000000
-    },
-    {
-        ["id"] = "Android 17",
-        ["chance"] = 47000000000
-    },
-    {
-        ["id"] = "Mikasu",
-        ["chance"] = 85000000000
-    },
-    {
-        ["id"] = "Beast Gokan",
-        ["chance"] = 150000000000
-    },
-    {
-        ["id"] = "Denjo",
-        ["chance"] = 270000000000
-    },
-    {
-        ["id"] = "Okarin",
-        ["chance"] = 490000000000
-    },
-    {
-        ["id"] = "Ryek",
-        ["chance"] = 880000000000
-    },
-    {
-        ["id"] = "Dio",
-        ["chance"] = 1600000000000
-    },
-    {
-        ["id"] = "Isago",
-        ["chance"] = 2900000000000
-    },
-    {
-        ["id"] = "Mobb",
-        ["chance"] = 5200000000000
-    },
-    {
-        ["id"] = "Thorfyn",
-        ["chance"] = 9400000000000
-    },
-    {
-        ["id"] = "Kafko",
-        ["chance"] = 17000000000000
-    },
-    {
-        ["id"] = "Kiritoe",
-        ["chance"] = 31000000000000
-    },
-    {
-        ["id"] = "Gilgamash",
-        ["chance"] = 56000000000000
-    },
-    {
-        ["id"] = "Fused Zamatsu",
-        ["income"] = 125000000000,
-        ["limited"] = true,
-        ["rarity"] = "Exclusive"
-    },
-    {
-        ["id"] = "Emelia",
-        ["income"] = 500000000,
-        ["limited"] = true,
-        ["rarity"] = "Exclusive"
-    }
-}) do
-    v102(v105.id, {
-        ["rarity"] = v105.rarity,
-        ["model"] = v1.Assets.Models.Units[v105.id],
-        ["chance"] = v105.chance,
-        ["income"] = v105.income,
-        ["order"] = v104,
-        ["limited"] = v105.limited
-    })
+
+local function copyDiscord()
+	copyText(DISCORD_INVITE, "Copied Discord invite to clipboard")
 end
-return v103
 
--- Script Path: game:GetService("ReplicatedStorage").Framework.Features.Inventory.Kinds.Unit.UnitUtil
--- Took 0s to decompile.
--- Executor: Delta (1.1.736.1408)
+local function colored(text, color)
+	return string.format('<font color="%s">%s</font>', color, text)
+end
 
-local v_u_1 = game:GetService("ReplicatedStorage")
-local v_u_2 = require(v_u_1.Framework.Features.Inventory.EntryRegistry)
-require(v_u_1.Framework.Features.Inventory.EntryTypes)
-local v_u_14 = {
-    ["PlayAnimation"] = function(p3, p4) -- name: PlayAnimation
-        -- upvalues: (copy) v_u_1
-        local v5 = p3:FindFirstChildOfClass("Humanoid")
-        local v6 = (v5:FindFirstChildOfClass("Animator") or Instance.new("Animator", v5)):LoadAnimation(p4 and v_u_1.Assets.Animations.Idle:FindFirstChild((tostring(p4))) or v_u_1.Assets.Animations.Idle:GetChildren()[math.random(1, #v_u_1.Assets.Animations.Idle:GetChildren())])
-        v6:Play(0)
-        return v6
-    end,
-    ["PlayCalmAnimtion"] = function(p7) -- name: PlayCalmAnimtion
-        -- upvalues: (copy) v_u_14
-        local v8 = {
-            1,
-            2,
-            5,
-            8
-        }
-        return v_u_14.PlayAnimation(p7, v8[math.random(1, #v8)])
-    end,
-    ["GetLevelPrice"] = function(p9, p10) -- name: GetLevelPrice
-        -- upvalues: (copy) v_u_2
-        local v11 = v_u_2.getEntryConfig(p9)
-        local v12 = p10.level or 1
-        local v13 = v11.income({
-            ["mutation"] = p10.mutation
-        }) * 1.6 ^ (v12 - 1)
-        return math.floor(v13)
-    end
-}
-return v_u_14
+local function field(key, value, color)
+	return string.format("<b>%s</b> %s %s", key, colored("-", "#5a6070"), colored(value, color))
+end
 
--- Script Path: game:GetService("ReplicatedStorage").Framework.Features.Inventory.Kinds.Unit.UnitService
--- Took 0.02s to decompile.
--- Executor: Delta (1.1.736.1408)
+local function isOn(name)
+	local toggle = Toggles[name]
+	return toggle ~= nil and toggle.Value == true
+end
 
-local v1 = game:GetService("ReplicatedStorage")
-local v_u_2 = require(script.Parent.Mutations)
-local v_u_3 = require(script.Parent.UnitUtil)
-local v_u_4 = require(v1.Framework.Features.Data.DataService)
-local v_u_5 = require(v1.Framework.Features.Inventory.EntryRegistry)
-require(v1.Framework.Features.Inventory.EntryTypes)
-local v_u_6 = require(v1.Framework.Features.Notifications.NotificationService)
-local v_u_7 = require(v1.Framework.Features.Player.PlayerService)
-local v_u_8 = require(v1.Framework.Other.Rarities)
-local v_u_9 = require(v1.Framework.Utils.DebounceUtil)
-local v_u_10 = require(v1.Packages.Maid)
-local v11 = require(v1.Packages.Network)
-local v_u_12 = require(v1.Packages.NumberFormatter)
-local v13 = v11.ServerComm.new(v1.Network, "UnitService")
-local v_u_14 = v13:CreateProperty("EquippedUnit", nil)
-local v_u_15 = {}
-local v_u_16 = {}
-local v_u_63 = {
-    ["GetEquippedUnit"] = function(p17) -- name: GetEquippedUnit
-        -- upvalues: (copy) v_u_16
-        return v_u_16[p17]
-    end,
-    ["ClearEquippedUnit"] = function(p18) -- name: ClearEquippedUnit
-        -- upvalues: (copy) v_u_15, (copy) v_u_16, (copy) v_u_14
-        local v19 = v_u_15[p18]
-        v_u_15[p18] = nil
-        v_u_16[p18] = nil
-        v_u_14:SetFor(p18, nil)
-        if v19 then
-            v19:Destroy()
-        end
-    end,
-    ["GetUnitModel"] = function(p20, p21) -- name: GetUnitModel
-        -- upvalues: (copy) v_u_4, (copy) v_u_5, (copy) v_u_10, (copy) v_u_12, (copy) v_u_8, (copy) v_u_2
-        local v22 = v_u_4[p20].Inventory[p21]()
-        if v22 then
-            local v23 = v22.name
-            local v24 = v22.attributes
-            local v_u_25 = v_u_5.getEntryConfig(v23)
-            if v_u_25 and v_u_25.kind == "Unit" then
-                local v_u_26 = v_u_10.new()
-                local v_u_27 = v_u_25.model(v24)
-                v_u_26:Add(v_u_27.Destroying:Connect(function()
-                    -- upvalues: (copy) v_u_26
-                    v_u_26:Destroy()
-                end))
-                local v28
-                if v_u_27.PrimaryPart then
-                    v28 = v_u_27.PrimaryPart
-                else
-                    v28 = v_u_27:FindFirstChild("HumanoidRootPart")
-                    if not (v28 and v28:IsA("BasePart")) then
-                        v28 = v_u_27:FindFirstChildWhichIsA("BasePart", true)
-                    end
-                end
-                local v29 = script.Info:Clone()
-                local v_u_30 = v29.UnitInfo
-                v_u_26:Add(v_u_4[p20].Inventory[p21].attributes.Observe(function(p31)
-                    -- upvalues: (copy) v_u_25, (copy) v_u_30, (ref) v_u_12, (copy) v_u_27
-                    if p31 then
-                        if v_u_25.chance then
-                            v_u_30.Chance.Text = "1 in " .. v_u_12.FormatCompact(v_u_25.chance(p31))
-                        elseif v_u_25.limited then
-                            v_u_30.Chance.Text = "Limited"
-                            v_u_30.Chance.TextColor3 = Color3.fromRGB(85, 255, 127)
-                        else
-                            v_u_30.Chance.Text = ""
-                        end
-                        v_u_30.Income.Text = "$" .. v_u_12.FormatCompact(v_u_25.income(p31)) .. "/s"
-                    else
-                        v_u_27:Destroy()
-                    end
-                end))
-                local v32 = v_u_25.getRarity(v24)
-                local v33 = v_u_8.Get(v32)
-                v_u_30.DisplayName.Text = v23
-                v_u_30.Rarity.Text = v32
-                v_u_30.Rarity.UIGradient.Color = v33.gradient
-                if v24.mutation then
-                    local v34 = v_u_2[v24.mutation]
-                    v_u_30.Mutation.Text = v24.mutation
-                    v_u_30.Mutation.UIGradient.Color = v34.color
-                    v_u_30.Mutation.Visible = true
-                else
-                    v_u_30.Mutation.Visible = false
-                end
-                v29.Parent = v28
-                return v_u_27
-            end
-        end
-    end,
-    ["Equip"] = function(p_u_35, p36) -- name: Equip
-        -- upvalues: (copy) v_u_9, (copy) v_u_7, (copy) v_u_4, (copy) v_u_5, (copy) v_u_15, (copy) v_u_16, (copy) v_u_14, (copy) v_u_63, (copy) v_u_3
-        if not v_u_9.Try(p_u_35, "UnitAction", 0.5) or (not v_u_7.IsLoaded(p_u_35) or type(p36) ~= "string") then
-            return false
-        end
-        local v37 = v_u_4[p_u_35].Inventory[p36]()
-        if not v37 then
-            return false
-        end
-        local v38 = v37.name
-        local v39 = v_u_5.getEntryConfig(v38)
-        if not v39 or v39.kind ~= "Unit" then
-            return false
-        end
-        local v40 = p_u_35.Character
-        local v41
-        if v40 then
-            v41 = v40:FindFirstChildOfClass("Humanoid")
-        else
-            v41 = v40
-        end
-        if not v40 or (not v41 or v41.Health <= 0) then
-            return false
-        end
-        local v42 = v_u_15[p_u_35]
-        v_u_15[p_u_35] = nil
-        v_u_16[p_u_35] = nil
-        v_u_14:SetFor(p_u_35, nil)
-        if v42 then
-            v42:Destroy()
-        end
-        local v43 = v_u_63.GetUnitModel(p_u_35, p36)
-        if not v43 then
-            return false
-        end
-        local v44
-        if v43.PrimaryPart then
-            v44 = v43.PrimaryPart
-        else
-            v44 = v43:FindFirstChild("HumanoidRootPart")
-            if not (v44 and v44:IsA("BasePart")) then
-                v44 = v43:FindFirstChildWhichIsA("BasePart", true)
-            end
-        end
-        local v45 = v43:FindFirstChildOfClass("Humanoid")
-        if not v44 then
-            v43:Destroy()
-            warn((("Unit \"%*\" does not contain a BasePart"):format(p36)))
-            return false
-        end
-        if v45 then
-            v45.AutoRotate = false
-            v45:ChangeState(Enum.HumanoidStateType.Physics)
-            v45.PlatformStand = true
-            v45.EvaluateStateMachine = false
-        end
-        v43.Name = "EquippedUnit"
-        v43:ScaleTo(v43:GetScale() * 0.85)
-        local v_u_46 = Instance.new("Tool")
-        v_u_46.Name = v38
-        v_u_46.CanBeDropped = false
-        v_u_46.ManualActivationOnly = true
-        v_u_46.RequiresHandle = true
-        local v47 = Instance.new("Part")
-        v47.Name = "Handle"
-        v47.Size = Vector3.new(0.2, 0.2, 0.2)
-        v47.Transparency = 1
-        v47.CanCollide = false
-        v47.CanQuery = false
-        v47.CanTouch = false
-        v47.Massless = true
-        v47.CollisionGroup = "Units"
-        v47.CFrame = CFrame.new()
-        v47.Parent = v_u_46
-        for _, v48 in v43:GetDescendants() do
-            if v48:IsA("BaseScript") then
-                v48.Enabled = false
-            elseif v48:IsA("BasePart") then
-                v48.CanCollide = false
-                v48.CanQuery = false
-                v48.CanTouch = false
-                v48.Massless = true
-                v48.Anchored = false
-                v48.CollisionGroup = "UnitTools"
-            end
-        end
-        local v49 = v43:GetBoundingBox():ToObjectSpace(v43:GetPivot())
-        v43:PivotTo(CFrame.new(v47.Position) * v49)
-        v43.Parent = v_u_46
-        local v50 = Instance.new("Weld")
-        v50.Name = "UnitCarryWeld"
-        v50.Part0 = v47
-        v50.Part1 = v44
-        v50.Parent = v47
-        v_u_46.Unequipped:Connect(function()
-            -- upvalues: (ref) v_u_15, (copy) p_u_35, (copy) v_u_46
-            task.defer(function()
-                -- upvalues: (ref) v_u_15, (ref) p_u_35, (ref) v_u_46
-                if v_u_15[p_u_35] == v_u_46 and v_u_46.Parent then
-                    local v51 = p_u_35.Character
-                    if v51 then
-                        v51 = v51:FindFirstChildOfClass("Humanoid")
-                    end
-                    if v51 and v51.Health > 0 then
-                        v51:EquipTool(v_u_46)
-                    end
-                end
-            end)
-        end)
-        v_u_46.Destroying:Connect(function()
-            -- upvalues: (ref) v_u_15, (copy) p_u_35, (copy) v_u_46, (ref) v_u_16, (ref) v_u_14
-            if v_u_15[p_u_35] == v_u_46 then
-                v_u_15[p_u_35] = nil
-                v_u_16[p_u_35] = nil
-                v_u_14:SetFor(p_u_35, nil)
-            end
-        end)
-        v_u_15[p_u_35] = v_u_46
-        v_u_16[p_u_35] = p36
-        v_u_14:SetFor(p_u_35, p36)
-        v_u_46.Parent = p_u_35:WaitForChild("Backpack")
-        v41:EquipTool(v_u_46)
-        v_u_3.PlayAnimation(v43)
-        return true
-    end,
-    ["Unequip"] = function(p52) -- name: Unequip
-        -- upvalues: (copy) v_u_9, (copy) v_u_15, (copy) v_u_16, (copy) v_u_14
-        if not v_u_9.Try(p52, "UnitAction", 0.5) then
-            return false
-        end
-        local v53 = v_u_15[p52]
-        v_u_15[p52] = nil
-        v_u_16[p52] = nil
-        v_u_14:SetFor(p52, nil)
-        if v53 then
-            v53:Destroy()
-        end
-        return true
-    end,
-    ["LevelUp"] = function(p54, p55) -- name: LevelUp
-        -- upvalues: (copy) v_u_9, (copy) v_u_4, (copy) v_u_5, (copy) v_u_3, (copy) v_u_6
-        if type(p55) ~= "string" or not v_u_9.Try(p54, "level_up_unit", 0.1) then
-            return false
-        end
-        local v56 = v_u_4[p54]
-        if not v56 then
-            return false
-        end
-        local v57 = v56.Inventory[p55]()
-        if not v57 then
-            return false
-        end
-        local v58 = v57.name
-        local v59 = v_u_5.getEntryConfig(v58)
-        if not v59 or v59.kind ~= "Unit" then
-            return false
-        end
-        local v_u_60 = v_u_3.GetLevelPrice(v58, v57.attributes)
-        if v56.Money() < v_u_60 then
-            v_u_6.SendTextNotification(p54, {
-                ["message"] = "You can\'t afford to level this up!",
-                ["notificationType"] = "error"
-            })
-            return false
-        end
-        v56.Money(function(p61)
-            -- upvalues: (copy) v_u_60
-            return p61 - v_u_60
-        end)
-        v56.Inventory[p55].attributes.level(function(p62)
-            return (p62 or 1) + 1
-        end)
-        return true
-    end
-}
-v13:CreateSignal("SetLocked"):Connect(function(p64, p65)
-    -- upvalues: (copy) v_u_7, (copy) v_u_9, (copy) v_u_4, (copy) v_u_5
-    if v_u_7.IsLoaded(p64) and (type(p65) == "table" and v_u_9.Try(p64, "SetUnitLocks", 0.2)) then
-        local v66 = v_u_4[p64]
-        for v67, v68 in p65 do
-            if type(v67) == "string" and type(v68) == "boolean" then
-                local v69 = v66.Inventory[v67]()
-                if v69 then
-                    local v70 = v_u_5.getEntryConfig(v69.name)
-                    if v70 and v70.kind == "Unit" then
-                        v66.Inventory[v67].attributes.locked(v68)
-                    end
-                end
-            end
-        end
-    end
+local function getCharacter()
+	return LocalPlayer.Character
+end
+
+local function getHumanoid()
+	local character = getCharacter()
+	return character and character:FindFirstChildOfClass("Humanoid")
+end
+
+local function getRoot()
+	local character = getCharacter()
+	return character and character:FindFirstChild("HumanoidRootPart")
+end
+
+local function attr(name, default)
+	local value = LocalPlayer:GetAttribute(name)
+	if value == nil then
+		return default
+	end
+	return value
+end
+
+local function getLevel()
+	return tonumber(attr("Level", 1)) or 1
+end
+
+local function getWins()
+	return tonumber(attr("Wins", 0)) or 0
+end
+
+local function getRebirths()
+	return tonumber(attr("Rebirths", 0)) or 0
+end
+
+local function getCurrentWorld()
+	return tonumber(attr("CurrentWorld", 1)) or 1
+end
+
+local function requiredRebirthLevel(rebirths)
+	return (rebirths + 1) * 25
+end
+
+local function csvOwns(csv, name)
+	return ("," .. tostring(csv or "") .. ","):find("," .. name .. ",", 1, true) ~= nil
+end
+
+local function ownsFruit(name)
+	return csvOwns(attr("OwnedFruits", ""), name)
+end
+
+local function ownsTrail(name)
+	return csvOwns(attr("OwnedTrails", ""), name)
+end
+
+local function worldFolder(world)
+	return AutoWinsRoute:FindFirstChild("W" .. tostring(world)) or AutoWinsRoute:FindFirstChild("W1")
+end
+
+local function buildWinPlateValues()
+	local values = { "Best" }
+	for world = 1, 3 do
+		local folder = worldFolder(world)
+		if folder then
+			local levels = {}
+			for _, child in folder:GetChildren() do
+				local level = tonumber(child.Name)
+				if level and child:IsA("Vector3Value") then
+					levels[#levels + 1] = level
+				end
+			end
+			table.sort(levels)
+			for _, level in levels do
+				values[#values + 1] = string.format("W%d | Lv %d", world, level)
+			end
+		end
+	end
+	return values
+end
+
+local function parseWinPlate(label)
+	if not label or label == "Best" then
+		return nil
+	end
+	local world, level = string.match(label, "^W(%d+) | Lv (%d+)$")
+	if not world then
+		return nil
+	end
+	return tonumber(world), tonumber(level)
+end
+
+local function bestUnlockedPad(world)
+	local folder = worldFolder(world)
+	if not folder then
+		return nil
+	end
+	local level = getLevel()
+	local bestLevel = -1
+	local bestPos = nil
+	for _, child in folder:GetChildren() do
+		local padLevel = tonumber(child.Name)
+		if padLevel and child:IsA("Vector3Value") and padLevel <= level and padLevel > bestLevel then
+			bestLevel = padLevel
+			bestPos = child.Value
+		end
+	end
+	if not bestPos then
+		return nil
+	end
+	return bestLevel, bestPos
+end
+
+local function resolveWinTarget()
+	local selected = Options.WinPlate and Options.WinPlate.Value or "Best"
+	local world, level = parseWinPlate(selected)
+	if not world then
+		world = getCurrentWorld()
+		local bestLevel, bestPos = bestUnlockedPad(world)
+		if not bestLevel then
+			return nil
+		end
+		return world, bestLevel, bestPos
+	end
+	local playerLevel = getLevel()
+	if level > playerLevel then
+		local bestLevel, bestPos = bestUnlockedPad(world)
+		if not bestLevel then
+			return nil
+		end
+		return world, bestLevel, bestPos
+	end
+	local folder = worldFolder(world)
+	local pad = folder and folder:FindFirstChild(tostring(level))
+	if pad and pad:IsA("Vector3Value") then
+		return world, level, pad.Value
+	end
+	return nil
+end
+
+local worldTeleportAt = 0
+
+local function ensureWorld(world)
+	if getCurrentWorld() == world then
+		return true
+	end
+	local need = WORLD_REBIRTHS[world] or 0
+	if getRebirths() < need then
+		return false
+	end
+	if os.clock() - worldTeleportAt < 2 then
+		return false
+	end
+	worldTeleportAt = os.clock()
+	pcall(function()
+		TeleportRequest:FireServer(world)
+	end)
+	return false
+end
+
+local function findWinTouch(world, level)
+	local name
+	if world == 1 then
+		name = "WinZoneLevel" .. level .. "Model"
+	else
+		name = "WinZoneLevel" .. level .. "ModelW" .. world
+	end
+	local zone = Workspace:FindFirstChild(name)
+	if not zone then
+		return nil
+	end
+	return zone:FindFirstChild("TouchWin", true)
+end
+
+local playerControls = nil
+pcall(function()
+	playerControls = require(LocalPlayer:WaitForChild("PlayerScripts"):WaitForChild("PlayerModule")):GetControls()
 end)
-v13:BindFunction("Equip", v_u_63.Equip)
-v13:BindFunction("Unequip", v_u_63.Unequip)
-v_u_7.AddLoadEvent(function(p_u_71)
-    -- upvalues: (copy) v_u_15, (copy) v_u_16, (copy) v_u_14
-    p_u_71.CharacterRemoving:Connect(function()
-        -- upvalues: (copy) p_u_71, (ref) v_u_15, (ref) v_u_16, (ref) v_u_14
-        local v72 = p_u_71
-        local v73 = v_u_15[v72]
-        v_u_15[v72] = nil
-        v_u_16[v72] = nil
-        v_u_14:SetFor(v72, nil)
-        if v73 then
-            v73:Destroy()
-        end
-    end)
-end)
-v_u_7.PlayerRemoving:Connect(function(p74)
-    -- upvalues: (copy) v_u_15, (copy) v_u_16, (copy) v_u_14
-    local v75 = v_u_15[p74]
-    v_u_15[p74] = nil
-    v_u_16[p74] = nil
-    v_u_14:SetFor(p74, nil)
-    if v75 then
-        v75:Destroy()
-    end
-end)
-return v_u_63
 
--- Script Path: game:GetService("ReplicatedStorage").Framework.Features.Inventory.Kinds.Unit.UnitSelectController
--- Took 0s to decompile.
--- Executor: Delta (1.1.736.1408)
+local controlsEnabled = true
 
-local v1 = game:GetService("ReplicatedStorage")
-local v_u_2 = require(v1.Framework.Features.Data.DataController)
-local v_u_3 = require(v1.Framework.Features.Inventory.EntryIcon)
-local v_u_4 = require(v1.Framework.Features.Inventory.EntryRegistry)
-local v_u_5 = require(v1.Framework.Features.UI.MenuController)
-local v6 = require(v1.Framework.Features.UI.UIReferences)
-local v_u_7 = require(v1.Packages.Maid)
-local v_u_8 = v6.Menus.SelectUnit
-local v9 = {}
-local v_u_10 = {}
-local function v_u_16() -- name: updateMenu
-    -- upvalues: (copy) v_u_10, (copy) v_u_2, (copy) v_u_4, (copy) v_u_3, (copy) v_u_8
-    for v11, v12 in pairs(v_u_10) do
-        if not v_u_2.Inventory[v11]() then
-            v12:Destroy()
-            v_u_10[v11] = nil
-        end
-        if not v12 or (v12.destroyed or not v12.icon.Parent) then
-            v_u_10[v11] = nil
-        end
-    end
-    for v13, v14 in pairs(v_u_2.Inventory()) do
-        if v_u_4.getEntryConfig(v14.name).kind == "Unit" and not v_u_10[v13] then
-            local v15 = v_u_3.new({
-                ["key"] = nil,
-                ["tooltip"] = true,
-                ["key"] = v13
-            })
-            v_u_10[v13] = v15
-            v15.icon.Parent = v_u_8.Content.ScrollingFrame
-        end
-    end
+local function setAutoWinControls(enabled)
+	if not playerControls or controlsEnabled == enabled then
+		return
+	end
+	controlsEnabled = enabled
+	pcall(function()
+		if enabled then
+			playerControls:Enable()
+		else
+			playerControls:Disable()
+		end
+	end)
 end
-local v_u_17 = nil
-function v9.OpenSelectMenu(p_u_18, p19) -- name: OpenSelectMenu
-    -- upvalues: (ref) v_u_17, (copy) v_u_16, (copy) v_u_5, (copy) v_u_8, (copy) v_u_7, (copy) v_u_10
-    if v_u_17 then
-        v_u_17:Destroy()
-        v_u_17 = nil
-    end
-    v_u_16()
-    v_u_5.OpenMenu(v_u_8)
-    v_u_17 = v_u_7.new()
-    for _, v_u_20 in pairs(v_u_10) do
-        if p19 then
-            p19(v_u_20)
-        end
-        v_u_17:Add(v_u_20.icon.Activated:Connect(function()
-            -- upvalues: (copy) p_u_18, (copy) v_u_20, (ref) v_u_17
-            p_u_18(v_u_20)
-            v_u_17:Destroy()
-        end))
-    end
-    v_u_17:Add(v_u_5.Closed:Connect(function()
-        -- upvalues: (ref) v_u_17
-        if v_u_17 then
-            v_u_17:Destroy()
-        end
-    end))
-end
-return v9
 
--- Script Path: game:GetService("ReplicatedStorage").Framework.Features.Inventory.Kinds.Unit.UnitController
--- Took 0s to decompile.
--- Executor: Delta (1.1.736.1408)
+local function laneZ(world)
+	local folder = worldFolder(world)
+	return tonumber(folder and folder:GetAttribute("LaneZ")) or 0
+end
 
-local v1 = game:GetService("ReplicatedStorage")
-local v_u_2 = game:GetService("StarterGui")
-local v3 = require(v1.Framework.Features.UI.Components.Button)
-local v_u_4 = require(v1.Framework.Features.UI.MenuController)
-local v5 = require(v1.Framework.Features.UI.UIReferences)
-local v6 = require(v1.Packages.Network)
-local v7 = require(v1.Packages.Ripple)
-local v8 = require(v1.Packages.State)
-local v9 = v6.ClientComm.new(v1.Network, false, "UnitService")
-local v_u_10 = v9:GetFunction("Equip")
-local v_u_11 = v9:GetFunction("Unequip")
-local v12 = v9:GetProperty("EquippedUnit")
-local v_u_13 = {}
-local v_u_14 = v8.new(nil)
-v12:Observe(function(p15)
-    -- upvalues: (copy) v_u_14
-    v_u_14(p15)
-end)
-task.spawn(function()
-    -- upvalues: (copy) v_u_2
-    while not pcall(function()
-        -- upvalues: (ref) v_u_2
-        v_u_2:SetCoreGuiEnabled(Enum.CoreGuiType.Backpack, false)
-    end) do
-        task.wait()
-    end
-end)
-function v_u_13.Equip(p16) -- name: Equip
-    -- upvalues: (copy) v_u_10
-    return v_u_10(p16)
+local function spawnPos(world)
+	local folder = worldFolder(world)
+	local pos = folder and folder:GetAttribute("SpawnPos")
+	if typeof(pos) == "Vector3" then
+		return pos
+	end
+	return Vector3.new(-33.763, 0.923, laneZ(world))
 end
-function v_u_13.Unequip() -- name: Unequip
-    -- upvalues: (copy) v_u_11
-    return v_u_11()
+
+local function resetToLaneSpawn(world)
+	local root = getRoot()
+	if not root then
+		return
+	end
+	local spawn = spawnPos(world)
+	root.CFrame = CFrame.new(spawn + Vector3.new(0, 3, 0))
+	root.AssemblyLinearVelocity = Vector3.zero
+	root.AssemblyAngularVelocity = Vector3.zero
 end
-local _, v_u_17 = v3.init(v5.HUD.PutBack)
-local v_u_18 = v7.createSpring(UDim2.new(0.5, 0, 1, -160), {
-    ["frequency"] = 2.2,
-    ["dampingRatio"] = 0.75,
-    ["start"] = true
+
+local lastPadTouchAt = 0
+
+local function retriggerWinTouch(touch)
+	local root = getRoot()
+	if not root or not touch or not touch:IsA("BasePart") then
+		return
+	end
+	if not firetouchinterest then
+		return
+	end
+	if os.clock() - lastPadTouchAt < 0.2 then
+		return
+	end
+	lastPadTouchAt = os.clock()
+	pcall(firetouchinterest, root, touch, 0)
+	pcall(firetouchinterest, root, touch, 1)
+end
+
+local function walkToward(position, speed, world)
+	local root = getRoot()
+	local humanoid = getHumanoid()
+	if not root or not humanoid or humanoid.Health <= 0 then
+		return false
+	end
+
+	humanoid.Sit = false
+	humanoid.PlatformStand = false
+
+	local lane = laneZ(world)
+	local positionXZ = root.Position
+	if math.abs(positionXZ.Z - lane) >= 24 then
+		resetToLaneSpawn(world)
+		return false
+	end
+
+	local deltaX = position.X - positionXZ.X
+	local deltaLane = lane - positionXZ.Z
+	local goal
+	if math.abs(deltaX) <= 15 then
+		goal = Vector3.new(position.X, positionXZ.Y, position.Z)
+	elseif math.abs(deltaLane) > 2.5 then
+		goal = Vector3.new(positionXZ.X, positionXZ.Y, lane)
+	else
+		goal = Vector3.new(position.X, positionXZ.Y, lane)
+	end
+
+	local flat = (goal - positionXZ) * Vector3.new(1, 0, 1)
+	if flat.Magnitude < 0.5 then
+		humanoid.WalkSpeed = math.min(speed, 16)
+		humanoid:Move(Vector3.zero, false)
+		return math.abs(deltaX) <= 5
+	end
+
+	if math.abs(deltaX) < 24 then
+		humanoid.WalkSpeed = math.min(speed, 16)
+	else
+		humanoid.WalkSpeed = speed
+	end
+
+	humanoid:Move(flat.Unit, false)
+	return false
+end
+
+local function autoWinStep()
+	local world, level, position = resolveWinTarget()
+	if not world or not position then
+		return
+	end
+	if getCurrentWorld() ~= world then
+		ensureWorld(world)
+		return
+	end
+
+	setAutoWinControls(false)
+
+	local speed = Options.AutoWinWalkSpeed and Options.AutoWinWalkSpeed.Value or 60
+	local touch = findWinTouch(world, level)
+	local target = touch and touch.Position or position
+	local arrived = walkToward(target, speed, world)
+
+	local root = getRoot()
+	if touch and root then
+		local near = (Vector3.new(touch.Position.X - root.Position.X, 0, touch.Position.Z - root.Position.Z)).Magnitude
+		if arrived or near <= 12 then
+			retriggerWinTouch(touch)
+		end
+	end
+end
+
+local function isTreadmillModel(inst)
+	return inst:IsA("Model") and inst.Name:find("Treadmill") and inst.Name ~= "TreadmillsGUI"
+end
+
+local function treadmillLabel(model)
+	local name = model.Name
+	if string.sub(name, -9) == "Treadmill" then
+		name = string.sub(name, 1, -10)
+	end
+	return (string.gsub(name, "GoldenCrown", " Golden Crown"))
+end
+
+local function isRobuxTreadmill(model)
+	if model.Name == "WoodenTreadmill" then
+		return false
+	end
+	if (tonumber(model:GetAttribute("RequiredRebirths")) or 0) == 0 then
+		return true
+	end
+	if string.find(model.Name, "GoldenCrown", 1, true) then
+		return true
+	end
+	return model:FindFirstChild("RobuxAmountNeedToUnlockGUI", true) ~= nil
+end
+
+local function treadmillStand(model)
+	local conveyor = model:FindFirstChild("Conveyor", true)
+	if conveyor and conveyor:IsA("BasePart") then
+		return conveyor
+	end
+	if model.PrimaryPart then
+		return model.PrimaryPart
+	end
+	return model:FindFirstChildWhichIsA("BasePart", true)
+end
+
+local function eachTreadmill()
+	local list = {}
+	for _, child in Workspace:GetChildren() do
+		if isTreadmillModel(child) then
+			list[#list + 1] = child
+		end
+	end
+	table.sort(list, function(a, b)
+		local ma = tonumber(a:GetAttribute("Multiplier")) or 0
+		local mb = tonumber(b:GetAttribute("Multiplier")) or 0
+		if ma ~= mb then
+			return ma > mb
+		end
+		return a.Name < b.Name
+	end)
+	return list
+end
+
+local function getTreadmills()
+	local list = {}
+	for _, model in eachTreadmill() do
+		local conveyor = model:FindFirstChild("Conveyor", true)
+		if conveyor and conveyor:IsA("BasePart") then
+			list[#list + 1] = {
+				Model = model,
+				Required = tonumber(model:GetAttribute("RequiredRebirths")) or 0,
+				Multiplier = tonumber(model:GetAttribute("Multiplier")) or 0,
+				Conveyor = conveyor,
+			}
+		end
+	end
+	return list
+end
+
+local function treadmillUnlocked(entry)
+	local name = entry.Model.Name
+	if name == "HackerTreadmill" then
+		return attr("HasHacker", false) == true
+	end
+	if name == "GalaxyTreadmill" then
+		return attr("HasGalaxy", false) == true
+	end
+	if name == "LavaTreadmill" then
+		return attr("HasLava", false) == true
+	end
+	if string.find(name, "GoldenCrown", 1, true) then
+		return attr("HasVIP", false) == true
+	end
+	return getRebirths() >= entry.Required
+end
+
+local function bestTreadmill()
+	for _, entry in getTreadmills() do
+		if not isRobuxTreadmill(entry.Model) and treadmillUnlocked(entry) then
+			return entry
+		end
+	end
+	return nil
+end
+
+local function entryFromModel(model)
+	local stand = treadmillStand(model)
+	if not stand then
+		return nil
+	end
+	return {
+		Model = model,
+		Required = tonumber(model:GetAttribute("RequiredRebirths")) or 0,
+		Multiplier = tonumber(model:GetAttribute("Multiplier")) or 0,
+		Conveyor = stand,
+	}
+end
+
+local function resolveTreadmill()
+	local selected = Options.Treadmill and Options.Treadmill.Value or "Best"
+	if selected == "Best" then
+		return bestTreadmill()
+	end
+	for _, model in eachTreadmill() do
+		if treadmillLabel(model) == selected then
+			return entryFromModel(model)
+		end
+	end
+	return nil
+end
+
+local function buildTreadmillValues()
+	local values = { "Best" }
+	for _, model in eachTreadmill() do
+		values[#values + 1] = treadmillLabel(model)
+	end
+	return values
+end
+
+local function teleportToPart(part)
+	local root = getRoot()
+	if not root or not part then
+		return
+	end
+	root.CFrame = part.CFrame + Vector3.new(0, 3, 0)
+end
+
+local function getBuyPrompt(model)
+	local prompt = model:FindFirstChild("BuyPrompt", true)
+	if prompt and prompt:IsA("ProximityPrompt") then
+		return prompt
+	end
+	return nil
+end
+
+local function fireBuyPrompt(model)
+	local prompt = getBuyPrompt(model)
+	if not prompt then
+		return false
+	end
+	local part = prompt.Parent
+	if part and part:IsA("BasePart") then
+		teleportToPart(part)
+		task.wait(0.1)
+	end
+	if fireproximityprompt then
+		pcall(fireproximityprompt, prompt)
+		return true
+	end
+	pcall(function()
+		prompt:InputHoldBegin()
+		task.wait(0.05)
+		prompt:InputHoldEnd()
+	end)
+	return true
+end
+
+local function getFoods()
+	local list = {}
+	for _, child in Workspace:GetChildren() do
+		if child:IsA("Model") and child:GetAttribute("RequiredWins") ~= nil then
+			local req = tonumber(child:GetAttribute("RequiredWins"))
+			local boost = tonumber(child:GetAttribute("ThinBoost")) or 0
+			if req and req == req and req ~= math.huge then
+				list[#list + 1] = {
+					Model = child,
+					Name = child.Name,
+					Required = req,
+					Boost = boost,
+				}
+			end
+		end
+	end
+	table.sort(list, function(a, b)
+		return a.Boost > b.Boost
+	end)
+	return list
+end
+
+local function foodAction(model)
+	local prompt = getBuyPrompt(model)
+	return prompt and prompt.ActionText or nil
+end
+
+local function foodUnlocked(food, wins)
+	return ownsFruit(food.Name) or wins >= food.Required
+end
+
+local lastFoodActionAt = 0
+
+local function autoBuyFoodsOnce()
+	local wins = getWins()
+	local equipped = tostring(attr("EquippedItem", "") or "")
+	local bestBuy = nil
+	local bestOwned = nil
+
+	for _, food in getFoods() do
+		local action = foodAction(food.Model)
+		if action == "Buy" and wins >= food.Required then
+			if not bestBuy then
+				bestBuy = food
+			end
+		elseif foodUnlocked(food, wins) then
+			if not bestOwned then
+				bestOwned = food
+			end
+		end
+	end
+
+	if os.clock() - lastFoodActionAt < 1.5 then
+		return
+	end
+
+	if bestBuy then
+		lastFoodActionAt = os.clock()
+		fireBuyPrompt(bestBuy.Model)
+		return
+	end
+
+	if bestOwned and equipped ~= bestOwned.Name then
+		lastFoodActionAt = os.clock()
+		fireBuyPrompt(bestOwned.Model)
+	end
+end
+
+local function buildEggValues()
+	local values = {}
+	local entries = {}
+	for _, egg in EggsFolder:GetChildren() do
+		local cost = egg:FindFirstChild("Cost")
+		local amount = cost and tonumber(cost.Value) or 0
+		if amount > 0 then
+			entries[#entries + 1] = { Name = egg.Name, Cost = amount }
+		end
+	end
+	table.sort(entries, function(a, b)
+		return a.Cost < b.Cost
+	end)
+	for _, entry in entries do
+		values[#values + 1] = entry.Name
+	end
+	return values
+end
+
+local function eggCost(name)
+	local egg = EggsFolder:FindFirstChild(name)
+	local cost = egg and egg:FindFirstChild("Cost")
+	return cost and tonumber(cost.Value) or 0
+end
+
+local function autoTrainOnce()
+	local entry = resolveTreadmill()
+	if not entry then
+		return
+	end
+	if attr("OnTreadmill", false) == true then
+		local root = getRoot()
+		if root and (root.Position - entry.Conveyor.Position).Magnitude > 14 then
+			teleportToPart(entry.Conveyor)
+		end
+		return
+	end
+	teleportToPart(entry.Conveyor)
+end
+
+local function autoRebirthOnce()
+	local rebirths = getRebirths()
+	local need = requiredRebirthLevel(rebirths)
+	if getLevel() < need then
+		return
+	end
+	pcall(function()
+		RebirthRequest:FireServer()
+	end)
+end
+
+local function autoBuyTrailsOnce()
+	local wins = getWins()
+	local bestOwned = nil
+	local bestSpeed = -1
+	for _, trail in TRAIL_ORDER do
+		if ownsTrail(trail.Name) then
+			if trail.Speed > bestSpeed then
+				bestSpeed = trail.Speed
+				bestOwned = trail.Name
+			end
+		elseif wins >= trail.Cost then
+			pcall(function()
+				TrailEquipRequest:FireServer(trail.Name)
+			end)
+			task.wait(0.15)
+			if ownsTrail(trail.Name) and trail.Speed > bestSpeed then
+				bestSpeed = trail.Speed
+				bestOwned = trail.Name
+			end
+		end
+	end
+	local equipped = tostring(attr("EquippedTrail", "") or "")
+	if bestOwned and equipped ~= bestOwned then
+		pcall(function()
+			TrailEquipRequest:FireServer(bestOwned)
+		end)
+	end
+end
+
+local function autoHatchOnce()
+	local eggName = Options.HatchEgg and Options.HatchEgg.Value
+	if type(eggName) ~= "string" or eggName == "" then
+		return
+	end
+	local egg = EggsFolder:FindFirstChild(eggName)
+	if not egg then
+		return
+	end
+	local cost = eggCost(eggName)
+	if getWins() < cost then
+		return
+	end
+	local ok, result = pcall(function()
+		return BuyEgg:InvokeServer(egg)
+	end)
+	if ok and result then
+		if isOn("AutoEquipBestPets") then
+			pcall(function()
+				EquipBestPets:FireServer()
+			end)
+		end
+	end
+end
+
+local WIN_PLATE_VALUES = buildWinPlateValues()
+local TREADMILL_VALUES = buildTreadmillValues()
+local EGG_VALUES = buildEggValues()
+if #EGG_VALUES == 0 then
+	EGG_VALUES = { "Common" }
+end
+
+local Window = Library:CreateWindow({
+	Title = "Ouroboros",
+	Font = Enum.Font.BuilderSans,
+	Footer = {
+		{ Text = DISCORD_INVITE, Copyable = true },
+		"|",
+		GAME_NAME,
+	},
+	Icon = 78539693571783,
+	NotifySide = "Right",
+	ShowCustomCursor = false,
+	CornerRadius = 0,
 })
-v8.effect(function()
-    -- upvalues: (copy) v_u_14, (copy) v_u_17, (copy) v_u_4, (copy) v_u_18
-    if v_u_14() then
-        v_u_17.Visible = true
-        if v_u_4.ActiveMenu() then
-            v_u_18:setGoal(UDim2.new(0.5, 0, 1, -50))
-            v_u_18:setPosition(UDim2.new(0.5, 0, 1, -50))
-        else
-            v_u_18:setGoal(UDim2.new(0.5, 0, 1, -160))
-        end
-    else
-        v_u_17.Visible = false
-        return
-    end
-end)
-v_u_18:onChange(function(p19)
-    -- upvalues: (copy) v_u_17
-    v_u_17.Position = p19
-end)
-v_u_17.Activated:Connect(function()
-    -- upvalues: (copy) v_u_13
-    v_u_13.Unequip()
-end)
-v_u_13.EquippedUnit = v_u_14
-return v_u_13
 
+local Tabs = {
+	Info = Window:AddTab("Info", "info"),
+	Main = Window:AddTab("Main", "gauge"),
+	Player = Window:AddTab("Player", "person-standing"),
+	Settings = Window:AddTab("Settings", "settings"),
+}
+
+local function AddDiscordButton(Tab)
+	local DiscordGroup = Tab:AddLeftGroupbox("Discord")
+	DiscordGroup:AddButton({
+		Text = "Join Discord to Make Money",
+		Func = copyDiscord,
+	})
+	DiscordGroup:AddButton({
+		Text = "Join Discord for Keyless Scripts",
+		Func = copyDiscord,
+	})
+end
+
+for _, Tab in Tabs do
+	if Tab ~= Tabs.Info then
+		AddDiscordButton(Tab)
+	end
+end
+
+local executorName = "Unknown"
+pcall(function()
+	if identifyexecutor then
+		local name, version = identifyexecutor()
+		if type(name) == "string" and name ~= "" then
+			executorName = type(version) == "string" and version ~= "" and (name .. " " .. version) or name
+		end
+	end
+end)
+
+local AccountGroup = Tabs.Info:AddLeftGroupbox("Account", "circle-user")
+AccountGroup:AddLabel(field("User", LocalPlayer.Name, GREEN), true)
+AccountGroup:AddLabel(field("Status", "Keyless", GREEN), true)
+AccountGroup:AddLabel(field("Executor", executorName, GREEN), true)
+
+local GameGroup = Tabs.Info:AddLeftGroupbox("Game Info", "gamepad-2")
+GameGroup:AddLabel(colored(GAME_NAME .. " [" .. tostring(game.PlaceId) .. "]", BLUE), true)
+GameGroup:AddLabel(field("Place ID", tostring(game.PlaceId), BLUE), true)
+
+local SessionLabel = GameGroup:AddLabel(field("Session time", "0s", ORANGE), true)
+local jobId = tostring(game.JobId)
+local shortJobId = #jobId > 18 and (string.sub(jobId, 1, 18) .. "...") or jobId
+GameGroup:AddLabel(field("Server", shortJobId, GREY), true)
+
+GameGroup:AddButton({
+	Text = "Copy join script (Job ID)",
+	Func = function()
+		local joinScript = string.format(
+			'game:GetService("TeleportService"):TeleportToPlaceInstance(%d, "%s", game:GetService("Players").LocalPlayer)',
+			game.PlaceId,
+			jobId
+		)
+		copyText(joinScript, "Copied join script to clipboard")
+	end,
+})
+
+local sessionStart = os.clock()
+task.spawn(function()
+	while true do
+		task.wait(1)
+		if Library.Unloaded then
+			break
+		end
+		local elapsed = math.floor(os.clock() - sessionStart)
+		local text
+		if elapsed < 60 then
+			text = elapsed .. "s"
+		elseif elapsed < 3600 then
+			text = string.format("%dm %ds", elapsed // 60, elapsed % 60)
+		else
+			text = string.format("%dh %dm", elapsed // 3600, (elapsed % 3600) // 60)
+		end
+		SessionLabel:SetText(field("Session time", text, ORANGE))
+	end
+end)
+
+local ScriptsGroup = Tabs.Info:AddRightGroupbox("Scripts", "package")
+ScriptsGroup:AddLabel(colored("Included in this hub", GREY), true)
+ScriptsGroup:AddLabel(colored(GAME_NAME, BLUE), true)
+
+local FeaturesGroup = Tabs.Info:AddRightGroupbox("Features", "list")
+FeaturesGroup:AddLabel(colored("Auto Win", ORANGE), true)
+FeaturesGroup:AddLabel(colored("Auto Train", BLUE), true)
+FeaturesGroup:AddLabel(colored("Auto Shop", GREEN), true)
+FeaturesGroup:AddLabel(colored("Auto Hatch", BLUE), true)
+FeaturesGroup:AddLabel(colored("Player Utilities", GREY), true)
+
+local SocialsGroup = Tabs.Info:AddRightGroupbox("Socials", "link")
+SocialsGroup:AddButton({
+	Text = "Discord",
+	Func = copyDiscord,
+})
+SocialsGroup:AddButton({
+	Text = "Rscripts",
+	Func = function()
+		copyText(RSCRIPTS_LINK, "Copied Rscripts profile to clipboard")
+	end,
+})
+
+local AdGroup = Tabs.Info:AddLeftGroupbox("Ouroboros Hub", "sparkles")
+AdGroup:AddLabel("Every script in the hub is keyless. No key systems, no checkpoints, no linkvertise.", true)
+AdGroup:AddLabel("The Discord has ready made configs, dupe methods, giveaways, and early access to new scripts.", true)
+AdGroup:AddLabel("Requests get taken seriously. A lot of what is in this script started as a Discord message.", true)
+AdGroup:AddButton({
+	Text = "Copy Discord Invite",
+	Func = copyDiscord,
+})
+
+local DonationsGroup = Tabs.Info:AddRightGroupbox("Donations", "heart")
+DonationsGroup:AddLabel(colored("All donations are optional but appreciated.", ORANGE), true)
+DonationsGroup:AddLabel(colored("If you donate you get a special role, just PING after you donate.", GREEN), true)
+DonationsGroup:AddDivider()
+DonationsGroup:AddLabel(colored("LTC / Litecoin", LTC), true)
+DonationsGroup:AddButton({
+	Text = "Copy Litecoin Address",
+	Func = function()
+		copyText(LTC_ADDRESS, "Copied Litecoin address")
+	end,
+})
+DonationsGroup:AddLabel(colored("BTC / Bitcoin", BTC), true)
+DonationsGroup:AddButton({
+	Text = "Copy Bitcoin Address",
+	Func = function()
+		copyText(BTC_ADDRESS, "Copied Bitcoin address")
+	end,
+})
+DonationsGroup:AddLabel(colored("ETH / Ethereum", ETH), true)
+DonationsGroup:AddButton({
+	Text = "Copy Ethereum Address",
+	Func = function()
+		copyText(ETH_ADDRESS, "Copied Ethereum address")
+	end,
+})
+DonationsGroup:AddLabel(colored("USDT", USDT), true)
+DonationsGroup:AddButton({
+	Text = "Copy USDT Address",
+	Func = function()
+		copyText(USDT_ADDRESS, "Copied USDT address")
+	end,
+})
+DonationsGroup:AddLabel(colored("Solana", SOL), true)
+DonationsGroup:AddButton({
+	Text = "Copy Solana Address",
+	Func = function()
+		copyText(SOL_ADDRESS, "Copied Solana address")
+	end,
+})
+DonationsGroup:AddLabel(colored("PayPal", PAYPAL), true)
+DonationsGroup:AddButton({
+	Text = "Copy PayPal Link",
+	Func = function()
+		copyText(PAYPAL_LINK, "Copied PayPal link")
+	end,
+})
+DonationsGroup:AddLabel(colored("Venmo", VENMO), true)
+DonationsGroup:AddButton({
+	Text = "Copy Venmo Link",
+	Func = function()
+		copyText(VENMO_LINK, "Copied Venmo link")
+	end,
+})
+DonationsGroup:AddDivider()
+DonationsGroup:AddLabel(colored("Don't have any of the listed currencies but still wanna donate?", GREY), true)
+DonationsGroup:AddLabel(colored("DM me and we'll work something out.", BLUE), true)
+
+local FaqGroup = Tabs.Info:AddRightGroupbox("FAQ", "circle-help")
+FaqGroup:AddLabel("Where do I get a good config?", true)
+FaqGroup:AddLabel("Join the Discord, the config channel has configs shared for every script.", true)
+FaqGroup:AddLabel("How do I import / export configs?", true)
+FaqGroup:AddLabel("Join the Discord, the guide is pinned and people share config links daily.", true)
+FaqGroup:AddLabel("How do I report bugs?", true)
+FaqGroup:AddLabel("Join the Discord and post it in the bugs channel.", true)
+FaqGroup:AddLabel("How do I make suggestions?", true)
+FaqGroup:AddLabel("Join the Discord and drop it in suggestions, most of them get added.", true)
+FaqGroup:AddLabel("How do I get help or updates?", true)
+FaqGroup:AddLabel("Join the Discord, updates and support are posted there first.", true)
+
+local FarmGroup = Tabs.Main:AddLeftGroupbox("Farm", "bot")
+FarmGroup:AddToggle("AutoWin", {
+	Text = "Auto Win",
+	Default = false,
+})
+FarmGroup:AddDropdown("WinPlate", {
+	Text = "Win Plate",
+	Values = WIN_PLATE_VALUES,
+	Default = "Best",
+	Expandable = true,
+	ExpandColumns = 2,
+})
+FarmGroup:AddSlider("AutoWinWalkSpeed", {
+	Text = "Auto Win WalkSpeed",
+	Default = 60,
+	Min = 16,
+	Max = 250,
+	Rounding = 0,
+})
+FarmGroup:AddToggle("AutoTrain", {
+	Text = "Auto Train",
+	Default = false,
+})
+FarmGroup:AddDropdown("Treadmill", {
+	Text = "Treadmill",
+	Values = TREADMILL_VALUES,
+	Default = "Best",
+	Expandable = true,
+	ExpandColumns = 2,
+})
+FarmGroup:AddToggle("AutoRebirth", {
+	Text = "Auto Rebirth",
+	Default = false,
+})
+
+local ShopGroup = Tabs.Main:AddRightGroupbox("Shop", "shopping-bag")
+ShopGroup:AddToggle("AutoBuyTrail", {
+	Text = "Auto Buy Trail",
+	Default = false,
+})
+ShopGroup:AddToggle("AutoBuyFoods", {
+	Text = "Auto Buy Foods",
+	Default = false,
+})
+
+local HatchGroup = Tabs.Main:AddRightGroupbox("Pets", "paw-print")
+HatchGroup:AddToggle("AutoHatch", {
+	Text = "Auto Hatch Pets",
+	Default = false,
+})
+HatchGroup:AddDropdown("HatchEgg", {
+	Text = "Egg",
+	Values = EGG_VALUES,
+	Default = EGG_VALUES[1],
+})
+HatchGroup:AddSlider("HatchDelay", {
+	Text = "Hatch Delay",
+	Default = 0.35,
+	Min = 0.1,
+	Max = 3,
+	Rounding = 2,
+})
+HatchGroup:AddToggle("AutoEquipBestPets", {
+	Text = "Auto Equip Best Pets",
+	Default = true,
+})
+
+local MovementGroup = Tabs.Player:AddLeftGroupbox("Movement", "footprints")
+MovementGroup:AddToggle("WalkSpeedEnabled", {
+	Text = "WalkSpeed",
+	Default = false,
+})
+MovementGroup:AddSlider("WalkSpeed", {
+	Text = "WalkSpeed Amount",
+	Default = 32,
+	Min = 16,
+	Max = 250,
+	Rounding = 0,
+})
+MovementGroup:AddToggle("InfJump", {
+	Text = "Infinite Jump",
+	Default = false,
+})
+MovementGroup:AddToggle("NoClip", {
+	Text = "NoClip",
+	Default = false,
+})
+MovementGroup:AddToggle("AntiGameplayPause", {
+	Text = "No Gameplay Paused",
+	Default = true,
+})
+
+local FlyGroup = Tabs.Player:AddRightGroupbox("Fly", "feather")
+FlyGroup:AddToggle("Fly", {
+	Text = "Fly",
+	Default = false,
+})
+FlyGroup:AddSlider("FlySpeed", {
+	Text = "Fly Speed",
+	Default = 60,
+	Min = 10,
+	Max = 400,
+	Rounding = 0,
+})
+
+local MenuGroup = Tabs.Settings:AddLeftGroupbox("Menu")
+MenuGroup:AddLabel("Menu bind"):AddKeyPicker("MenuKeybind", {
+	Default = "RightShift",
+	NoUI = true,
+	Text = "Menu keybind",
+})
+Library.ToggleKeybind = Options.MenuKeybind
+
+MenuGroup:AddToggle("AntiAfk", {
+	Text = "Anti-AFK",
+	Default = true,
+})
+
+MenuGroup:AddButton({
+	Text = "Unload",
+	Func = function()
+		Library:Unload()
+	end,
+})
+
+local antiAfkLastInput = tick()
+local antiAfkLastTap = tick()
+
+pcall(function()
+	for _, connection in ipairs(getconnections(LocalPlayer.Idled)) do
+		pcall(function()
+			connection:Disable()
+		end)
+	end
+end)
+
+local function antiAfkTap()
+	local camera = Workspace.CurrentCamera
+	if not camera then
+		return
+	end
+	VirtualUser:Button2Down(Vector2.new(0, 0), camera.CFrame)
+	task.wait(0.1)
+	VirtualUser:Button2Up(Vector2.new(0, 0), camera.CFrame)
+	antiAfkLastTap = tick()
+end
+
+local antiAfkBeganConnection = UserInputService.InputBegan:Connect(function()
+	antiAfkLastInput = tick()
+end)
+
+local antiAfkChangedConnection = UserInputService.InputChanged:Connect(function(input)
+	local inputType = input.UserInputType
+	if inputType == Enum.UserInputType.MouseMovement or inputType == Enum.UserInputType.Gamepad1 then
+		antiAfkLastInput = tick()
+	end
+end)
+
+task.spawn(function()
+	while not Library.Unloaded do
+		task.wait(2)
+		if Toggles.AntiAfk.Value then
+			local idle = tick() - antiAfkLastInput
+			local sinceTap = tick() - antiAfkLastTap
+			if idle >= 300 and sinceTap >= 60 then
+				pcall(antiAfkTap)
+			elseif idle < 300 and sinceTap >= 300 then
+				pcall(antiAfkTap)
+			end
+		end
+	end
+end)
+
+local function applyAntiGameplayPause(enabled)
+	pcall(function()
+		GuiService:SetGameplayPausedNotificationEnabled(not enabled)
+	end)
+	pcall(function()
+		local notification = CoreGui:FindFirstChild("RobloxNetworkPauseNotification")
+		if notification then
+			notification.Enabled = not enabled
+		end
+	end)
+	if not enabled then
+		return
+	end
+	pcall(function()
+		if sethiddenproperty then
+			sethiddenproperty(LocalPlayer, "GameplayPaused", false)
+		else
+			LocalPlayer.GameplayPaused = false
+		end
+	end)
+end
+
+Toggles.AntiGameplayPause:OnChanged(function()
+	applyAntiGameplayPause(Toggles.AntiGameplayPause.Value)
+end)
+
+task.spawn(function()
+	while not Library.Unloaded do
+		task.wait(1)
+		if Toggles.AntiGameplayPause.Value then
+			applyAntiGameplayPause(true)
+		end
+	end
+end)
+
+RunService.Stepped:Connect(function()
+	if Library.Unloaded then
+		return
+	end
+	if Toggles.NoClip and Toggles.NoClip.Value then
+		local character = LocalPlayer.Character
+		if character then
+			for _, part in ipairs(character:GetDescendants()) do
+				if part:IsA("BasePart") and part.CanCollide then
+					part.CanCollide = false
+				end
+			end
+		end
+	end
+end)
+
+UserInputService.JumpRequest:Connect(function()
+	if Library.Unloaded then
+		return
+	end
+	if Toggles.InfJump and Toggles.InfJump.Value then
+		local humanoid = getHumanoid()
+		if humanoid then
+			humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
+		end
+	end
+end)
+
+local Camera = Workspace.CurrentCamera
+
+RunService.RenderStepped:Connect(function(dt)
+	if Library.Unloaded then
+		return
+	end
+
+	if Toggles.WalkSpeedEnabled and Toggles.WalkSpeedEnabled.Value and not isOn("AutoWin") then
+		local humanoid = getHumanoid()
+		if humanoid then
+			humanoid.WalkSpeed = Options.WalkSpeed.Value
+		end
+	end
+
+	if Toggles.Fly and Toggles.Fly.Value then
+		local root = getRoot()
+		local humanoid = getHumanoid()
+		if root and humanoid then
+			humanoid.PlatformStand = true
+			local direction = Vector3.zero
+			if UserInputService:IsKeyDown(Enum.KeyCode.W) then
+				direction = direction + Camera.CFrame.LookVector
+			end
+			if UserInputService:IsKeyDown(Enum.KeyCode.S) then
+				direction = direction - Camera.CFrame.LookVector
+			end
+			if UserInputService:IsKeyDown(Enum.KeyCode.A) then
+				direction = direction - Camera.CFrame.RightVector
+			end
+			if UserInputService:IsKeyDown(Enum.KeyCode.D) then
+				direction = direction + Camera.CFrame.RightVector
+			end
+			if UserInputService:IsKeyDown(Enum.KeyCode.Space) then
+				direction = direction + Vector3.new(0, 1, 0)
+			end
+			if UserInputService:IsKeyDown(Enum.KeyCode.LeftControl) then
+				direction = direction - Vector3.new(0, 1, 0)
+			end
+			root.AssemblyLinearVelocity = Vector3.zero
+			if direction.Magnitude > 0 then
+				root.CFrame = root.CFrame + direction.Unit * Options.FlySpeed.Value * dt
+			end
+		end
+	end
+end)
+
+Toggles.Fly:OnChanged(function()
+	if not Toggles.Fly.Value then
+		local humanoid = getHumanoid()
+		if humanoid then
+			humanoid.PlatformStand = false
+		end
+	end
+end)
+
+Toggles.WalkSpeedEnabled:OnChanged(function()
+	if not Toggles.WalkSpeedEnabled.Value and not isOn("AutoWin") then
+		local humanoid = getHumanoid()
+		if humanoid then
+			humanoid.WalkSpeed = 16
+		end
+	end
+end)
+
+Toggles.AutoWin:OnChanged(function()
+	if not Toggles.AutoWin.Value then
+		setAutoWinControls(true)
+		local humanoid = getHumanoid()
+		if humanoid then
+			humanoid:Move(Vector3.zero, false)
+			if not (Toggles.WalkSpeedEnabled and Toggles.WalkSpeedEnabled.Value) then
+				humanoid.WalkSpeed = 16
+			end
+		end
+	end
+end)
+
+task.spawn(function()
+	while not Library.Unloaded do
+		RunService.Heartbeat:Wait()
+		if isOn("AutoWin") then
+			pcall(autoWinStep)
+		end
+	end
+end)
+
+task.spawn(function()
+	while not Library.Unloaded do
+		task.wait(0.35)
+		if isOn("AutoTrain") then
+			pcall(autoTrainOnce)
+		end
+	end
+end)
+
+task.spawn(function()
+	while not Library.Unloaded do
+		task.wait(1)
+		if isOn("AutoRebirth") then
+			pcall(autoRebirthOnce)
+		end
+	end
+end)
+
+task.spawn(function()
+	while not Library.Unloaded do
+		task.wait(1)
+		if isOn("AutoBuyTrail") then
+			pcall(autoBuyTrailsOnce)
+		end
+	end
+end)
+
+task.spawn(function()
+	while not Library.Unloaded do
+		task.wait(1.25)
+		if isOn("AutoBuyFoods") then
+			pcall(autoBuyFoodsOnce)
+		end
+	end
+end)
+
+task.spawn(function()
+	while not Library.Unloaded do
+		local delayTime = Options.HatchDelay and Options.HatchDelay.Value or 0.35
+		task.wait(delayTime)
+		if isOn("AutoHatch") then
+			pcall(autoHatchOnce)
+		end
+	end
+end)
+
+ThemeManager:SetLibrary(Library)
+ThemeManager:SetFolder("OuroborosHub")
+ThemeManager:SaveDefault("Evil Hello Kitty")
+ThemeManager:ApplyToTab(Tabs.Settings)
+ThemeManager:LoadDefault()
+
+SaveManager:SetLibrary(Library)
+SaveManager:IgnoreThemeSettings()
+SaveManager:SetIgnoreIndexes({ "MenuKeybind", "SaveManager_ImportSource" })
+SaveManager:SetFolder("OuroborosHub/SkinnyPerStep")
+local ConfigurationBox = SaveManager:BuildConfigSection(Tabs.Settings)
+
+local function configElement(objectType, index)
+	local holder = objectType == "Toggle" and Toggles or Options
+	local element = holder[index]
+	return type(element) == "table" and element.Type == objectType and element or nil
+end
+
+local function encodeConfigObject(index, element)
+	local elementType = element.Type
+	if elementType == "Toggle" then
+		return { idx = index, type = "Toggle", value = element.Value == true }
+	elseif elementType == "Slider" then
+		return { idx = index, type = "Slider", value = tostring(element.Value) }
+	elseif elementType == "Dropdown" then
+		return { idx = index, type = "Dropdown", multi = element.Multi == true, value = element.Value }
+	elseif elementType == "Input" then
+		return { idx = index, type = "Input", text = tostring(element.Value or "") }
+	elseif elementType == "ColorPicker" then
+		return {
+			idx = index,
+			type = "ColorPicker",
+			value = element.Value:ToHex(),
+			transparency = element.Transparency,
+		}
+	elseif elementType == "KeyPicker" then
+		return {
+			idx = index,
+			type = "KeyPicker",
+			mode = element.Mode,
+			key = element.Value,
+			modifiers = element.Modifiers,
+			toggled = element.Toggled,
+		}
+	end
+	return nil
+end
+
+local function buildConfigPayload()
+	local objects = {}
+	for _, holder in ipairs({ Toggles, Options }) do
+		for index, element in pairs(holder) do
+			if type(element) == "table"
+				and type(element.Type) == "string"
+				and not SaveManager.Ignore[index]
+			then
+				local encoded = encodeConfigObject(index, element)
+				if encoded then
+					objects[#objects + 1] = encoded
+				end
+			end
+		end
+	end
+
+	table.sort(objects, function(a, b)
+		if a.type ~= b.type then
+			return a.type < b.type
+		end
+		return a.idx < b.idx
+	end)
+
+	return { objects = objects }
+end
+
+local function applyConfigObject(object)
+	if type(object) ~= "table"
+		or type(object.idx) ~= "string"
+		or type(object.type) ~= "string"
+		or SaveManager.Ignore[object.idx]
+	then
+		return false
+	end
+
+	local element = configElement(object.type, object.idx)
+	if not element then
+		return false
+	end
+
+	local applied = pcall(function()
+		if object.type == "Input" then
+			if type(object.text) ~= "string" then
+				return
+			end
+			element:SetValue(object.text)
+		elseif object.type == "ColorPicker" then
+			element:SetValueRGB(Color3.fromHex(object.value), object.transparency)
+		elseif object.type == "KeyPicker" then
+			element:SetValue({ object.key, object.mode, object.modifiers })
+			if object.mode == "Toggle" and object.toggled ~= nil then
+				element.Toggled = object.toggled
+				element:Update()
+			end
+		else
+			element:SetValue(object.value)
+		end
+	end)
+
+	return applied
+end
+
+ConfigurationBox:AddDivider()
+
+ConfigurationBox:AddInput("SaveManager_ImportSource", {
+	Text = "Paste exported config here",
+	Finished = true,
+	AllowEmpty = true,
+})
+
+ConfigurationBox:AddButton("Export Config to Clipboard", function()
+	local encodeSuccess, encoded = pcall(HttpService.JSONEncode, HttpService, buildConfigPayload())
+	if not encodeSuccess then
+		Library:Notify("Failed to encode the config")
+		return
+	end
+
+	local writeClipboard = setclipboard or toclipboard
+	if type(writeClipboard) ~= "function" or not pcall(writeClipboard, encoded) then
+		Library:Notify("Your executor does not support copying to the clipboard")
+		return
+	end
+
+	Library:Notify("Config copied to clipboard", 6)
+end)
+
+ConfigurationBox:AddButton("Import Config from Clipboard Text", function()
+	local source = tostring(Options.SaveManager_ImportSource.Value or ""):match("^%s*(.-)%s*$")
+	if source == "" then
+		Library:Notify("Paste an exported config into the box first")
+		return
+	end
+
+	local decodeSuccess, decoded = pcall(HttpService.JSONDecode, HttpService, source)
+	if not decodeSuccess or type(decoded) ~= "table" or type(decoded.objects) ~= "table" then
+		Library:Notify("That is not a valid exported config")
+		return
+	end
+
+	local applied = 0
+	for _, object in ipairs(decoded.objects) do
+		if applyConfigObject(object) then
+			applied += 1
+		end
+	end
+
+	if applied == 0 then
+		Library:Notify("No settings in that config matched this script")
+		return
+	end
+
+	Options.SaveManager_ImportSource:SetValue("")
+	Library:Notify(("Imported %d setting%s"):format(applied, applied == 1 and "" or "s"), 6)
+end)
+
+SaveManager:LoadAutoloadConfig()
+
+Library:OnUnload(function()
+	antiAfkBeganConnection:Disconnect()
+	antiAfkChangedConnection:Disconnect()
+	applyAntiGameplayPause(false)
+	setAutoWinControls(true)
+	local humanoid = getHumanoid()
+	if humanoid then
+		humanoid:Move(Vector3.zero, false)
+		humanoid.PlatformStand = false
+		humanoid.WalkSpeed = 16
+	end
+	print("Unloaded!")
+end)
