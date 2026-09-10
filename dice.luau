@@ -885,11 +885,20 @@ local function autoTowerTeam()
 	end
 end
 
-local function autoTower()
+--// Instan Tower runs as TWO loops (see LOOPS section at the bottom):
+--//   0.5s -> PlayTower with the selected tower name
+--//   0.1s -> CompleteTowerFloor (no arguments)
+local function autoTowerPlay()
 	if not enabled.tower or settings.tower == "" then
 		return
 	end
 	call(PlayTower, settings.tower)
+end
+
+local function autoTowerFloor()
+	if not enabled.tower then
+		return
+	end
 	call(CompleteTowerFloor)
 end
 
@@ -1198,7 +1207,7 @@ local ShopTab = Tabs.Main:AddSubTab({ Name = "Shop", Icon = "shopping-cart" })
 local TowerTab = Tabs.Main:AddSubTab({ Name = "Tower", Icon = "castle" })
 
 local FarmingBox = box(FarmTab, "Farming", "sprout", "Left")
-FarmingBox:AddToggle("RollDice", { Text = "Fast Roll", Default = false, Callback = function(value)
+FarmingBox:AddToggle("RollDice", { Text = "Auto Roll", Default = false, Callback = function(value)
 	enabled.roll = value
 end })
 FarmingBox:AddToggle("CollectBalance", { Text = "Collect Cash", Default = false, Callback = function(value)
@@ -1492,10 +1501,12 @@ local function loop(name, func, interval)
 	end)
 end
 
---// Fast Roll — 0.01s (as fast as possible)
-loop("roll", autoRoll, 0.01)
---// Auto Tower — 0.1s
-loop("tower", autoTower, 0.1)
+--// Fast Roll — 1s (as fast as possible)
+loop("roll", autoRoll, 1)
+--// Instan Tower — PlayTower (starts/selects the tower) — 0.5s
+loop("tower", autoTowerPlay, 0.5)
+--// Instan Tower — CompleteTowerFloor — 0.1s
+loop("tower", autoTowerFloor, 0.1)
 --// Equip Best Unit — 0.4s
 loop("equipBest", autoEquipBest, 0.4)
 --// Collect Cash — 0.5s
@@ -1518,8 +1529,8 @@ loop("dice", autoDice, 0.2)
 loop("potion", autoPotion, 0.3)
 --// Auto Buy Affordable Upgrades — 0.2s
 loop("upgrades", autoUpgrade, 0.2)
---// Best Tower Team — 0.5s
-loop("towerTeam", autoTowerTeam, 0.5)
+--// Best Tower Team — 1.5s
+loop("towerTeam", autoTowerTeam, 1.5)
 --// Auto Sell by Rarity — 0.2s
 loop("sellRarity", autoSellRarity, 0.2)
 --// Auto Sell Full Inventory — 0.1s
