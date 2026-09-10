@@ -22,7 +22,7 @@ local CONFIG = {
 	Title = "AntiGodHub",
 	Icon = 80985370671515,
 	Discord = "https://discord.gg/jdJvZm6VdK",
-	Website = "https://rscripts.net",
+	Website = "https://rscripts.net/@AntiGodHub",
 	Version = "v1.6",
 	Folder = "AntiGodHub",
 	CornerRadius = 20,
@@ -886,18 +886,24 @@ local function autoTowerTeam()
 end
 
 --// Instan Tower runs as TWO loops (see LOOPS section at the bottom):
---//   0.5s -> PlayTower with the selected tower name
---//   0.1s -> CompleteTowerFloor (no arguments)
+--//   0.5s -> PlayTower with the selected tower name (ALWAYS first)
+--//   0.1s -> CompleteTowerFloor (no arguments, only AFTER PlayTower)
+--// ORDERING: towerArmed blocks CompleteTowerFloor until the first PlayTower has
+--// gone through, so PlayTower is guaranteed to fire first every time the toggle
+--// is turned on. Both loop speeds stay exactly the same (0.5s / 0.1s).
+local towerArmed = false
+
 local function autoTowerPlay()
 	if not enabled.tower or settings.tower == "" then
 		return
 	end
 	call(PlayTower, settings.tower)
+	towerArmed = true --// PlayTower done -> CompleteTowerFloor may now run
 end
 
 local function autoTowerFloor()
-	if not enabled.tower then
-		return
+	if not enabled.tower or not towerArmed then
+		return --// never before the first PlayTower
 	end
 	call(CompleteTowerFloor)
 end
@@ -1207,7 +1213,7 @@ local ShopTab = Tabs.Main:AddSubTab({ Name = "Shop", Icon = "shopping-cart" })
 local TowerTab = Tabs.Main:AddSubTab({ Name = "Tower", Icon = "castle" })
 
 local FarmingBox = box(FarmTab, "Farming", "sprout", "Left")
-FarmingBox:AddToggle("RollDice", { Text = "Auto Roll", Default = false, Callback = function(value)
+FarmingBox:AddToggle("RollDice", { Text = "Fast Roll", Default = false, Callback = function(value)
 	enabled.roll = value
 end })
 FarmingBox:AddToggle("CollectBalance", { Text = "Collect Cash", Default = false, Callback = function(value)
@@ -1328,6 +1334,7 @@ TowerBox:AddToggle("EquipTowerTeam", { Text = "Best Tower Team", Default = false
 end })
 TowerBox:AddToggle("AutoTower", { Text = "Instan Tower", Default = false, Callback = function(value)
 	enabled.tower = value
+	towerArmed = false --// re-arm: PlayTower always fires first when (re)enabled
 end })
 
 local MenuBox = box(Tabs.Settings, "Menu", "wrench", "Left")
@@ -1501,8 +1508,8 @@ local function loop(name, func, interval)
 	end)
 end
 
---// Fast Roll — 1s (as fast as possible)
-loop("roll", autoRoll, 1)
+--// Fast Roll — 0.01s (as fast as possible)
+loop("roll", autoRoll, 0.01)
 --// Instan Tower — PlayTower (starts/selects the tower) — 0.5s
 loop("tower", autoTowerPlay, 0.5)
 --// Instan Tower — CompleteTowerFloor — 0.1s
