@@ -1033,7 +1033,7 @@ end)
 local FarmTab = Tabs.Main:AddSubTab({ Name = "Farm", Icon = "star" })
 
 local FarmingBox = box(FarmTab, "Farming", "star", "Left")
-FarmingBox:AddToggle("AutoWin", { Text = "Auto Win (Teleport)", Default = false, Callback = function(value)
+FarmingBox:AddToggle("AutoWin", { Text = "Farm Wins", Default = false, Callback = function(value)
 	enabled.win = value
 end })
 FarmingBox:AddToggle("AutoTrain", { Text = "Auto Train", Default = false, Callback = function(value)
@@ -1053,7 +1053,7 @@ settings.egg = EggsValues[1] or ""
 local PetsBox = box(FarmTab, "Pets", "paw-print", "Left")
 --// EGG DROPDOWN first
 PetsBox:AddDropdown("HatchEgg", {
-	Text = "Egg",
+	Text = "Select Egg",
 	Values = EggsValues,
 	Default = settings.egg,
 	Tooltip = "Auto Hatch buys this egg when you have enough wins",
@@ -1062,18 +1062,18 @@ PetsBox:AddDropdown("HatchEgg", {
 	end,
 })
 --// Auto Hatch below the dropdown
-PetsBox:AddToggle("AutoHatch", { Text = "Auto Hatch Pets", Default = false, Callback = function(value)
+PetsBox:AddToggle("AutoHatch", { Text = "Hatch Egg", Default = false, Callback = function(value)
 	enabled.hatch = value
 end })
-PetsBox:AddToggle("AutoEquipBestPets", { Text = "Auto Equip Best Pets", Default = true, Callback = function(value)
+PetsBox:AddToggle("AutoEquipBestPets", { Text = "Equip Best Pets", Default = true, Callback = function(value)
 	enabled.equipBestPets = value
 end })
 
 local ShopBox = box(FarmTab, "Shop", "shopping-cart", "Right")
-ShopBox:AddToggle("AutoBuyTrail", { Text = "Auto Buy Best Trail", Default = false, Callback = function(value)
+ShopBox:AddToggle("AutoBuyTrail", { Text = "Buy Best Trail", Default = false, Callback = function(value)
 	enabled.trails = value
 end })
-ShopBox:AddToggle("AutoBuyFoods", { Text = "Auto Buy & Equip Best Food", Default = false, Callback = function(value)
+ShopBox:AddToggle("AutoBuyFoods", { Text = "Buy & Equip Best Food", Default = false, Callback = function(value)
 	enabled.foods = value
 end })
 
