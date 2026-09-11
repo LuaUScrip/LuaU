@@ -64,6 +64,7 @@ local games = {
     [984941738] = 'StealFishEggs.lua',
     [35850353] = 'SurfForLuckyBlock.lua',
     [33017480] = 'dice.luau',
+    [641497291] = 'skinperstep.luau',
 }
 
 if identifyexecutor then
