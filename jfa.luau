@@ -1949,7 +1949,7 @@ FarmEggBox:AddToggle("AutoSteal", { Text = "Steal Egg", Default = false, Callbac
 end })
 
 --// no Target dropdown anywhere: stealing is always "best egg I can reach"
-local GameStatusBox = box(FarmingTab, "Game Info", "info", "Right")
+local GameStatusBox = box(FarmingTab, "Game Info", "activity", "Right")
 GameStatusBox:AddLabel("FarmStatusLabel", { Text = paint("Status -", "idle", COLORS.accent), DoesWrap = true })
 GameStatusBox:AddLabel("ZoneLabel", { Text = paint("Zone -", "-", COLORS.user), DoesWrap = true })
 GameStatusBox:AddLabel("EggsLabel", { Text = paint("Eggs -", "placed 0 | ready 0", COLORS.user), DoesWrap = true })
