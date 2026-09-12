@@ -24,10 +24,10 @@ local CONFIG = {
 	Icon = 80985370671515,
 	Discord = "https://discord.gg/jdJvZm6VdK",
 	Website = "https://rscripts.net/@AntiGodHub",
-	Version = "v3.5.1",
+	Version = "v1.4",
 	Folder = "AntiGodHub",
 	CornerRadius = 20,
-	GameName = "Steal Egg",
+	GameName = "Steal Lucky Egg",
 }
 
 local HOME_POSITION = Vector3.new(157, 4, -31)
