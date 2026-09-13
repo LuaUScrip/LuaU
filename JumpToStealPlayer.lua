@@ -74,13 +74,13 @@ end)
 
 -- Lucky Blocks List
 local LuckyBlocksList = {
-	"OG Lucky Block",
 	"Champions Lucky Block",
 	"Spain Lucky Block",
 	"Icons Lucky Block",
 	"Japan Lucky Block",
 	"Alternate Lucky Block",
 	"Next Generation Lucky Block",
+	"Backline Legends Lucky Block",
 }
 
 -- Configuration
