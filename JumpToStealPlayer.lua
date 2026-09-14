@@ -1,79 +1,129 @@
--- Load Obsidian GUI Library
-local LibraryURL = "https://raw.githubusercontent.com/yudhiprb1-afk/LIB/refs/heads/main/Library.lua"
-local Library = loadstring(game:HttpGet(LibraryURL))()
+local Repo = "https://raw.githubusercontent.com/LuaUScrip/HUB/refs/heads/main/"
+local Library = loadstring(game:HttpGet(Repo .. "Library.lua"))()
+local ThemeManager = loadstring(game:HttpGet(Repo .. "addons/ThemeManager.lua"))()
+local SaveManager = loadstring(game:HttpGet(Repo .. "addons/SaveManager.lua"))()
 
-if not Library then
-	warn("ERROR: Failed to load library")
-	return
-end
+local Options = Library.Options
+local Toggles = Library.Toggles
 
--- Game Services
-local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local Workspace = game:GetService("Workspace")
+local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
-local HttpService = game:GetService("HttpService")
+local Lighting = game:GetService("Lighting")
 local TeleportService = game:GetService("TeleportService")
+local HttpService = game:GetService("HttpService")
 local VirtualUser = game:GetService("VirtualUser")
+local Workspace = game:GetService("Workspace")
 
-local Player = Players.LocalPlayer
-local Character = Player.Character or Player.CharacterAdded:Wait()
-local HumanoidRootPart = Character:WaitForChild("HumanoidRootPart")
+local LocalPlayer = Players.LocalPlayer
+local copyText = setclipboard or toclipboard or (syn and syn.write_clipboard)
+local httpRequest = request or http_request or (syn and syn.request)
 
-Player.CharacterAdded:Connect(function(newCharacter)
-	Character = newCharacter
-	HumanoidRootPart = Character:WaitForChild("HumanoidRootPart")
-end)
+local CONFIG = {
+	Title = "AntiGodHub",
+	Icon = 80985370671515,
+	Discord = "https://discord.gg/jdJvZm6VdK",
+	Website = "https://rscripts.net/@AntiGodHub",
+	Version = "v1.4",
+	Folder = "AntiGodHub",
+	CornerRadius = 20,
+	GameName = "Jump To Steal Soccer Player",
+}
 
--- Bypass Teleport System
-local function get_hrp()
-	local char = Player.Character
-	if not char then return nil end
-	return char:FindFirstChild("HumanoidRootPart")
-end
-
-local function wait_for_character()
-	if not Player.Character then
-		Player.CharacterAdded:Wait()
-	end
-	task.wait(0.1)
-end
-
-local function bypass_teleport(target)
-	wait_for_character()
-	local hrp = get_hrp()
-	if not hrp then return end
-	local target_pos
-	if typeof(target) == "Vector3" then
-		target_pos = target
-	elseif typeof(target) == "CFrame" then
-		target_pos = target.Position
-	elseif typeof(target) == "Instance" and target:IsA("BasePart") then
-		target_pos = target.Position
-	elseif typeof(target) == "string" then
-		local part = Workspace:FindFirstChild(target)
-		if part then
-			target_pos = part.Position
-		end
-	end
-	if target_pos then
+local previous = getgenv().UnitGrinder
+if previous then
+	previous.running = false
+	if type(previous.lib) == "table" and type(previous.lib.Unload) == "function" then
 		pcall(function()
-			hrp.CFrame = CFrame.new(target_pos)
+			previous.lib:Unload()
 		end)
 	end
 end
 
-getgenv().bypass_teleport = bypass_teleport
+local session = {running = true, lib = Library}
+getgenv().UnitGrinder = session
 
--- Instant fire ALL proximity prompts globally
-pcall(function()
-	game:GetService("ProximityPromptService").PromptButtonHoldBegan:Connect(function(prompt)
-		pcall(fireproximityprompt, prompt)
-	end)
-end)
+print("[AntiGodHub] Loading - " .. CONFIG.GameName)
 
--- Lucky Blocks List
-local LuckyBlocksList = {
+local enabled = {}
+local settings = {}
+local sessionStart = tick()
+local farmStatus = "idle"
+
+local function find(root, ...)
+	local node = root
+	for index = 1, select("#", ...) do
+		node = node and node:FindFirstChild((select(index, ...)))
+	end
+	return node
+end
+
+local function fire(remote, ...)
+	if remote then
+		pcall(remote.FireServer, remote, ...)
+	end
+end
+
+local function call(remote, ...)
+	if remote then
+		local ok, result = pcall(remote.InvokeServer, remote, ...)
+		if ok then
+			return result
+		end
+	end
+end
+
+local function read(value)
+	if value ~= nil then
+		local ok, result = pcall(value)
+		if ok then
+			return result
+		end
+	end
+end
+
+local timers = {}
+local function ready(key, interval)
+	local now = tick()
+	if now - (timers[key] or 0) < interval then
+		return false
+	end
+	timers[key] = now
+	return true
+end
+
+local function formatDuration(seconds)
+	seconds = math.floor(seconds)
+	if seconds < 60 then
+		return string.format("%ds", seconds)
+	end
+	return string.format("%dm %02ds", math.floor(seconds / 60), seconds % 60)
+end
+
+local StatusHoldUntil = 0
+
+local function setFarmStatus(text)
+	text = tostring(text or "idle")
+	if text == "idle" then
+		if tick() < StatusHoldUntil then
+			return
+		end
+	else
+		StatusHoldUntil = tick() + 2
+	end
+	farmStatus = text
+end
+
+local lastWarn = 0
+
+local function logError(err)
+	if tick() - lastWarn > 5 then
+		lastWarn = tick()
+		warn("[AntiGodHub] " .. tostring(err))
+	end
+end
+
+local LUCKY_BLOCKS = {
 	"Champions Lucky Block",
 	"Spain Lucky Block",
 	"Icons Lucky Block",
@@ -83,1051 +133,1129 @@ local LuckyBlocksList = {
 	"Backline Legends Lucky Block",
 }
 
--- Configuration
-local Config = {
-	HomePosition = Vector3.new(198, 3, 280),
-	SelectedLuckyBlock = {},
-	FarmActive = false,
-	BuyUpgradesActive = false,
-	BuySelectedUpgradesActive = false,
-	UpgradeFloorsActive = false,
-	UpgradeSoccerActive = false,
-	SoccerSlots = {},
-	OpenActive = false,
-	CollectActive = false,
-	RebirthActive = false,
-	SellAllActive = false,
-	BuyGearActive = false,
-	BuyAllGearActive = false,
-	SelectedGears = {},
-	SelectedUpgrades = {},
-	FontPreset = "White + Emerald",
-	AutoSave = false,
-	AutoExecute = false,
-	AutoReconnect = false,
-	AutoHideUi = false,
-	AntiAfk = false,
-	NoGameplayPaused = false,
-	ThemeName = "Emerald Green",
-	FontName = "Cartoon",
-	MenuBind = "G",
-	CustomColors = {
-		AccentColor = Color3.fromRGB(96, 216, 118),
-		FontColor = Color3.fromRGB(255, 255, 255),
-		BackgroundColor = Color3.fromRGB(8, 16, 10),
-		MainColor = Color3.fromRGB(16, 28, 20),
-		OutlineColor = Color3.fromRGB(30, 58, 40),
-	},
-	DiscordLink = "https://discord.gg/jdJvZm6VdK",
-	YouTubeLink = "https://youtube.com/@antigodhub",
-	TikTokLink = "https://tiktok.com/@antigodhub",
+local HOME_POSITION = Vector3.new(198, 3, 280)
+
+local GEAR_LIST = {
+	{"1", "Starter Coil", 1520},
+	{"2", "Speed Coil", 25400},
+	{"3", "Elastic Coil", 513000},
+	{"4", "Swift Coil", 7760000},
+	{"5", "Storm Coil", 26100000},
+	{"6", "Rainbow Coil", 190000000},
+	{"20", "Dual Crimson Coil", 799000000},
+	{"21", "Dual Rainbow Coil", 109000000000},
+	{"23", "Dual Shadow Coil", 27500000000000},
+	{"29", "Dual Fallen Coil", 33900000000000000},
+	{"33", "Dual Ghost Coil", 21400000000000000000},
 }
 
-local SettingsRefs = {}
-local SuppressUI = false
-
-local function CopyToClipboard(Text)
-	local Success = pcall(setclipboard, Text)
-	if not Success then
-		Success = pcall(toclipboard, Text)
-	end
-	return Success
+local GEAR_SORTED = {}
+for _, gear in ipairs(GEAR_LIST) do
+	table.insert(GEAR_SORTED, gear)
 end
+table.sort(GEAR_SORTED, function(a, b)
+	return a[3] < b[3]
+end)
 
-local NotifyColors = {
-	Success = Color3.fromRGB(96, 216, 118),
-	Warning = Color3.fromRGB(255, 176, 80),
-	Error = Color3.fromRGB(255, 96, 96),
-}
+local Remotes = {}
+local announcedRemote = {}
 
-local function Notify(Title, Description, Type)
-	pcall(function()
-		if type(Title) == "string" and #Title > 60 then
-			Title = Title:sub(1, 57) .. "..."
-		end
-		if Description == nil or Description == "" then
-			Description = " "
-		elseif type(Description) == "string" and #Description > 60 then
-			Description = Description:sub(1, 57) .. "..."
-		end
-		Type = Type or "Info"
-		Library:Notify({
-			Title = Title,
-			Description = Description,
-			Time = 4,
-			Type = Type,
-			DescriptionColor = NotifyColors[Type],
-		})
-	end)
-end
-
-local function GetLuckyBlock(BlockName)
-	local success, result = pcall(function()
-		return Workspace.Live.Slimes[BlockName].RootPart
-	end)
-	return success and result or nil
-end
-
-local function FarmLuckyBlock()
-	if not HumanoidRootPart or not HumanoidRootPart.Parent then return end
-	if #Config.SelectedLuckyBlock == 0 then return end
-
-	for _, BlockName in Config.SelectedLuckyBlock do
-		if not Config.FarmActive then return end
-		local LuckyBlock = GetLuckyBlock(BlockName)
-		if LuckyBlock and LuckyBlock.Parent then
-			pcall(function()
-				bypass_teleport(LuckyBlock)
-				task.wait(0.1)
-				local Prompt = LuckyBlock:FindFirstChild("StealPrompt")
-				if not Prompt then
-					Prompt = LuckyBlock:FindFirstChildWhichIsA("ProximityPrompt")
-				end
-				if Prompt then
-					pcall(fireproximityprompt, Prompt)
-				end
+local function resolveRemote(...)
+	local node = ReplicatedStorage
+	for index = 1, select("#", ...) do
+		local name = (select(index, ...))
+		local found = node and node:FindFirstChild(name)
+		if not found then
+			local ok, waited = pcall(function()
+				return node and node:WaitForChild(name, 10)
 			end)
-			task.wait(0.3)
-			bypass_teleport(Config.HomePosition)
-			task.wait(0.5)
+			found = ok and waited or nil
 		end
-	end
-end
-
-local function BuyJumpUpgrade()
-	pcall(function()
-		local Event = ReplicatedStorage:WaitForChild("SharedModules"):WaitForChild("Network"):WaitForChild("Remotes"):WaitForChild("Buy Speed Upgrade")
-		Event:FireServer(3)
-	end)
-end
-
-local function BuyCarryUpgrade()
-	pcall(function()
-		local Event = ReplicatedStorage:WaitForChild("SharedModules"):WaitForChild("Network"):WaitForChild("Remotes"):WaitForChild("Upgrade Carry Limit")
-		Event:FireServer()
-	end)
-end
-
-local GearAttempted = {}
-local FloorAttempted = {}
-
-local function BuyGear(GearId)
-	if GearAttempted[GearId] then return end
-	GearAttempted[GearId] = true
-	pcall(function()
-		local Event = ReplicatedStorage:WaitForChild("SharedModules"):WaitForChild("Network"):WaitForChild("Remotes"):WaitForChild("Buy Gear")
-		Event:FireServer(tostring(GearId), "Buy")
-	end)
-end
-
-local function BuyAllUpgrades()
-	BuyJumpUpgrade()
-	BuyCarryUpgrade()
-end
-
-local function BuySelectedUpgrades()
-	for _, Upgrade in Config.SelectedUpgrades do
-		if Upgrade == "Jump" then
-			BuyJumpUpgrade()
-		elseif Upgrade == "Carry" then
-			BuyCarryUpgrade()
+		if not found then
+			return nil
 		end
+		node = found
 	end
+	return node
 end
 
-local function BuyGearList(GearIds)
-	for _, GearId in GearIds do
-		BuyGear(GearId)
+local function getRemote(...)
+	local key = table.concat({...}, "/")
+	local cached = Remotes[key]
+	if cached and cached.Parent then
+		return cached
 	end
-end
-
-local function UpgradeFloor(FloorId)
-	if FloorAttempted[FloorId] then return end
-	FloorAttempted[FloorId] = true
-	pcall(function()
-		local Event = ReplicatedStorage:WaitForChild("SharedModules"):WaitForChild("Network"):WaitForChild("Remotes"):WaitForChild("Purchase Floor")
-		Event:InvokeServer(FloorId)
-	end)
-end
-
-local function UpgradeSoccerSlot(SlotId)
-	pcall(function()
-		local Event = ReplicatedStorage:WaitForChild("SharedModules"):WaitForChild("Network"):WaitForChild("Remotes"):WaitForChild("Upgrade Slime")
-		Event:FireServer(tostring(SlotId))
-	end)
-end
-
-local function DoRebirth()
-	pcall(function()
-		local Event = ReplicatedStorage:WaitForChild("SharedModules"):WaitForChild("Network"):WaitForChild("Remotes"):WaitForChild("Rebirth")
-		Event:FireServer()
-	end)
-end
-
-local function OpenLuckyBlocks()
-	pcall(function()
-		local Event = ReplicatedStorage:WaitForChild("SharedModules"):WaitForChild("Network"):WaitForChild("Remotes"):WaitForChild("Open Lucky Block")
-		Event:FireServer()
-	end)
-end
-
-local function CollectEarnings(Slot)
-	pcall(function()
-		local Event = ReplicatedStorage:WaitForChild("SharedModules"):WaitForChild("Network"):WaitForChild("Remotes"):WaitForChild("Collect Earnings")
-		Event:FireServer(tostring(Slot))
-	end)
-end
-
-local function SellAllSlimes()
-	pcall(function()
-		local Event = ReplicatedStorage:WaitForChild("SharedModules"):WaitForChild("Network"):WaitForChild("Remotes"):WaitForChild("Sell All Slimes")
-		Event:FireServer()
-	end)
-end
-
--- THEME MANAGER
-local function MakeTheme(Accent, Background, Main, Outline, Font)
-	return {
-		AccentColor = Accent,
-		BackgroundColor = Background,
-		MainColor = Main,
-		OutlineColor = Outline,
-		FontColor = Font,
-	}
-end
-
-local Themes = {
-	["Obsidian (Default)"] = MakeTheme(Color3.fromRGB(125, 85, 255), Color3.fromRGB(15, 15, 15), Color3.fromRGB(25, 25, 25), Color3.fromRGB(40, 40, 40), Color3.fromRGB(255, 255, 255)),
-	["Midnight Blue"] = MakeTheme(Color3.fromRGB(96, 165, 255), Color3.fromRGB(8, 10, 16), Color3.fromRGB(18, 22, 32), Color3.fromRGB(38, 46, 64), Color3.fromRGB(255, 255, 255)),
-	["Blood Red"] = MakeTheme(Color3.fromRGB(255, 76, 76), Color3.fromRGB(16, 8, 8), Color3.fromRGB(28, 14, 14), Color3.fromRGB(64, 30, 30), Color3.fromRGB(255, 255, 255)),
-	["Emerald Green"] = MakeTheme(Color3.fromRGB(96, 216, 118), Color3.fromRGB(8, 16, 10), Color3.fromRGB(16, 28, 20), Color3.fromRGB(30, 58, 40), Color3.fromRGB(255, 255, 255)),
-	["Sunset Orange"] = MakeTheme(Color3.fromRGB(255, 148, 60), Color3.fromRGB(18, 12, 8), Color3.fromRGB(32, 22, 12), Color3.fromRGB(64, 46, 26), Color3.fromRGB(255, 255, 255)),
-}
-
-local ThemeNames = {}
-for Name in Themes do table.insert(ThemeNames, Name) end
-
-local function CloneColors(Scheme)
-	local Clone = {}
-	for Key, Value in Scheme do Clone[Key] = Value end
-	return Clone
-end
-
-local function ApplyTheme(Scheme)
-	for Key, Value in Scheme do
-		if Library.Scheme[Key] ~= nil then
-			Library.Scheme[Key] = Value
+	local found = resolveRemote(...)
+	if found then
+		if not announcedRemote[key] then
+			announcedRemote[key] = true
+			print("[AntiGodHub] Remote ready - " .. key)
 		end
+		Remotes[key] = found
 	end
-	Library:UpdateColorsUsingRegistry()
+	return found
 end
 
-local function ApplyColorOverride(Key, Color)
-	if Library.Scheme[Key] ~= nil then
-		Library.Scheme[Key] = Color
-		Library:UpdateColorsUsingRegistry()
+local function selectedSet(optionKey)
+	local option = Options and Options[optionKey]
+	local selection = option and option.Value
+	if type(selection) == "string" then
+		return {[selection] = true}
 	end
-end
-
-local function ApplyCustomColors()
-	for Key, Color in Config.CustomColors do
-		ApplyColorOverride(Key, Color)
-	end
-end
-
-local FontNames = {"Code", "Gotham", "Roboto", "Cartoon", "Arial", "SourceSans", "FredokaOne", "SpaceGrotesk", "Montserrat", "TitilliumWeb", "Nunito"}
-
-local FontPresets = {
-	{ Name = "White + Emerald", Accent = Color3.fromRGB(96, 216, 118) },
-	{ Name = "White + Sky Blue", Accent = Color3.fromRGB(79, 195, 247) },
-	{ Name = "White + Gold", Accent = Color3.fromRGB(255, 213, 79) },
-	{ Name = "White + Rose", Accent = Color3.fromRGB(255, 107, 107) },
-	{ Name = "White + Violet", Accent = Color3.fromRGB(179, 136, 255) },
-	{ Name = "White + Teal", Accent = Color3.fromRGB(77, 208, 196) },
-	{ Name = "White + Coral", Accent = Color3.fromRGB(255, 138, 101) },
-	{ Name = "White + Lavender", Accent = Color3.fromRGB(206, 147, 216) },
-	{ Name = "White + Cyan", Accent = Color3.fromRGB(77, 208, 225) },
-	{ Name = "White + Lime", Accent = Color3.fromRGB(174, 213, 129) },
-}
-local FontPresetNames = {}
-for _, Preset in FontPresets do table.insert(FontPresetNames, Preset.Name) end
-
-local SoccerSlotOptions = {}
-for i = 1, 70 do
-	table.insert(SoccerSlotOptions, "Soccer " .. i)
-end
-
--- CONFIG SAVE / LOAD
-local ConfigsDir = "LuckyBlocksFarm/Configs"
-local AutoloadPath = "LuckyBlocksFarm/Autoload.json"
-local CurrentConfig = nil
-
-local function SanitizeConfigName(Name)
-	if type(Name) ~= "string" then return nil end
-	local Clean = Name:gsub("[^%w _%-%.]", ""):gsub("%s+", " "):gsub("^%s+", ""):gsub("%s+$", "")
-	if Clean == "" or Clean == "---" then return nil end
-	return Clean
-end
-
-local function ConfigPath(Name)
-	return ConfigsDir .. "/" .. Name .. ".json"
-end
-
-local function GetConfigList()
-	local List = {}
-	if not listfiles then return List end
-	pcall(function()
-		makefolder("LuckyBlocksFarm")
-		makefolder(ConfigsDir)
-		for _, Path in listfiles(ConfigsDir) do
-			if Path:sub(-5) == ".json" then
-				local Name = Path:match("([^/\\]+)%.json$")
-				if Name and Name ~= "---" then table.insert(List, Name) end
+	if type(selection) == "table" then
+		for key, value in pairs(selection) do
+			if type(key) == "string" and value == true then
+				return selection
 			end
+			break
 		end
-	end)
-	table.sort(List)
-	return List
-end
-
-local function ConfigExists(Name)
-	Name = SanitizeConfigName(Name)
-	if not Name or not isfile then return false end
-	return isfile(ConfigPath(Name))
-end
-
-local function SaveConfigData(Name)
-	if not writefile then return false end
-	Name = SanitizeConfigName(Name)
-	if not Name then return false end
-	pcall(function()
-		makefolder("LuckyBlocksFarm")
-		makefolder(ConfigsDir)
-		local Data = {
-			Toggles = {},
-			ThemeName = Config.ThemeName,
-			FontName = Config.FontName,
-			FontPreset = Config.FontPreset,
-			MenuBind = Config.MenuBind,
-			SelectedLuckyBlock = Config.SelectedLuckyBlock or {},
-			SelectedUpgrades = Config.SelectedUpgrades or {},
-			SelectedGears = Config.SelectedGears or {},
-			SoccerSlots = Config.SoccerSlots or {},
-			Colors = {},
-		}
-		for Key, Color in Config.CustomColors do
-			Data.Colors[Key] = { math.floor(Color.R * 255), math.floor(Color.G * 255), math.floor(Color.B * 255) }
+		local out = {}
+		for _, value in ipairs(selection) do
+			out[value] = true
 		end
-		for Id, Toggle in Library.Toggles do Data.Toggles[Id] = Toggle.Value end
-		writefile(ConfigPath(Name), HttpService:JSONEncode(Data))
-	end)
-	return true
+		return out
+	end
+	return {}
 end
 
-local function GetAutoloadName()
-	if not isfile or not readfile then return nil end
-	if not isfile(AutoloadPath) then return nil end
-	local Success, Data = pcall(function() return HttpService:JSONDecode(readfile(AutoloadPath)) end)
-	if Success and type(Data) == "table" and type(Data.Name) == "string" then return SanitizeConfigName(Data.Name) end
+local function selectedList(optionKey)
+	local set = selectedSet(optionKey)
+	local list = {}
+	for value in pairs(set) do
+		table.insert(list, value)
+	end
+	table.sort(list)
+	return list
+end
+
+local function optionNumber(key, fallback)
+	local option = Options and Options[key]
+	local value = option and tonumber(option.Value)
+	return value or fallback
+end
+
+local function getMoney()
+	local ok, value = pcall(function()
+		return game:GetService("Players").LocalPlayer.leaderstats.Cash.Value
+	end)
+	return ok and tonumber(value) or 0
+end
+
+local function getRebirths()
+	local ok, value = pcall(function()
+		return game:GetService("Players").LocalPlayer.leaderstats.Rebirth.Value
+	end)
+	return ok and tonumber(value) or 0
+end
+
+local JUMP_BASE_PRICE = 260
+local JUMP_GROWTH = 1.073
+local JUMP_PRICE_SCALE = 5 * 1.38 / (1 + 1.073 + 1.073 ^ 2 + 1.073 ^ 3 + 1.073 ^ 4)
+
+local function getJumpLevel()
+	local ok, data = pcall(function()
+		return _G._Lib and _G._Lib.Data and _G._Lib.Data:Get(LocalPlayer)
+	end)
+	if ok and type(data) == "table" then
+		local jump = tonumber(data.Jump)
+		if jump then
+			return jump
+		end
+	end
+	local attr = LocalPlayer:GetAttribute("Jump")
+	if attr ~= nil then
+		return math.floor(tonumber(attr) or 0)
+	end
 	return nil
 end
 
-local function SetAutoload(Name)
-	if not writefile then return false end
-	Name = SanitizeConfigName(Name)
-	if not Name then return false end
-	pcall(function() makefolder("LuckyBlocksFarm") writefile(AutoloadPath, HttpService:JSONEncode({ Name = Name })) end)
-	return true
+local function jumpSinglePrice(level)
+	return math.floor(JUMP_BASE_PRICE * JUMP_GROWTH ^ level * JUMP_PRICE_SCALE + 0.5)
 end
 
-local function ClearAutoload()
-	pcall(function() if isfile and isfile(AutoloadPath) then delfile(AutoloadPath) end end)
-	return true
-end
-
-local SaveQueued = false
-local function ScheduleSave()
-	if not Config.AutoSave then return end
-	if not CurrentConfig then return end
-	if SaveQueued then return end
-	SaveQueued = true
-	task.delay(1, function() SaveQueued = false SaveConfigData(CurrentConfig) end)
-end
-
-local function SyncColorPickers()
-	local PickerMap = {
-		AccentColor = "ThemeAccent",
-		FontColor = "ThemeFontColor",
-		BackgroundColor = "ThemeBackground",
-		MainColor = "ThemeMain",
-		OutlineColor = "ThemeOutline",
-	}
-	for Key, Idx in PickerMap do
-		local Picker = Library.Options[Idx]
-		if Picker and Picker.SetValueRGB then
-			Picker:SetValueRGB(Config.CustomColors[Key])
+local function fireSpeedUpgradeSmart()
+	local money = getMoney()
+	local level = getJumpLevel()
+	if level then
+		local bulk = 0
+		local cost = 0
+		for i = 0, 9 do
+			local price = jumpSinglePrice(level + i)
+			if money < cost + price then
+				break
+			end
+			cost = cost + price
+			bulk = bulk + 1
+		end
+		if bulk >= 1 then
+			fire(getRemote("SharedModules", "Network", "Remotes", "Buy Speed Upgrade"), bulk)
+			return
 		end
 	end
+	fire(getRemote("SharedModules", "Network", "Remotes", "Buy Speed Upgrade"), 3)
 end
 
-local LoadConfig
-LoadConfig = function(Name, Silent)
-	Name = SanitizeConfigName(Name)
-	if not Name then return false end
-	if not isfile or not readfile then if not Silent then Notify("Config", "Config loading not supported", "Error") end return false end
-	if not isfile(ConfigPath(Name)) then if not Silent then Notify("Config", "Config '" .. Name .. "' not found", "Warning") end return false end
-	local Success, Data = pcall(function() return HttpService:JSONDecode(readfile(ConfigPath(Name))) end)
-	if not Success or type(Data) ~= "table" then if not Silent then Notify("Config", "Failed to read configuration", "Error") end return false end
-	SuppressUI = true
-	if type(Data.ThemeName) == "string" and Themes[Data.ThemeName] then Config.ThemeName = Data.ThemeName ApplyTheme(Themes[Data.ThemeName]) end
-	if type(Data.Colors) == "table" then
-		for Key, RGB in Data.Colors do
-			if Config.CustomColors[Key] ~= nil and type(RGB) == "table" then
-				local R, G, B = RGB[1], RGB[2], RGB[3]
-				if type(R) == "number" and type(G) == "number" and type(B) == "number" then Config.CustomColors[Key] = Color3.fromRGB(R, G, B) end
-			end
-		end
-		ApplyCustomColors()
-	end
-	if type(Data.FontName) == "string" and Enum.Font[Data.FontName] then Config.FontName = Data.FontName Library:SetFont(Enum.Font[Data.FontName]) end
-	if type(Data.FontPreset) == "string" then for _, Preset in FontPresets do if Preset.Name == Data.FontPreset then Config.FontPreset = Preset.Name break end end end
-	if type(Data.MenuBind) == "string" and Data.MenuBind ~= "None" then Config.MenuBind = Data.MenuBind end
-	if type(Data.SelectedLuckyBlock) == "table" then
-		local Valid = {}
-		for _, Block in Data.SelectedLuckyBlock do if table.find(LuckyBlocksList, Block) then table.insert(Valid, Block) end end
-		Config.SelectedLuckyBlock = Valid
-	end
-	if type(Data.SelectedUpgrades) == "table" then Config.SelectedUpgrades = Data.SelectedUpgrades end
-	if type(Data.SelectedGears) == "table" then Config.SelectedGears = Data.SelectedGears end
-	if type(Data.SoccerSlots) == "table" then
-		local Valid = {}
-		for _, Opt in Data.SoccerSlots do if table.find(SoccerSlotOptions, Opt) then table.insert(Valid, Opt) end end
-		Config.SoccerSlots = Valid
-	end
-	if type(Data.Toggles) == "table" then for Id, Value in Data.Toggles do local Toggle = Library.Toggles[Id] if Toggle and type(Value) == "boolean" then Toggle:SetValue(Value) end end end
-	if SettingsRefs.ThemeDropdown then SettingsRefs.ThemeDropdown:SetValue(Config.ThemeName) end
-	if SettingsRefs.FontDropdown then SettingsRefs.FontDropdown:SetValue(Config.FontName) end
-	if SettingsRefs.FontPresetDropdown then SettingsRefs.FontPresetDropdown:SetValue(Config.FontPreset) end
-	if SettingsRefs.LuckyBlockDropdown then SettingsRefs.LuckyBlockDropdown:SetValue(Config.SelectedLuckyBlock or {}) end
-	SyncColorPickers()
-	if SettingsRefs.MenuBindPicker then SettingsRefs.MenuBindPicker:SetValue({ Config.MenuBind, "Press" }) end
-	if SettingsRefs.SoccerSlotDropdown then SettingsRefs.SoccerSlotDropdown:SetValue(Config.SoccerSlots or {}) end
-	if SettingsRefs.UpgradeDropdown then SettingsRefs.UpgradeDropdown:SetValue(Config.SelectedUpgrades or {}) end
-	if SettingsRefs.GearDropdown then SettingsRefs.GearDropdown:SetValue(Config.SelectedGears or {}) end
-	SuppressUI = false
-	CurrentConfig = Name
-	return true
+local function getCharacter()
+	return LocalPlayer.Character
 end
 
-local function AddFeatureToggle(Box, Id, Info, OnToggle)
-	return Box:AddToggle(Id, {
-		Text = Info.Text,
-		Default = false,
-		Callback = function(Value)
-			if OnToggle then OnToggle(Value) end
-			if Info.Notify and not SuppressUI then Notify(Info.Text .. " " .. (Value and "On" or "Off"), "", Value and "Success" or "Warning") end
-			ScheduleSave()
-		end,
-	})
+local function getHumanoid()
+	local character = getCharacter()
+	return character and character:FindFirstChildOfClass("Humanoid")
 end
 
-local function RunAutoExecute()
-	task.delay(3, function()
-		if Config.AutoExecute then
-			local AutoFarm = Library.Toggles.AutoFarm
-			if AutoFarm and not AutoFarm.Value then
-				AutoFarm:SetValue(true)
-			end
+local function getRoot()
+	local character = getCharacter()
+	return character and character:FindFirstChild("HumanoidRootPart")
+end
+
+local function zeroVelocity(part)
+	if not part then
+		return
+	end
+	pcall(function()
+		part.AssemblyLinearVelocity = Vector3.zero
+		part.AssemblyAngularVelocity = Vector3.zero
+	end)
+end
+
+local function teleportTo(position)
+	local root = getRoot()
+	if root and position then
+		zeroVelocity(root)
+		root.CFrame = CFrame.new(position)
+		zeroVelocity(root)
+		return true
+	end
+	return false
+end
+
+local function safePivot(instance)
+	if not instance then
+		return nil
+	end
+	local ok, pivot = pcall(instance.GetPivot, instance)
+	if ok and pivot then
+		return pivot.Position
+	end
+	return nil
+end
+
+local function firePrompt(prompt)
+	if not prompt then
+		return false
+	end
+	return pcall(function()
+		if fireproximityprompt then
+			fireproximityprompt(prompt)
+		elseif fireprompt then
+			fireprompt(prompt)
+		elseif fire then
+			fire(prompt)
+		else
+			prompt:InputHoldBegin()
+			task.wait(math.clamp((prompt.HoldDuration or 0) + 0.05, 0.05, 3))
+			prompt:InputHoldEnd()
 		end
 	end)
 end
 
-local function AutoReconnectLoop()
+pcall(function()
+	game:GetService("ProximityPromptService").PromptButtonHoldBegan:Connect(function(prompt)
+		pcall(fireproximityprompt, prompt)
+	end)
+end)
+
+local function luckyBlockPart(blockName)
+	local ok, part = pcall(function()
+		local model = find(Workspace, "Live", "Slimes", blockName)
+		if not model then
+			return nil
+		end
+		return model:FindFirstChild("RootPart") or model.PrimaryPart or model:FindFirstChildWhichIsA("BasePart")
+	end)
+	if ok then
+		return part
+	end
+	return nil
+end
+
+local function fireStealPrompt(part)
+	if not part then
+		return
+	end
+	local prompt = part:FindFirstChild("StealPrompt")
+	if not prompt and part.Parent then
+		prompt = part.Parent:FindFirstChild("StealPrompt")
+	end
+	if not prompt then
+		prompt = part:FindFirstChildWhichIsA("ProximityPrompt")
+	end
+	if not prompt and part.Parent then
+		prompt = part.Parent:FindFirstChildWhichIsA("ProximityPrompt")
+	end
+	if prompt then
+		firePrompt(prompt)
+	end
+end
+
+local function isOwnPlotBlock(part)
+	local node = part
+	while node and node ~= Workspace do
+		local ok, owner = pcall(node.GetAttribute, node, "Owner")
+		if ok and owner ~= nil and (owner == LocalPlayer or tonumber(owner) == LocalPlayer.UserId) then
+			return true
+		end
+		node = node.Parent
+	end
+	return false
+end
+
+local function doAutoFarm()
+	if not enabled.autoFarm then
+		return
+	end
+	local blocks = selectedList("LuckyBlockSelect")
+	if #blocks == 0 then
+		return
+	end
+	local promptWait = math.clamp(optionNumber("FarmSpeed", 0.25), 0.05, 2)
+	for _, blockName in ipairs(blocks) do
+		if not (session.running and enabled.autoFarm) then
+			return
+		end
+		local part = luckyBlockPart(blockName)
+		if part and not isOwnPlotBlock(part) then
+			local spot = safePivot(part)
+			if spot then
+				setFarmStatus("stealing " .. blockName)
+				teleportTo(spot)
+				task.wait(0.05)
+				fireStealPrompt(part)
+				task.wait(promptWait)
+				teleportTo(HOME_POSITION)
+				task.wait(0.1)
+			end
+		end
+	end
+end
+
+local function doAutoCollect()
+	if not enabled.autoCollect then
+		return
+	end
+	setFarmStatus("collecting cash")
+	for slot = 1, 70 do
+		if not (session.running and enabled.autoCollect) then
+			return
+		end
+		local event = getRemote("SharedModules", "Network", "Remotes", "Collect Earnings")
+		fire(event, tostring(slot))
+		task.wait(0.01)
+	end
+end
+
+local function doAutoOpen()
+	if not enabled.autoOpen then
+		return
+	end
+	if not ready("open", 0.1) then
+		return
+	end
+	local event = getRemote("SharedModules", "Network", "Remotes", "Open Lucky Block")
+	if not event then
+		return
+	end
+	setFarmStatus("opening lucky blocks")
+	fire(event)
+end
+
+local function doAutoSellAll()
+	if not enabled.autoSellAll then
+		return
+	end
+	if not ready("sell", 0.5) then
+		return
+	end
+	local event = getRemote("SharedModules", "Network", "Remotes", "Sell All Slimes")
+	if not event then
+		return
+	end
+	setFarmStatus("selling soccer players")
+	fire(event)
+end
+
+local REBIRTH_JUMP_REQ = {50, 75, 100, 125, 150, 200, 250}
+
+local function rebirthJumpRequirement()
+	local nextRebirth = getRebirths() + 1
+	if nextRebirth <= #REBIRTH_JUMP_REQ then
+		return REBIRTH_JUMP_REQ[nextRebirth]
+	end
+	return REBIRTH_JUMP_REQ[#REBIRTH_JUMP_REQ] + (nextRebirth - #REBIRTH_JUMP_REQ) * 40
+end
+
+local function doAutoRebirth()
+	if not enabled.autoRebirth then
+		return
+	end
+	if not ready("rebirth", 1) then
+		return
+	end
+	local jump = getJumpLevel()
+	if jump and jump < rebirthJumpRequirement() then
+		return
+	end
+	local event = getRemote("SharedModules", "Network", "Remotes", "Rebirth")
+	if not event then
+		return
+	end
+	setFarmStatus("rebirth")
+	fire(event)
+end
+
+local function doAutoBuyAllUpgrades()
+	if not enabled.autoBuyUpgrades then
+		return
+	end
+	if not ready("buyUpgrades", 0.5) then
+		return
+	end
+	setFarmStatus("buying upgrades")
+	fire(getRemote("SharedModules", "Network", "Remotes", "Upgrade Carry Limit"))
+	fireSpeedUpgradeSmart()
+end
+
+local function doAutoBuySelectedUpgrades()
+	if not enabled.autoBuySelectedUpgrades then
+		return
+	end
+	if not ready("buySelUpgrades", 0.5) then
+		return
+	end
+	local upgrades = selectedList("UpgradeList")
+	if #upgrades == 0 then
+		return
+	end
+	for _, upgrade in ipairs(upgrades) do
+		if not (session.running and enabled.autoBuySelectedUpgrades) then
+			return
+		end
+		if upgrade == "Jump" then
+			setFarmStatus("buying jump upgrade")
+			fireSpeedUpgradeSmart()
+		elseif upgrade == "Carry" then
+			setFarmStatus("buying carry upgrade")
+			fire(getRemote("SharedModules", "Network", "Remotes", "Upgrade Carry Limit"))
+		end
+		task.wait(0.05)
+	end
+end
+
+local function doAutoUpgradeFloors()
+	if not enabled.autoUpgradeFloors then
+		return
+	end
+	if not ready("floors", 1) then
+		return
+	end
+	setFarmStatus("upgrading floors")
+	for floorId = 10, 70 do
+		if not (session.running and enabled.autoUpgradeFloors) then
+			return
+		end
+		local event = getRemote("SharedModules", "Network", "Remotes", "Purchase Floor")
+		call(event, floorId)
+	end
+end
+
+local function doAutoUpgradeSoccer()
+	if not enabled.autoUpgradeSoccer then
+		return
+	end
+	if not ready("soccer", 0.5) then
+		return
+	end
+	local slots = selectedList("SoccerSlot")
+	if #slots == 0 then
+		return
+	end
+	for _, slot in ipairs(slots) do
+		if not (session.running and enabled.autoUpgradeSoccer) then
+			return
+		end
+		local slotId = tonumber(string.match(slot, "%d+"))
+		if slotId then
+			setFarmStatus("upgrading soccer " .. slotId)
+			fire(getRemote("SharedModules", "Network", "Remotes", "Upgrade Slime"), tostring(slotId))
+			task.wait(0.01)
+		end
+	end
+end
+
+local function gearIdFromOption(value)
+	return tostring(string.match(tostring(value), "^(%d+)") or "")
+end
+
+local function doAutoBuyGear()
+	if not enabled.autoBuyGear then
+		return
+	end
+	if not ready("buyGear", 0.5) then
+		return
+	end
+	local gears = selectedList("GearList")
+	if #gears == 0 then
+		return
+	end
+	for _, gear in ipairs(gears) do
+		if not (session.running and enabled.autoBuyGear) then
+			return
+		end
+		local gearId = gearIdFromOption(gear)
+		if gearId ~= "" then
+			setFarmStatus("buying gear " .. gearId)
+			fire(getRemote("SharedModules", "Network", "Remotes", "Buy Gear"), gearId, "Buy")
+			task.wait(0.01)
+		end
+	end
+end
+
+local function doAutoBuyAllGear()
+	if not enabled.autoBuyAllGear then
+		return
+	end
+	if not ready("buyAllGear", 0.5) then
+		return
+	end
+	setFarmStatus("buying all gear")
+	for _, entry in ipairs(GEAR_SORTED) do
+		if not (session.running and enabled.autoBuyAllGear) then
+			return
+		end
+		local money = getMoney()
+		if money >= entry[3] then
+			setFarmStatus("buying " .. entry[2])
+			fire(getRemote("SharedModules", "Network", "Remotes", "Buy Gear"), entry[1], "Buy")
+			task.wait(0.05)
+		end
+	end
+end
+
+local function rejoinServer()
+	pcall(TeleportService.TeleportToPlaceInstance, TeleportService, game.PlaceId, game.JobId, LocalPlayer)
+end
+
+local function reconnectServer()
+	pcall(TeleportService.Teleport, TeleportService, game.PlaceId, LocalPlayer)
+end
+
+local function serverHop()
+	if not httpRequest then
+		return reconnectServer()
+	end
 	task.spawn(function()
-		while Config.AutoReconnect do
-			task.wait(0.5)
-			pcall(function()
-				local RobloxGui = game:GetService("CoreGui"):FindFirstChild("RobloxGui")
-				local DFrame = RobloxGui and RobloxGui:FindFirstChild("DisconnectedFrame")
-				if DFrame and DFrame.Visible then
-					TeleportService:TeleportToPlaceInstance(game.PlaceId, game.JobId, Players.LocalPlayer)
+		local best, bestCount = nil, math.huge
+		local ok, response = pcall(httpRequest, {
+			Url = string.format("https://games.roblox.com/v1/games/%d/servers/Public?sortOrder=Asc&limit=100", game.PlaceId),
+			Method = "GET",
+		})
+		if ok and response.Body then
+			local okDecode, decoded = pcall(HttpService.JSONDecode, HttpService, response.Body)
+			if okDecode and type(decoded) == "table" then
+				for _, server in ipairs(decoded.data) do
+					if server.id ~= game.JobId and type(server.playing) == "number" and server.playing < bestCount then
+						best = server.id
+						bestCount = server.playing
+					end
 				end
+			end
+		end
+		if best then
+			pcall(TeleportService.TeleportToPlaceInstance, TeleportService, game.PlaceId, best, LocalPlayer)
+		else
+			pcall(TeleportService.Teleport, TeleportService, game.PlaceId, LocalPlayer)
+		end
+	end)
+end
+
+local afkConnection
+local function setAntiAfk(state)
+	if state and not afkConnection then
+		afkConnection = LocalPlayer.Idled:Connect(function()
+			pcall(function()
+				VirtualUser:CaptureController()
+				VirtualUser:ClickButton2(Vector2.new())
+			end)
+		end)
+	elseif not state and afkConnection then
+		afkConnection:Disconnect()
+		afkConnection = nil
+	end
+end
+
+local renderingDisabled = false
+local function setRendering(disable)
+	if disable == renderingDisabled then
+		return
+	end
+	renderingDisabled = disable
+	pcall(function()
+		RunService:Set3dRenderingEnabled(not disable)
+	end)
+end
+
+local fpsOriginals
+local function setFpsBoost(state)
+	if state and not fpsOriginals then
+		fpsOriginals = {
+			GlobalShadows = Lighting.GlobalShadows,
+			FogEnd = Lighting.FogEnd,
+			Brightness = Lighting.Brightness,
+		}
+		pcall(function()
+			Lighting.GlobalShadows = false
+			Lighting.FogEnd = 9e9
+			Lighting.Brightness = 1
+			settings().Rendering.QualityLevel = 1
+		end)
+	elseif not state and fpsOriginals then
+		pcall(function()
+			Lighting.GlobalShadows = fpsOriginals.GlobalShadows
+			Lighting.FogEnd = fpsOriginals.FogEnd
+			Lighting.Brightness = fpsOriginals.Brightness
+		end)
+		fpsOriginals = nil
+	end
+end
+
+local execName, execVersion
+if identifyexecutor then
+	local ok, name, version = pcall(identifyexecutor)
+	if ok and type(name) == "string" and name ~= "" then
+		execName = name
+		if type(version) == "string" and version ~= "" then
+			execVersion = version
+		end
+	end
+end
+execName = execName or "Unknown"
+local executorText = execVersion and (execName .. " " .. execVersion) or execName
+
+local Window = Library:CreateWindow({
+	Title = CONFIG.Title,
+	Icon = CONFIG.Icon,
+	CornerRadius = CONFIG.CornerRadius,
+	Footer = {
+		{ Text = CONFIG.Discord, Copyable = true },
+		"|",
+		{ Text = CONFIG.GameName, Copyable = true },
+		"|",
+		CONFIG.Version,
+	},
+	CopyableFooter = true,
+	FuzzySearch = true,
+	SearchValues = true,
+	SearchKeybind = Enum.KeyCode.F,
+	Minimizable = true,
+	MinimizeKeybind = Enum.KeyCode.RightBracket,
+	NotifySide = "Right",
+	SidebarCompacted = true,
+	SidebarCompactWidth = 48,
+	EnableSidebarResize = false,
+	Animations = {
+		ToggleWindow = true,
+		TabSwitch = true,
+		Groupbox = true,
+		Dropdown = true,
+		KeyPicker = true,
+		SubTabUnderline = true,
+	},
+})
+
+local Tabs = {
+	Info = Window:AddTab({ Name = "Info", Icon = "info" }),
+	Main = Window:AddTab({ Name = "Main", Icon = "zap" }),
+	Settings = Window:AddTab({ Name = "UI Settings", Icon = "settings" }),
+}
+
+local COLORS = {
+	label = "#ffffff",
+	user = "#7CFC7C",
+	accent = "#4AA3FF",
+	orange = "#FFA54F",
+	gold = "#FFD24A",
+}
+
+local function paint(prefix, value, color)
+	return string.format('<font color="%s">%s</font> <font color="%s">%s</font>', COLORS.label, prefix, color or COLORS.accent, tostring(value))
+end
+
+local function box(parent, name, icon, side)
+	return parent:AddGroupbox({ Name = name, IconName = icon, Side = side, PopOut = false })
+end
+
+local function setLabel(idx, text)
+	pcall(function()
+		local label = Library.Labels and Library.Labels[idx]
+		if label and type(label.SetText) == "function" then
+			label:SetText(text)
+		end
+	end)
+end
+
+local UserBox = box(Tabs.Info, "Account", "user", "Left")
+UserBox:AddPlayerInfo("InfoAvatar", { ThumbnailType = "Bust", Height = 190 })
+UserBox:AddDivider()
+UserBox:AddLabel("UserLabel", { Text = paint("User -", LocalPlayer.DisplayName, COLORS.user), DoesWrap = true })
+UserBox:AddLabel("UserIdLabel", { Text = paint("UserId -", LocalPlayer.UserId, COLORS.accent), DoesWrap = true })
+UserBox:AddLabel("ExecutorLabel", { Text = paint("Executor -", executorText, COLORS.orange), DoesWrap = true })
+UserBox:AddDivider()
+UserBox:AddLabel("SessionTime", { Text = paint("Session -", "0s", COLORS.orange), DoesWrap = true })
+UserBox:AddButton({ Text = "Copy User ID", Func = function()
+	if copyText then
+		pcall(copyText, tostring(LocalPlayer.UserId))
+	end
+	pcall(function()
+		Library:Notify("Copied User ID")
+	end)
+end })
+UserBox:AddButton({ Text = "Copy Username", Func = function()
+	if copyText then
+		pcall(copyText, tostring(LocalPlayer.Name))
+	end
+	pcall(function()
+		Library:Notify("Copied Username")
+	end)
+end })
+
+local GameBox = box(Tabs.Info, "Game Info", "gamepad", "Right")
+GameBox:AddLabel("GameNameLabel", { Text = paint("Game -", CONFIG.GameName, COLORS.accent), DoesWrap = true })
+GameBox:AddLabel("ServerPlayersLabel", { Text = paint("Players -", "0/0", COLORS.user), DoesWrap = true })
+GameBox:AddLabel("ServerIdLabel", { Text = paint("Server -", string.sub(game.JobId ~= "" and game.JobId or "N/A", 1, 18), COLORS.orange), DoesWrap = true })
+GameBox:AddButton({ Text = "Copy Join Script", Func = function()
+	if copyText then
+		pcall(copyText, string.format('game:GetService("TeleportService"):TeleportToPlaceInstance(%d, "%s")', game.PlaceId, game.JobId))
+	end
+	pcall(function()
+		Library:Notify("Copied join script")
+	end)
+end })
+
+do
+	local function universeIdForPlace(placeId)
+		local ok, body = pcall(function()
+			return game:HttpGet("https://apis.roblox.com/universes/v1/places/" .. tostring(placeId) .. "/universe")
+		end)
+		if ok and type(body) == "string" then
+			local okDecode, decoded = pcall(HttpService.JSONDecode, HttpService, body)
+			if okDecode and type(decoded) == "table" then
+				return tonumber(decoded.universeId)
+			end
+		end
+		return nil
+	end
+	local function gameNameForUniverse(universeId)
+		local ok, body = pcall(function()
+			return game:HttpGet("https://games.roblox.com/v1/games?universeIds=" .. tostring(universeId))
+		end)
+		if ok and type(body) == "string" then
+			local okDecode, decoded = pcall(HttpService.JSONDecode, HttpService, body)
+			if okDecode and type(decoded) == "table" and type(decoded.data) == "table" and decoded.data[1] then
+				local name = decoded.data[1].name
+				if type(name) == "string" and name ~= "" then
+					return name
+				end
+			end
+		end
+		return nil
+	end
+	task.spawn(function()
+		local universeId = universeIdForPlace(game.PlaceId)
+		if not universeId then
+			return
+		end
+		local name = gameNameForUniverse(universeId)
+		if name then
+			pcall(function()
+				setLabel("GameNameLabel", paint("Game -", name, COLORS.accent))
 			end)
 		end
 	end)
 end
 
-local function AutoHideUiLoop()
+local SocialsBox = box(Tabs.Info, "Socials", "link", "Right")
+SocialsBox:AddButton({ Text = "Copy Discord Invite", Func = function()
+	if copyText then
+		pcall(copyText, CONFIG.Discord)
+	end
+	pcall(function()
+		Library:Notify("Copied Discord invite")
+	end)
+end })
+SocialsBox:AddButton({ Text = "Copy Website", Func = function()
+	if copyText then
+		pcall(copyText, CONFIG.Website)
+	end
+	pcall(function()
+		Library:Notify("Copied website link")
+	end)
+end })
+
+local FarmTab = Tabs.Main:AddSubTab({ Name = "Farming", Icon = "star" })
+local UpgradeTab = Tabs.Main:AddSubTab({ Name = "Upgrade", Icon = "trending-up" })
+local ShopTab = Tabs.Main:AddSubTab({ Name = "Shop", Icon = "shopping-cart" })
+
+local FarmInfoBox = box(FarmTab, "Farming Info", "activity", "Right")
+FarmInfoBox:AddLabel("FarmStatusLabel", { Text = paint("Status -", "idle", COLORS.accent), DoesWrap = true })
+FarmInfoBox:AddLabel("FarmRebirthLabel", { Text = paint("Rebirth -", "0", COLORS.orange), DoesWrap = true })
+FarmInfoBox:AddLabel("FarmBlocksLabel", { Text = paint("Blocks -", "none", COLORS.user), DoesWrap = true })
+
+local FarmBox = box(FarmTab, "Auto Farm", "star", "Left")
+FarmBox:AddDropdown("LuckyBlockSelect", {
+	Text = "Select LuckyBlock",
+	Values = LUCKY_BLOCKS,
+	Multi = true,
+	Default = {},
+	Callback = function() end,
+})
+FarmBox:AddDivider()
+FarmBox:AddSlider("FarmSpeed", {
+	Text = "Steal Speed (s)",
+	Min = 0.05,
+	Max = 2,
+	Default = 0.25,
+	Rounding = 2,
+	Callback = function() end,
+})
+FarmBox:AddDivider()
+FarmBox:AddToggle("AutoFarm", { Text = "Auto Farm Lucky Blocks", Default = false, Callback = function(value)
+	enabled.autoFarm = value
+	if not value then
+		pcall(function()
+			teleportTo(HOME_POSITION)
+		end)
+	end
+end })
+FarmBox:AddToggle("AutoCollectCash", { Text = "Auto Collect Cash", Default = false, Callback = function(value)
+	enabled.autoCollect = value
+end })
+FarmBox:AddToggle("AutoOpenBlocks", { Text = "Auto Open Lucky Blocks", Default = false, Callback = function(value)
+	enabled.autoOpen = value
+end })
+FarmBox:AddToggle("AutoSellAll", { Text = "Auto Sell Soccer Players", Default = false, Callback = function(value)
+	enabled.autoSellAll = value
+end })
+FarmBox:AddToggle("AutoRebirth", { Text = "Auto Rebirth", Default = false, Callback = function(value)
+	enabled.autoRebirth = value
+end })
+
+local UpgradeInfoBox = box(UpgradeTab, "Upgrade Info", "activity", "Right")
+UpgradeInfoBox:AddLabel("UpgradeStatusLabel", { Text = paint("Status -", "idle", COLORS.accent), DoesWrap = true })
+UpgradeInfoBox:AddLabel("UpgradeSelectedLabel", { Text = paint("Upgrades -", "none", COLORS.user), DoesWrap = true })
+
+local UpgradeBox = box(UpgradeTab, "Upgrades", "zap", "Left")
+UpgradeBox:AddDropdown("UpgradeList", {
+	Text = "Select Upgrade",
+	Values = { "Jump", "Carry" },
+	Multi = true,
+	Default = {},
+	Callback = function() end,
+})
+UpgradeBox:AddDivider()
+UpgradeBox:AddToggle("AutoBuyUpgrades", { Text = "Auto Buy All Upgrades", Default = false, Callback = function(value)
+	enabled.autoBuyUpgrades = value
+end })
+UpgradeBox:AddToggle("AutoBuySelectedUpgrades", { Text = "Auto Buy Selected Upgrades", Default = false, Callback = function(value)
+	enabled.autoBuySelectedUpgrades = value
+end })
+
+local FloorsSoccerBox = box(UpgradeTab, "Floors & Soccer", "zap", "Right")
+FloorsSoccerBox:AddDropdown("SoccerSlot", {
+	Text = "Select Soccer",
+	Values = (function()
+		local options = {}
+		for i = 1, 70 do
+			table.insert(options, "Soccer " .. i)
+		end
+		return options
+	end)(),
+	Multi = true,
+	Default = {},
+	Callback = function() end,
+})
+FloorsSoccerBox:AddDivider()
+FloorsSoccerBox:AddToggle("AutoUpgradeFloors", { Text = "Auto Upgrade Floors", Default = false, Callback = function(value)
+	enabled.autoUpgradeFloors = value
+end })
+FloorsSoccerBox:AddToggle("AutoUpgradeSoccer", { Text = "Auto Upgrade Soccer", Default = false, Callback = function(value)
+	enabled.autoUpgradeSoccer = value
+end })
+
+local ShopInfoBox = box(ShopTab, "Shop Info", "activity", "Right")
+ShopInfoBox:AddLabel("ShopStatusLabel", { Text = paint("Status -", "idle", COLORS.accent), DoesWrap = true })
+ShopInfoBox:AddLabel("ShopGearLabel", { Text = paint("Gears -", "none", COLORS.user), DoesWrap = true })
+
+local GearBox = box(ShopTab, "Gear", "shopping-bag", "Left")
+GearBox:AddDropdown("GearList", {
+	Text = "Select Gear",
+	Values = (function()
+		local options = {}
+		for _, gear in ipairs(GEAR_LIST) do
+			table.insert(options, gear[1] .. " - " .. gear[2])
+		end
+		return options
+	end)(),
+	Multi = true,
+	Default = {},
+	Callback = function() end,
+})
+GearBox:AddDivider()
+GearBox:AddToggle("AutoBuyGear", { Text = "Auto Buy Selected Gear", Default = false, Callback = function(value)
+	enabled.autoBuyGear = value
+end })
+GearBox:AddToggle("AutoBuyAllGear", { Text = "Auto Buy All Gear", Default = false, Callback = function(value)
+	enabled.autoBuyAllGear = value
+end })
+
+local MenuBox = box(Tabs.Settings, "Menu", "wrench", "Left")
+MenuBox:AddToggle("KeybindMenuOpen", {
+	Text = "Open Keybind Menu",
+	Default = Library.KeybindFrame and Library.KeybindFrame.Visible or false,
+	Callback = function(value)
+		if Library.KeybindFrame then
+			Library.KeybindFrame.Visible = value
+		end
+	end,
+})
+MenuBox:AddDropdown("NotificationSide", {
+	Text = "Notification Side",
+	Values = { "Left", "Right" },
+	Default = "Right",
+	Callback = function(value)
+		pcall(function()
+			Library:SetNotifySide(value)
+		end)
+	end,
+})
+MenuBox:AddDropdown("DPIScale", {
+	Text = "DPI Scale",
+	Values = { "50%", "75%", "100%", "125%", "150%", "175%", "200%" },
+	Default = "100%",
+	Callback = function(value)
+		pcall(function()
+			Library:SetDPIScale(tonumber((value:gsub("%%", ""))))
+		end)
+	end,
+})
+MenuBox:AddDivider()
+MenuBox:AddLabel("Menu bind"):AddKeyPicker("MenuKeybind", {
+	Default = "RightShift",
+	NoUI = true,
+	Text = "Menu keybind",
+})
+MenuBox:AddButton({ Text = "Unload", Func = function()
+	Library:Unload()
+end })
+Library.ToggleKeybind = Options.MenuKeybind
+
+local ClientBox = box(Tabs.Settings, "Client", "cpu", "Left")
+ClientBox:AddToggle("AntiAfk", { Text = "Anti AFK", Default = false, Callback = function(value)
+	enabled.antiafk = value
+	setAntiAfk(value)
+end })
+ClientBox:AddToggle("NoGameplayPaused", { Text = "No Gameplay Paused", Default = false, Callback = function(value)
+	enabled.noPause = value
+end })
+ClientBox:AddToggle("FpsBoost", { Text = "FPS Boost", Default = false, Callback = function(value)
+	setFpsBoost(value)
+end })
+ClientBox:AddToggle("DisableRendering", { Text = "Disable 3D Rendering", Default = false, Callback = function(value)
+	setRendering(value)
+end })
+
+local ServerTools = box(Tabs.Settings, "Server", "server", "Right")
+ServerTools:AddButton({ Text = "Reconnect", Func = reconnectServer })
+ServerTools:AddButton({ Text = "Rejoin Server", Func = rejoinServer })
+ServerTools:AddButton({ Text = "Server Hop (Lowest Players)", Func = serverHop })
+
+SaveManager:SetLibrary(Library)
+ThemeManager:SetLibrary(Library)
+
+ThemeManager.BuiltInThemes["Dark Silver"] = {
+	999,
+	{
+		FontColor = "f5f5f5",
+		MainColor = "1a1a1a",
+		AccentColor = "e5e5e5",
+		BackgroundColor = "151515",
+		OutlineColor = "2a2a2a",
+		BackgroundImage = "",
+	},
+}
+
+SaveManager:IgnoreThemeSettings()
+SaveManager:SetIgnoreIndexes({ "MenuKeybind" })
+ThemeManager:SetFolder(CONFIG.Folder)
+SaveManager:SetFolder(CONFIG.Folder)
+SaveManager:SetSubFolder(tostring(game.PlaceId))
+
+local SettingsAddGroupbox = Tabs.Settings.AddGroupbox
+Tabs.Settings.AddGroupbox = function(self, info)
+	info = type(info) == "table" and info or {}
+	info.PopOut = false
+	return SettingsAddGroupbox(self, info)
+end
+SaveManager:BuildConfigSection(Tabs.Settings)
+ThemeManager:ApplyTheme("Dark Silver")
+ThemeManager:ApplyToTab(Tabs.Settings)
+Tabs.Settings.AddGroupbox = SettingsAddGroupbox
+
+pcall(function()
+	ThemeManager.UpdateContrastWarning = function() end
+	local ContrastLabel = ThemeManager.ContrastLabel
+	if ContrastLabel and not ContrastLabel.Destroyed and type(ContrastLabel.Destroy) == "function" then
+		ContrastLabel:Destroy()
+	end
+	ThemeManager.ContrastLabel = nil
+end)
+
+local function liveActivity()
+	if enabled.autoFarm then
+		return "Farming Lucky Blocks"
+	end
+	if enabled.autoCollect then
+		return "Collecting Cash"
+	end
+	if enabled.autoOpen then
+		return "Opening Lucky Blocks"
+	end
+	if enabled.autoSellAll then
+		return "Selling Soccer Players"
+	end
+	if enabled.autoRebirth then
+		return "Rebirthing"
+	end
+	if enabled.autoBuyUpgrades or enabled.autoBuySelectedUpgrades then
+		return "Buying Upgrades"
+	end
+	if enabled.autoUpgradeFloors then
+		return "Upgrading Floors"
+	end
+	if enabled.autoUpgradeSoccer then
+		return "Upgrading Soccer"
+	end
+	if enabled.autoBuyGear or enabled.autoBuyAllGear then
+		return "Buying Gear"
+	end
+	return "idle"
+end
+
+local function updateLabels()
+	setLabel("SessionTime", paint("Session -", formatDuration(tick() - sessionStart), COLORS.orange))
+	setLabel("ServerPlayersLabel", paint("Players -", string.format("%d/%d", #Players:GetPlayers(), Players.MaxPlayers), COLORS.user))
+	setLabel("FarmStatusLabel", paint("Status -", liveActivity(), COLORS.accent))
+	setLabel("FarmRebirthLabel", paint("Rebirth -", tostring(getRebirths()), COLORS.orange))
+	local blocks = selectedList("LuckyBlockSelect")
+	setLabel("FarmBlocksLabel", paint("Blocks -", #blocks > 0 and tostring(#blocks) .. " selected" or "none", COLORS.user))
+	setLabel("UpgradeStatusLabel", paint("Status -", liveActivity(), COLORS.accent))
+	local upgrades = selectedList("UpgradeList")
+	setLabel("UpgradeSelectedLabel", paint("Upgrades -", #upgrades > 0 and table.concat(upgrades, ", ") or "none", COLORS.user))
+	setLabel("ShopStatusLabel", paint("Status -", liveActivity(), COLORS.accent))
+	local gears = selectedList("GearList")
+	setLabel("ShopGearLabel", paint("Gears -", #gears > 0 and tostring(#gears) .. " selected" or "none", COLORS.user))
+end
+
+local function refreshLists()
+	if not ready("lists", 15) then
+		return
+	end
+end
+
+local function chain(steps, interval)
 	task.spawn(function()
-		local OpenFor = 0
-		while Config.AutoHideUi do
-			task.wait(1)
-			if Library.Toggled then
-				OpenFor = OpenFor + 1
-				if OpenFor >= 30 then
-					Library:Toggle(false)
-					OpenFor = 0
+		while session.running do
+			setFarmStatus("idle")
+			for _, step in ipairs(steps) do
+				if not session.running then
+					break
 				end
-			else
-				OpenFor = 0
+				local ok, err = pcall(step)
+				if not ok then
+					logError(err)
+				end
 			end
+			task.wait(interval)
 		end
 	end)
 end
 
-local function AntiAfkLoop()
+local function loop(func, interval)
 	task.spawn(function()
-		while Config.AntiAfk do
-			task.wait(600)
+		while session.running do
+			local ok, err = pcall(func)
+			if not ok then
+				logError(err)
+			end
+			task.wait(interval)
+		end
+	end)
+end
+
+task.spawn(function()
+	while session.running do
+		local ok, err = pcall(doAutoFarm)
+		if not ok then
+			logError(err)
+		end
+		task.wait(0.05)
+	end
+end)
+
+chain({ doAutoCollect, doAutoOpen, doAutoSellAll, doAutoRebirth, doAutoBuyAllUpgrades, doAutoBuySelectedUpgrades }, 0.01)
+loop(doAutoUpgradeFloors, 0.5)
+loop(doAutoUpgradeSoccer, 0.5)
+loop(doAutoBuyGear, 0.5)
+loop(doAutoBuyAllGear, 0.5)
+
+task.spawn(function()
+	while session.running do
+		if enabled.noPause then
 			pcall(function()
 				VirtualUser:CaptureController()
 				VirtualUser:ClickButton2(Vector2.new())
 			end)
 		end
-	end)
-end
-
-local function NoPauseLoop()
-	task.spawn(function()
-		while Config.NoGameplayPaused do
-			task.wait(20)
+		task.wait(60)
+	end
+end)
+task.spawn(function()
+	while session.running do
+		task.wait(300)
+		if session.running and enabled.antiafk then
 			pcall(function()
-				local Char = Player.Character
-				local HRP = Char and Char:FindFirstChild("HumanoidRootPart")
-				if HRP then
-					HRP.AssemblyLinearVelocity = HRP.AssemblyLinearVelocity + Vector3.new(0, 1.5, 0)
+				local humanoid = getHumanoid()
+				if humanoid then
+					humanoid.Jump = true
 				end
 			end)
 		end
-	end)
-end
-
-Players.LocalPlayer.Idled:Connect(function()
-	if Config.AntiAfk then
-		pcall(function()
-			VirtualUser:CaptureController()
-			VirtualUser:ClickButton2(Vector2.new())
-		end)
 	end
 end)
-
--- Create Main Window
-local Window = Library:CreateWindow({
-	Title = "AntiGodHub",
-	Icon = 125265885440515,
-	Footer = {
-		{ Text = Config.DiscordLink, Copyable = true },
-		{ Text = " | " },
-		{ Text = "AntiGodHub", Copyable = true },
-	},
-	CornerRadius = 20,
-	AutoShow = true,
-	ShowMobileButtons = false,
-	Minimizable = true,
-	Resizable = true,
-	Animations = { ToggleWindow = true, TabSwitch = true, Groupbox = true, Dropdown = true },
-})
-
-Library.ToggleKeybind = nil
-
-local ToggleButton = Library:AddDraggableButton("Toggle", function() Library:Toggle() end, true, true)
-local LockButton = Library:AddDraggableButton("Lock", function(self) Library.CantDragForced = not Library.CantDragForced self:SetText(Library.CantDragForced and "Unlock" or "Lock") end, true, true)
-ToggleButton.Button.AnchorPoint = Vector2.new(0, 0)
-ToggleButton.Button.Position = UDim2.fromOffset(6, 6)
-LockButton.Button.AnchorPoint = Vector2.new(0, 0)
-LockButton.Button.Position = UDim2.fromOffset(ToggleButton.Button.Size.X.Offset + 12, 6)
-
-local Tabs = {
-	Info = Window:AddTab({ Name = "Info", Icon = "info" }),
-	Main = Window:AddTab({ Name = "Main", Icon = "house" }),
-	Settings = Window:AddTab({ Name = "Settings", Icon = "settings" }),
-}
-local MainTabs = {
-	Eggs = Tabs.Main:AddSubTab({ Name = "Farming", Icon = "star" }),
-	Slimes = Tabs.Main:AddSubTab({ Name = "Upgrade", Icon = "trending-up" }),
-	Shop = Tabs.Main:AddSubTab({ Name = "Shop", Icon = "shopping-cart" }),
-}
-
--- INFO TAB
-local StatusBox = Tabs.Info:AddLeftGroupbox("Status", "user")
-StatusBox:AddLabel({ Text = 'USER - <font color="#60d888">' .. Player.Name .. '</font>' })
-StatusBox:AddLabel({ Text = 'STATUS - <font color="#60d888">Keyless</font>' })
-
-local ExecutorName = "Unknown"
-local ExecutorVersion = "Unknown"
-pcall(function()
-	if identifyexecutor then
-		local Name, Version = identifyexecutor()
-		if type(Name) == "table" then
-			ExecutorName = tostring(Name[1] or Name.Name or Name["Name"] or "Unknown")
-			ExecutorVersion = tostring(Name[2] or Name.Version or Name["Version"] or "Unknown")
-		else
-			ExecutorName = tostring(Name)
-			if Version ~= nil and tostring(Version) ~= "" then ExecutorVersion = tostring(Version) end
-		end
-	elseif getexecutorname then ExecutorName = tostring(getexecutorname()) end
-	if ExecutorVersion == "Unknown" then pcall(function() if getexecutorversion then ExecutorVersion = tostring(getexecutorversion()) end end) end
-end)
-
-local ExecutorDisplay = ExecutorName
-if ExecutorVersion ~= "Unknown" and ExecutorVersion ~= "" then ExecutorDisplay = ExecutorName .. " " .. ExecutorVersion end
-StatusBox:AddLabel({ Text = 'EXECUTOR - <font color="#60d888">' .. ExecutorDisplay .. '</font>' })
-StatusBox:AddDivider()
-local SessionLabel = StatusBox:AddLabel({ Text = 'SESSION - <font color="#60d888">0m 0s</font>' })
-
-local UpdatesBox = Tabs.Info:AddLeftGroupbox("Updates", "rotate-ccw")
-UpdatesBox:AddLabel({ Text = '<font color="#60d888">● Up to date</font>' })
-UpdatesBox:AddLabel({ Text = '<font color="#8a8a8a"> Last Updated 9/5/2026</font>' })
-
-local InfoGameBox = Tabs.Info:AddRightGroupbox("Game Info", "gamepad-2")
-local Green = "#60d888"
-local GameNameLabel = InfoGameBox:AddLabel({ Text = 'GAME - <font color="' .. Green .. '">Loading...</font>' })
-InfoGameBox:AddLabel({ Text = 'PLACE ID - <font color="' .. Green .. '">' .. tostring(game.PlaceId) .. '</font>' })
-
-local JobId = tostring(game.JobId)
-local ShortJobId = #JobId > 18 and JobId:sub(1, 18) .. "..." or JobId
-InfoGameBox:AddLabel({ Text = 'SERVER - <font color="' .. Green .. '">' .. ShortJobId .. '</font>' })
-
 task.spawn(function()
-	local Success, Info = pcall(function() return game:GetService("MarketplaceService"):GetProductInfo(game.PlaceId) end)
-	if Success and Info and Info.Name then
-		pcall(function()
-			local CleanName = tostring(Info.Name):gsub("[^%z\1-\127]", "")
-			GameNameLabel:SetText('GAME - <font color="#60d888">' .. CleanName .. ' [' .. game.PlaceId .. ']</font>')
-		end)
-	else
-		pcall(function() GameNameLabel:SetText('GAME - <font color="#60d888">Unknown</font>') end)
-	end
-end)
-
-local ScriptStartTime = os.clock()
-task.spawn(function()
-	while true do
-		local Elapsed = os.clock() - ScriptStartTime
-		local Mins = math.floor(Elapsed / 60)
-		local Secs = math.floor(Elapsed % 60)
-		pcall(function() SessionLabel:SetText('SESSION - <font color="#60d888">' .. Mins .. 'm ' .. Secs .. 's</font>') end)
+	while session.running do
+		pcall(updateLabels)
+		pcall(refreshLists)
 		task.wait(1)
 	end
 end)
 
-InfoGameBox:AddButton({Text = "Copy Place ID", Func = function() CopyToClipboard(tostring(game.PlaceId)) end})
-InfoGameBox:AddButton({Text = "Copy Join Script", Func = function()
-	CopyToClipboard(string.format('game:GetService("TeleportService"):TeleportToPlaceInstance(%d, %q, game:GetService("Players").LocalPlayer)', game.PlaceId, JobId))
-end})
-
-local SocialsBox = Tabs.Info:AddRightGroupbox("Socials", "link")
-SocialsBox:AddButton({Text = "Discord", Func = function() CopyToClipboard(Config.DiscordLink) end})
-SocialsBox:AddButton({Text = "YouTube", Func = function() CopyToClipboard(Config.YouTubeLink) end})
-SocialsBox:AddButton({Text = "TikTok", Func = function() CopyToClipboard(Config.TikTokLink) end})
-
-local FeaturesBox = Tabs.Info:AddRightGroupbox("Features", "list")
-FeaturesBox:AddLabel({ Text = '<font color="#60d888">Auto Farm Lucky Blocks</font>' })
-FeaturesBox:AddLabel({ Text = '<font color="#60d888">Auto Collect Cash</font>' })
-FeaturesBox:AddLabel({ Text = '<font color="#60d888">Auto Rebirth</font>' })
-FeaturesBox:AddLabel({ Text = '<font color="#60d888">Auto Sell All</font>' })
-FeaturesBox:AddLabel({ Text = '<font color="#60d888">Auto Open Lucky Blocks</font>' })
-FeaturesBox:AddLabel({ Text = '<font color="#60d888">Auto Buy All Upgrades</font>' })
-FeaturesBox:AddLabel({ Text = '<font color="#60d888">Auto Buy Selected Upgrades</font>' })
-FeaturesBox:AddLabel({ Text = '<font color="#60d888">Auto Upgrade Floors</font>' })
-FeaturesBox:AddLabel({ Text = '<font color="#60d888">Auto Upgrade Soccer</font>' })
-FeaturesBox:AddLabel({ Text = '<font color="#60d888">Auto Buy All Gear</font>' })
-FeaturesBox:AddLabel({ Text = '<font color="#60d888">Auto Buy Gear</font>' })
-FeaturesBox:AddLabel({ Text = '<font color="#60d888">Theme Manager</font>' })
-FeaturesBox:AddLabel({ Text = '<font color="#60d888">Config Autoload</font>' })
-FeaturesBox:AddLabel({ Text = '<font color="#60d888">Auto Execute Script</font>' })
-FeaturesBox:AddLabel({ Text = '<font color="#60d888">Auto Reconnect</font>' })
-FeaturesBox:AddLabel({ Text = '<font color="#60d888">Auto Hide UI</font>' })
-FeaturesBox:AddLabel({ Text = '<font color="#60d888">Anti AFK</font>' })
-FeaturesBox:AddLabel({ Text = '<font color="#60d888">No Gameplay Paused</font>' })
-
--- MAIN > FARMING
-local FarmBox = MainTabs.Eggs:AddLeftGroupbox("Auto Farm", "star")
-
-local LuckyBlockDropdown = FarmBox:AddDropdown("LuckyBlockSelect", {
-	Text = "Select LuckyBlock",
-	Values = LuckyBlocksList,
-	Multi = true,
-	Default = Config.SelectedLuckyBlock,
-	MaxVisibleDropdownItems = 8,
-	Callback = function(Selected)
-		Config.SelectedLuckyBlock = {}
-		for Block, Active in Selected do
-			if Active then table.insert(Config.SelectedLuckyBlock, Block) end
-		end
-		if not SuppressUI then ScheduleSave() end
-	end,
-})
-SettingsRefs.LuckyBlockDropdown = LuckyBlockDropdown
-
-FarmBox:AddDivider()
-
-AddFeatureToggle(FarmBox, "AutoFarm", {Text = "Auto Farm", Notify = true}, function(Value)
-	Config.FarmActive = Value
-	if Value then
-		task.spawn(function()
-			while Config.FarmActive do
-				pcall(FarmLuckyBlock)
-				task.wait(0.1)
-			end
-		end)
-	else
-		pcall(function() bypass_teleport(Config.HomePosition) end)
-	end
+Library:OnUnload(function()
+	session.running = false
+	setAntiAfk(false)
+	setRendering(false)
+	setFpsBoost(false)
+	session.lib = nil
 end)
 
-AddFeatureToggle(FarmBox, "AutoCollect", {Text = "Auto Collect Cash", Notify = true}, function(Value)
-	Config.CollectActive = Value
-	if Value then
-		task.spawn(function()
-			while Config.CollectActive do
-				for i = 1, 70 do
-					pcall(CollectEarnings, i)
-					task.wait(0.001)
-				end
-			end
-		end)
-	end
-end)
-
-AddFeatureToggle(FarmBox, "AutoRebirth", {Text = "Auto Rebirth", Notify = true}, function(Value)
-	Config.RebirthActive = Value
-	if Value then
-		task.spawn(function()
-			while Config.RebirthActive do
-				pcall(DoRebirth)
-				task.wait(0.001)
-			end
-		end)
-	end
-end)
-
-AddFeatureToggle(FarmBox, "AutoSellAll", {Text = "Auto Sell All", Notify = true}, function(Value)
-	Config.SellAllActive = Value
-	if Value then
-		task.spawn(function()
-			while Config.SellAllActive do
-				pcall(SellAllSlimes)
-				task.wait(0.001)
-			end
-		end)
-	end
-end)
-
-AddFeatureToggle(FarmBox, "AutoOpen", {Text = "Auto Open Lucky Blocks", Notify = true}, function(Value)
-	Config.OpenActive = Value
-	if Value then
-		task.spawn(function()
-			while Config.OpenActive do
-				pcall(OpenLuckyBlocks)
-				task.wait(0.001)
-			end
-		end)
-	end
-end)
-
--- MAIN > UPGRADE
-local UpgradeBox = MainTabs.Slimes:AddLeftGroupbox("Upgrades", "zap")
-
-local UpgradeDropdown = UpgradeBox:AddDropdown("UpgradeList", {
-	Text = "Select Upgrade",
-	Values = { "Jump", "Carry" },
-	Multi = true,
-	Default = Config.SelectedUpgrades,
-	MaxVisibleDropdownItems = 8,
-	Callback = function(Selected)
-		Config.SelectedUpgrades = {}
-		for Upgrade, Active in Selected do
-			if Active then table.insert(Config.SelectedUpgrades, Upgrade) end
-		end
-		ScheduleSave()
-	end,
-})
-SettingsRefs.UpgradeDropdown = UpgradeDropdown
-
-UpgradeBox:AddDivider()
-
-AddFeatureToggle(UpgradeBox, "AutoUpgrades", {Text = "Auto Buy All Upgrades", Notify = true}, function(Value)
-	Config.BuyUpgradesActive = Value
-	if Value then
-		task.spawn(function()
-			while Config.BuyUpgradesActive do
-				pcall(BuyAllUpgrades)
-				task.wait(0.001)
-			end
-		end)
-	end
-end)
-
-AddFeatureToggle(UpgradeBox, "AutoBuySelectedUpgrades", {Text = "Auto Buy Selected Upgrades", Notify = true}, function(Value)
-	Config.BuySelectedUpgradesActive = Value
-	if Value then
-		task.spawn(function()
-			while Config.BuySelectedUpgradesActive do
-				pcall(BuySelectedUpgrades)
-				task.wait(0.001)
-			end
-		end)
-	end
-end)
-
-local FloorsSoccerBox = MainTabs.Slimes:AddRightGroupbox("Floors & Soccer", "zap")
-
-local SoccerSlotDropdown = FloorsSoccerBox:AddDropdown("SoccerSlot", {
-	Text = "Select Soccer",
-	Values = SoccerSlotOptions,
-	Multi = true,
-	Default = Config.SoccerSlots,
-	MaxVisibleDropdownItems = 8,
-	Callback = function(Selected)
-		Config.SoccerSlots = {}
-		for Slot, Active in Selected do
-			if Active then table.insert(Config.SoccerSlots, Slot) end
-		end
-		ScheduleSave()
-	end,
-})
-SettingsRefs.SoccerSlotDropdown = SoccerSlotDropdown
-
-FloorsSoccerBox:AddDivider()
-
-AddFeatureToggle(FloorsSoccerBox, "AutoSoccer", {Text = "Auto Upgrade Soccer", Notify = true}, function(Value)
-	Config.UpgradeSoccerActive = Value
-	if Value then
-		task.spawn(function()
-			while Config.UpgradeSoccerActive do
-				for _, Slot in Config.SoccerSlots do
-					pcall(UpgradeSoccerSlot, tonumber(Slot:match("%d+")) or 1)
-					task.wait(0.001)
-				end
-			end
-		end)
-	end
-end)
-
-AddFeatureToggle(FloorsSoccerBox, "AutoFloors", {Text = "Auto Upgrade Floors", Notify = true}, function(Value)
-	Config.UpgradeFloorsActive = Value
-	if Value then
-		task.spawn(function()
-			while Config.UpgradeFloorsActive do
-				for i = 10, 70 do
-					pcall(UpgradeFloor, i)
-					task.wait(0.001)
-				end
-			end
-		end)
-	end
-end)
-
--- MAIN > SHOP
-local GearBox = MainTabs.Shop:AddLeftGroupbox("Gear", "shopping-bag")
-
-local GearOptions = {}
-for i = 1, 25 do table.insert(GearOptions, tostring(i)) end
-
-local GearDropdown = GearBox:AddDropdown("GearList", {
-	Text = "Select Gear",
-	Values = GearOptions,
-	Multi = true,
-	Default = Config.SelectedGears,
-	MaxVisibleDropdownItems = 8,
-	Callback = function(Selected)
-		Config.SelectedGears = {}
-		for Gear, Active in Selected do
-			if Active then table.insert(Config.SelectedGears, Gear) end
-		end
-		ScheduleSave()
-	end,
-})
-SettingsRefs.GearDropdown = GearDropdown
-
-GearBox:AddDivider()
-
-AddFeatureToggle(GearBox, "AutoBuyGear", {Text = "Auto Buy Selected Gear", Notify = true}, function(Value)
-	Config.BuyGearActive = Value
-	if Value then
-		task.spawn(function()
-			while Config.BuyGearActive do
-				pcall(BuyGearList, Config.SelectedGears)
-				task.wait(0.001)
-			end
-		end)
-	end
-end)
-
-AddFeatureToggle(GearBox, "AutoBuyAllGear", {Text = "Auto Buy All Gear", Notify = true}, function(Value)
-	Config.BuyAllGearActive = Value
-	if Value then
-		task.spawn(function()
-			while Config.BuyAllGearActive do
-				for i = 1, 25 do
-					pcall(BuyGear, tostring(i))
-					task.wait(0.001)
-				end
-			end
-		end)
-	end
-end)
-
--- SETTINGS > THEME MANAGER
-local ThemeBox = Tabs.Settings:AddLeftGroupbox("Theme Manager", "palette")
-
-local ThemeDropdown = ThemeBox:AddDropdown("Theme", {
-	Text = "Theme",
-	Values = ThemeNames,
-	Default = Config.ThemeName,
-	Callback = function(Value)
-		Config.ThemeName = Value
-		ApplyTheme(Themes[Value])
-		if not SuppressUI then
-			Config.CustomColors = CloneColors(Themes[Value])
-			SyncColorPickers()
-			Notify("Theme", "Theme set to " .. Value, "Success")
-			ScheduleSave()
-		end
-	end,
-})
-SettingsRefs.ThemeDropdown = ThemeDropdown
-
-ThemeBox:AddDivider()
-ThemeBox:AddLabel("Accent Color"):AddColorPicker("ThemeAccent", {Default = Config.CustomColors.AccentColor, Title = "Accent Color", Callback = function(Color) Config.CustomColors.AccentColor = Color ApplyColorOverride("AccentColor", Color) ScheduleSave() end})
-ThemeBox:AddLabel("Font Color"):AddColorPicker("ThemeFontColor", {Default = Config.CustomColors.FontColor, Title = "Font Color", Callback = function(Color) Config.CustomColors.FontColor = Color ApplyColorOverride("FontColor", Color) ScheduleSave() end})
-ThemeBox:AddLabel("Background Color"):AddColorPicker("ThemeBackground", {Default = Config.CustomColors.BackgroundColor, Title = "Background Color", Callback = function(Color) Config.CustomColors.BackgroundColor = Color ApplyColorOverride("BackgroundColor", Color) ScheduleSave() end})
-ThemeBox:AddLabel("Main Color"):AddColorPicker("ThemeMain", {Default = Config.CustomColors.MainColor, Title = "Main Color", Callback = function(Color) Config.CustomColors.MainColor = Color ApplyColorOverride("MainColor", Color) ScheduleSave() end})
-ThemeBox:AddLabel("Outline Color"):AddColorPicker("ThemeOutline", {Default = Config.CustomColors.OutlineColor, Title = "Outline Color", Callback = function(Color) Config.CustomColors.OutlineColor = Color ApplyColorOverride("OutlineColor", Color) ScheduleSave() end})
-ThemeBox:AddDivider()
-
-local FontDropdown = ThemeBox:AddDropdown("Font", {
-	Text = "Font",
-	Values = FontNames,
-	Default = Config.FontName,
-	Callback = function(Value) Config.FontName = Value Library:SetFont(Enum.Font[Value]) if not SuppressUI then ScheduleSave() end end,
-})
-SettingsRefs.FontDropdown = FontDropdown
-
-local FontPresetDropdown = ThemeBox:AddDropdown("FontPreset", {
-	Text = "Font Color Preset",
-	Values = FontPresetNames,
-	Default = Config.FontPreset,
-	Visible = false,
-	Callback = function(Value)
-		Config.FontPreset = Value
-		for _, Preset in FontPresets do
-			if Preset.Name == Value then
-				Config.CustomColors.FontColor = Color3.fromRGB(255, 255, 255)
-				Config.CustomColors.AccentColor = Preset.Accent
-				ApplyColorOverride("FontColor", Color3.fromRGB(255, 255, 255))
-				ApplyColorOverride("AccentColor", Preset.Accent)
-				SyncColorPickers()
-				break
-			end
-		end
-		if not SuppressUI then ScheduleSave() end
-	end,
-})
-SettingsRefs.FontPresetDropdown = FontPresetDropdown
-
-ThemeBox:AddButton({Text = "Reset Theme", Func = function()
-	Config.ThemeName = "Emerald Green" Config.FontPreset = "White + Emerald"
-	Config.CustomColors = CloneColors(Themes["Emerald Green"])
-	ApplyTheme(Themes["Emerald Green"])
-	ThemeDropdown:SetValue("Emerald Green") FontPresetDropdown:SetValue("White + Emerald")
-	SyncColorPickers() Notify("Theme", "Theme reset to Emerald Green", "Info") ScheduleSave()
-end})
-
--- SETTINGS > MENU GROUP
-local MenuBox = Tabs.Settings:AddRightGroupbox("Menu Group", "menu")
-
-MenuBox:AddLabel("Menu Bind"):AddKeyPicker("MenuBind", {
-	Default = Config.MenuBind, Mode = "Press", Text = "Toggle UI",
-	Callback = function() Library:Toggle() end,
-	ChangedCallback = function(NewKey) if typeof(NewKey) == "EnumItem" then Config.MenuBind = NewKey.Name end ScheduleSave() end,
-})
-SettingsRefs.MenuBindPicker = Library.Options.MenuBind
-
-MenuBox:AddDivider()
-AddFeatureToggle(MenuBox, "AutoExecute", {Text = "Auto Execute Script"}, function(Value) Config.AutoExecute = Value if Value then RunAutoExecute() end end)
-AddFeatureToggle(MenuBox, "AutoReconnect", {Text = "Auto Reconnect to Game"}, function(Value) Config.AutoReconnect = Value if Value then AutoReconnectLoop() end end)
-AddFeatureToggle(MenuBox, "AutoHideUi", {Text = "Auto Hide UI"}, function(Value) Config.AutoHideUi = Value if Value then AutoHideUiLoop() end end)
-AddFeatureToggle(MenuBox, "AntiAfk", {Text = "Anti AFK"}, function(Value) Config.AntiAfk = Value if Value then AntiAfkLoop() end end)
-AddFeatureToggle(MenuBox, "NoGameplayPaused", {Text = "No Gameplay Paused"}, function(Value) Config.NoGameplayPaused = Value if Value then NoPauseLoop() end end)
-
-MenuBox:AddDivider()
-
-MenuBox:AddButton({Text = "Stop All Features", Func = function()
-	Config.FarmActive = false Config.BuyUpgradesActive = false Config.UpgradeFloorsActive = false
-	Config.UpgradeSoccerActive = false Config.OpenActive = false Config.CollectActive = false
-	Config.RebirthActive = false Config.SellAllActive = false Config.BuySelectedUpgradesActive = false
-	Config.BuyGearActive = false Config.BuyAllGearActive = false
-	Config.AutoReconnect = false Config.AutoHideUi = false Config.AntiAfk = false Config.NoGameplayPaused = false
-	for Id, Toggle in Library.Toggles do if Toggle.Value then Toggle:SetValue(false) end end
-	Notify("Script", "All features stopped", "Warning")
-end, Risky = true})
-
--- SETTINGS > CONFIGURATION
-local ConfigBox = Tabs.Settings:AddRightGroupbox("Configuration", "save")
-local RefreshConfigList
-
-local ConfigNameInput = ConfigBox:AddInput("ConfigName", {Text = "Config name", Placeholder = "Type a config name...", ClearTextOnFocus = true})
-
-ConfigBox:AddButton({Text = "Create config", Func = function()
-	local Name = SanitizeConfigName(ConfigNameInput.Value)
-	if not Name then Notify("Config", "Enter a valid config name first", "Warning") return end
-	if ConfigExists(Name) then Notify("Config", "'" .. Name .. "' already exists", "Warning") return end
-	if SaveConfigData(Name) then CurrentConfig = Name RefreshConfigList(Name) Notify("Config", "Config '" .. Name .. "' created", "Success") else Notify("Config", "Config saving not supported", "Error") end
-end})
-
-ConfigBox:AddDivider()
-
-local ConfigListDropdown = ConfigBox:AddDropdown("ConfigList", {Text = "Config list", Values = { "---" }, Default = "---", Callback = function(Value) CurrentConfig = Value == "---" and nil or Value end})
-SettingsRefs.ConfigListDropdown = ConfigListDropdown
-
-local AutoloadLabel = ConfigBox:AddLabel({ Text = 'Current autoload config: <font color="#60d888">none</font>' })
-
-RefreshConfigList = function(SelectName)
-	local Values = { "---" }
-	for _, Name in GetConfigList() do table.insert(Values, Name) end
-	ConfigListDropdown:SetValues(Values)
-	local Choice = SelectName or CurrentConfig or "---"
-	if not table.find(Values, Choice) then Choice = "---" end
-	ConfigListDropdown:SetValue(Choice)
-	CurrentConfig = Choice == "---" and nil or Choice
-end
-
-local function UpdateAutoloadLabel()
-	local Name = GetAutoloadName()
-	local Text = 'Current autoload config: <font color="#60d888">none</font>'
-	if Name then Text = 'Current autoload config: <font color="#60d888">' .. Name .. '</font>' end
-	AutoloadLabel:SetText(Text)
-end
-
-ConfigBox:AddButton({Text = "Load config", Func = function() local Name = CurrentConfig if not Name then Notify("Config", "Select a config first", "Warning") return end if LoadConfig(Name, false) then Notify("Config", "Config '" .. Name .. "' loaded", "Success") end end})
-ConfigBox:AddButton({Text = "Overwrite config", Func = function() local Name = CurrentConfig if not Name then Notify("Config", "Select a config first", "Warning") return end if SaveConfigData(Name) then Notify("Config", "Config '" .. Name .. "' overwritten", "Success") else Notify("Config", "Config saving not supported", "Error") end end})
-ConfigBox:AddButton({Text = "Delete config", Func = function()
-	local Name = CurrentConfig if not Name then Notify("Config", "Select a config first", "Warning") return end
-	pcall(function() delfile(ConfigPath(Name)) end)
-	if GetAutoloadName() == Name then ClearAutoload() end
-	CurrentConfig = nil RefreshConfigList() UpdateAutoloadLabel()
-	Notify("Config", "Config '" .. Name .. "' deleted", "Warning")
-end, Risky = true})
-ConfigBox:AddButton({Text = "Refresh list", Func = function() RefreshConfigList() Notify("Config", "Config list refreshed", "Info") end})
-ConfigBox:AddButton({Text = "Set as autoload", Func = function() local Name = CurrentConfig if not Name then Notify("Config", "Select a config first", "Warning") return end if SetAutoload(Name) then UpdateAutoloadLabel() Notify("Config", "Autoload set to '" .. Name .. "'", "Success") end end})
-ConfigBox:AddButton({Text = "Reset autoload", Func = function() ClearAutoload() UpdateAutoloadLabel() Notify("Config", "Autoload cleared", "Info") end})
-
-ConfigBox:AddDivider()
-AddFeatureToggle(ConfigBox, "AutoSave", {Text = "Auto Save Config"}, function(Value) Config.AutoSave = Value end)
-
--- Startup
-ApplyTheme(Themes[Config.ThemeName])
-Library:SetFont(Enum.Font[Config.FontName])
-
-task.delay(1, function()
-	local AutoloadName = GetAutoloadName()
-	if AutoloadName and ConfigExists(AutoloadName) then
-		CurrentConfig = AutoloadName
-		if LoadConfig(AutoloadName, true) then Notify("Config", "Autoloaded '" .. AutoloadName .. "'", "Success") end
-	end
-	RunAutoExecute()
-end)
-
-Notify("AntiGodHub", "Loaded", "Success")
+SaveManager:LoadAutoloadConfig()
