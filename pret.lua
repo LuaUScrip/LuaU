@@ -30,7 +30,6 @@ local games = {
     [1041268469] = 'FishingChef.lua',
     [612510500] = 'HoleFishing.lua',
     [854390513] = 'JumpToStealPlayer.lua',
-    [854390513] = 'JumpToStealSlime.lua',
     [393047738] = 'LickAFish.lua',
     [32445464] = 'MurderVsSherif.lua',
     [1012646512] = 'Plus1AuraToBlastBosses.lua',
