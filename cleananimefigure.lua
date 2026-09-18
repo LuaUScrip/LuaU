@@ -1066,11 +1066,10 @@ local PetsTab = Tabs.Main:AddSubTab({ Name = "Pets", Icon = "paw-print" })
 local RebirthTab = Tabs.Main:AddSubTab({ Name = "Rebirth", Icon = "refresh-cw" })
 
 local FarmBox = box(FarmingTab, "Farming", "star", "Left")
-FarmBox:AddToggle("AutoCleanFigures", { Text = "Auto Clean Figures", Default = false, Callback = function(value)
+FarmBox:AddToggle("AutoCleanFigures", { Text = "Auto Clean", Default = false, Callback = function(value)
 	enabled.clean = value
 end })
-FarmBox:AddDivider()
-FarmBox:AddToggle("AutoClaimFreeReward", { Text = "Auto Claim Free Crystal Reward", Default = false, Callback = function(value)
+FarmBox:AddToggle("AutoClaimFreeReward", { Text = "Claim Free Crystal", Default = false, Callback = function(value)
 	enabled.freeReward = value
 end })
 
