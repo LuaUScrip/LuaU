@@ -71,6 +71,7 @@ local games = {
     [426881025] = 'mogevo.lua',
     [35939768] = 'petuniverse.lua',
     [461377311] = 'cleananimefigure.lua',
+    [892039974] = 'deadaglearena.lua',
 }
 
 if identifyexecutor then
