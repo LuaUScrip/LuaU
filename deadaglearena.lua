@@ -1074,7 +1074,7 @@ StatusBox:AddLabel("HealthLabel", { Text = paint("Health -", "0/0", COLORS.user)
 StatusBox:AddLabel("PingLabel", { Text = paint("Ping -", "0ms", COLORS.orange), DoesWrap = true })
 
 local AimBox = box(AimingTab, "Aimbot", "gauge", "Left")
-AimBox:AddToggle("Aimbot", { Text = "Auto Aim", Default = false, Callback = function(value)
+AimBox:AddToggle("Aimbot", { Text = "Aimbot", Default = false, Callback = function(value)
 	enabled.aimbot = value
 	if not value then
 		lockedPart = nil
