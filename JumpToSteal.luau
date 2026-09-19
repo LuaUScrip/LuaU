@@ -131,6 +131,7 @@ local LUCKY_BLOCKS = {
 	"Alternate Lucky Block",
 	"Next Generation Lucky Block",
 	"Backline Legends Lucky Block",
+	"Coaches Lucky Block",
 }
 
 local HOME_POSITION = Vector3.new(198, 3, 280)
