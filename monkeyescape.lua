@@ -27,7 +27,7 @@ local CONFIG = {
 	Version = "v1.5",
 	Folder = "AntiGodHub",
 	CornerRadius = 20,
-	GameName = "+1 Speed Monkey Escape",
+	GameName = "Speed Monkey Escape",
 }
 
 local previous = getgenv().UnitGrinder
@@ -441,8 +441,6 @@ local function teleportTo(position)
 	return false
 end
 
--- ============ GAME FEATURE LOGIC ============
-
 local function isWorldUnlocked(world)
 	local num = tonumber(string.match(world, "World(%d+)") or "0") or 0
 	if num <= 1 then
@@ -624,16 +622,15 @@ local FixedWinPos = {
 
 local winOptions = {}
 do
+	local chapterWorldPairs = {}
 	for chapter, worlds in pairs(MainCfg.ChapterStageWins) do
 		for world, stages in pairs(worlds) do
-			for stage in ipairs(stages) do
-				table.insert(winOptions, string.format("%s %s Stage%d", chapter, world, stage))
-			end
+			table.insert(chapterWorldPairs, string.format("%s %s", chapter, world))
 		end
 	end
-	table.sort(winOptions, function(a, b)
-		local ca, wa, sa = string.match(a, "([C%d]+) ([W%d]+) Stage(%d+)")
-		local cb, wb, sb = string.match(b, "([C%d]+) ([W%d]+) Stage(%d+)")
+	table.sort(chapterWorldPairs, function(a, b)
+		local ca, wa = string.match(a, "([C%d]+) ([W%d]+)")
+		local cb, wb = string.match(b, "([C%d]+) ([W%d]+)")
 		if ca ~= cb then
 			local cana, canb = tonumber(ca:sub(2)), tonumber(cb:sub(2))
 			if cana and canb and cana ~= canb then
@@ -646,8 +643,11 @@ do
 				return wana < wanb
 			end
 		end
-		return tonumber(sa) < tonumber(sb)
+		return false
 	end)
+	for _, pair in ipairs(chapterWorldPairs) do
+		table.insert(winOptions, pair)
+	end
 end
 
 local function scanYellowWinButtons()
@@ -688,15 +688,14 @@ end
 
 local function parseWinSelection(selection)
 	if type(selection) ~= "string" or selection == "" then
-		return nil, nil, nil
+		return nil, nil
 	end
 	local chapter = string.match(selection, "(C%d+)")
 	local world = string.match(selection, "(W%d+)")
 	if not chapter or not world then
-		return nil, nil, nil
+		return nil, nil
 	end
-	local stage = tonumber(string.match(selection, "Stage(%d+)")) or 1
-	return chapter, world, stage
+	return chapter, world
 end
 
 local function stageWinsRequirement(chapter, world, stage)
@@ -705,6 +704,22 @@ local function stageWinsRequirement(chapter, world, stage)
 		return (stages and stages[stage]) or 0
 	end
 	return 0
+end
+
+local function getBestStageForChapterWorld(filterChapter, filterWorld)
+	-- find highest stage within chapter/world that meets win requirement
+	if not MainCfg.ChapterStageWins[filterChapter] or not MainCfg.ChapterStageWins[filterChapter][filterWorld] then
+		return nil
+	end
+	local stages = MainCfg.ChapterStageWins[filterChapter][filterWorld]
+	local bestStage = nil
+	for stage = #stages, 1, -1 do
+		if winsGreaterEqual(stages[stage]) then
+			bestStage = stage
+			break
+		end
+	end
+	return bestStage
 end
 
 local function getBestUnlockedStage()
@@ -733,18 +748,30 @@ local function doAutoWins()
 	if not enabled.wins then
 		return
 	end
-	local chapter, world, stage = parseWinSelection(Options.AutoWins_Manual and Options.AutoWins_Manual.Value)
-	if not chapter then
-		-- default: best unlocked + affordable stage
+	local manualSelection = Options.AutoWins_Manual and Options.AutoWins_Manual.Value
+	local chapter, world = parseWinSelection(manualSelection)
+	local stage
+	
+	-- if a chapter/world is selected, find the best stage within that chapter/world
+	if chapter and world then
+		local bestStage = getBestStageForChapterWorld(chapter, world)
+		if bestStage then
+			stage = bestStage
+		else
+			-- no affordable stage in selected chapter/world, show status and return
+			local stages = MainCfg.ChapterStageWins[chapter] and MainCfg.ChapterStageWins[chapter][world]
+			if stages and stages[1] then
+				setFarmStatus("needs " .. Formatter.Format(stages[1]) .. " wins for " .. chapter .. " " .. world)
+			end
+			return
+		end
+	else
+		-- no manual selection: default to best unlocked + affordable stage globally
 		chapter, world, stage = getBestUnlockedStage()
 	end
+	
 	local winReq = stageWinsRequirement(chapter, world, stage or 1)
-	if not winsGreaterEqual(winReq) then
-		-- touching the pad without enough wins does nothing, so skip it
-		setFarmStatus("needs " .. Formatter.Format(winReq) .. " wins")
-		return
-	end
-	setFarmStatus("farming wins")
+	setFarmStatus("farming " .. chapter .. " " .. world .. " Stage" .. (stage or 1))
 	local fixedPos = FixedWinPos[chapter] and FixedWinPos[chapter][world] and FixedWinPos[chapter][world][stage or 1]
 	if fixedPos then
 		teleportTo(fixedPos)
@@ -765,7 +792,7 @@ local function doAutoCollectBananas()
 	if not enabled.bananas then
 		return
 	end
-	setFarmStatus("collecting bananas")
+	setFarmStatus("Collect Bananas")
 	local root = getRoot()
 	if not root then
 		return
@@ -787,23 +814,10 @@ local function doAutoCollectShards()
 	if not enabled.shards then
 		return
 	end
-	setFarmStatus("collecting shards")
-	local selected = Options.AutoCollectShards_Select and Options.AutoCollectShards_Select.Value or {}
-	local names = {}
-	if type(selected) == "table" then
-		for key, value in pairs(selected) do
-			if value then
-				names[#names + 1] = key
-			end
-		end
-	elseif type(selected) == "string" and selected ~= "" then
-		names[#names + 1] = selected
-	end
-	if #names == 0 then
-		names = {"Shard1", "Shard2", "Shard3", "Shard4", "Shard5", "Shard6", "Shard7", "Shard8", "Shard9"}
-	end
-	table.sort(names)
-	for _, name in ipairs(names) do
+	setFarmStatus("Collect Shards")
+	-- automatically collect all shards
+	local allShards = {"Shard1", "Shard2", "Shard3", "Shard4", "Shard5", "Shard6", "Shard7", "Shard8", "Shard9"}
+	for _, name in ipairs(allShards) do
 		safeFire(remote("CollectShard"), name)
 	end
 end
@@ -1117,8 +1131,6 @@ local function doAutoRebirth()
 	safeFire(remote("Rebirth"))
 end
 
--- ============ SERVER TOOLS ============
-
 local function rejoinServer()
 	pcall(TeleportService.TeleportToPlaceInstance, TeleportService, game.PlaceId, game.JobId, LocalPlayer)
 end
@@ -1218,8 +1230,6 @@ if identifyexecutor then
 end
 execName = execName or "Unknown"
 local executorText = execVersion and (execName .. " " .. execVersion) or execName
-
--- ============ UI ============
 
 local Window = Library:CreateWindow({
 	Title = CONFIG.Title,
@@ -1381,28 +1391,33 @@ SocialsBox:AddButton({ Text = "Copy Website", Func = function()
 	end)
 end })
 
-local TrainTab = Tabs.Main:AddSubTab({ Name = "Train", Icon = "activity" })
+local TrainTab = Tabs.Main:AddSubTab({ Name = "Train", Icon = "star" })
 local WinsTab = Tabs.Main:AddSubTab({ Name = "Wins", Icon = "trophy" })
 local CollectTab = Tabs.Main:AddSubTab({ Name = "Collecting", Icon = "package" })
 local InventoryTab = Tabs.Main:AddSubTab({ Name = "Inventory", Icon = "backpack" })
 local CharmsTab = Tabs.Main:AddSubTab({ Name = "Charms", Icon = "gem" })
 
-local TrainBox = box(TrainTab, "Auto Train", "activity", "Left")
+local TrainBox = box(TrainTab, "Auto Train", "star", "Left")
 TrainBox:AddDropdown("TrainTreadmill_Select", {
-	Text = "Treadmill",
+	Text = "Select Treadmill",
 	Values = {"Basic", "Reward", "Quantum", "Golden", "Diamond", "Galaxy", "Emerald", "Void", "Celestial"},
 	Default = "Basic",
 })
-TrainBox:AddToggle("AutoTrain", { Text = "Auto Train on Treadmill", Default = false, Callback = function(value)
+TrainBox:AddToggle("AutoTrain", { Text = "Auto Train", Default = false, Callback = function(value)
 	enabled.train = value
 end })
 TrainBox:AddToggle("AutoTrainBest", { Text = "Use Best Unlocked (no Robux)", Default = true, Callback = function(value)
 	enabled.trainBest = value
 end })
 
+local RebirthBox = box(TrainTab, "Rebirth", "refresh-cw", "Right")
+RebirthBox:AddToggle("AutoRebirth", { Text = "Auto Rebirth", Default = false, Callback = function(value)
+	enabled.rebirth = value
+end })
+
 local WinsBox = box(WinsTab, "Auto Farm Wins", "trophy", "Left")
 WinsBox:AddDropdown("AutoWins_Manual", {
-	Text = "Win Pad",
+	Text = "Select Area",
 	Values = winOptions,
 	Default = 1,
 })
@@ -1416,32 +1431,23 @@ StatusBox:AddLabel("LevelLabel", { Text = paint("Level -", "0", COLORS.accent), 
 StatusBox:AddLabel("RebirthLabel", { Text = paint("Rebirths -", "0", COLORS.orange), DoesWrap = true })
 StatusBox:AddLabel("WinsLabel", { Text = paint("Wins -", "0", COLORS.gold), DoesWrap = true })
 StatusBox:AddLabel("MultiLabel", { Text = paint("Speed Multi -", "1", COLORS.user), DoesWrap = true })
-StatusBox:AddLabel("WinReqLabel", { Text = paint("Win Req -", "-", COLORS.gold), DoesWrap = true })
 
 local CollectBox = box(CollectTab, "Collecting", "package", "Left")
-CollectBox:AddToggle("AutoCollectBananas", { Text = "Auto Collect Bananas", Default = false, Callback = function(value)
+CollectBox:AddToggle("AutoCollectBananas", { Text = "Collect Bananas", Default = false, Callback = function(value)
 	enabled.bananas = value
 end })
-CollectBox:AddDropdown("AutoCollectShards_Select", {
-	Text = "Sunken Shards",
-	Values = {"Shard1", "Shard2", "Shard3", "Shard4", "Shard5", "Shard6", "Shard7", "Shard8", "Shard9"},
-	Default = 1,
-	Multi = true,
-	Searchable = true,
-	SelectAllButtons = true,
-})
-CollectBox:AddToggle("AutoCollectShards", { Text = "Auto Collect Sunken Shards", Default = false, Callback = function(value)
+CollectBox:AddToggle("AutoCollectShards", { Text = "Collect Shards", Default = false, Callback = function(value)
 	enabled.shards = value
 end })
 
 local RewardBox = box(CollectTab, "Rewards & Codes", "gift", "Right")
-RewardBox:AddToggle("AutoClaimFreeReward", { Text = "Auto Claim Free Reward", Default = false, Callback = function(value)
+RewardBox:AddToggle("AutoClaimFreeReward", { Text = "Claim Free Reward", Default = false, Callback = function(value)
 	enabled.freeReward = value
 end })
-RewardBox:AddToggle("AutoClaimStreakReward", { Text = "Auto Claim Streak Reward", Default = false, Callback = function(value)
+RewardBox:AddToggle("AutoClaimStreakReward", { Text = "Claim Streak Reward", Default = false, Callback = function(value)
 	enabled.streakReward = value
 end })
-RewardBox:AddToggle("AutoClaimOfflineEarnings", { Text = "Auto Claim Offline Earnings", Default = false, Callback = function(value)
+RewardBox:AddToggle("AutoClaimOfflineEarnings", { Text = "Claim Offline Earnings", Default = false, Callback = function(value)
 	enabled.offlineEarnings = value
 end })
 RewardBox:AddToggle("AutoRedeemCode", { Text = "Auto Redeem Code", Default = false, Callback = function(value)
@@ -1452,10 +1458,10 @@ RewardBox:AddToggle("AutoSpinWheel", { Text = "Auto Spin Wheel", Default = false
 end })
 
 local ChestBox = box(CollectTab, "Chests & Doors", "box", "Right")
-ChestBox:AddToggle("AutoOpenSkullChest", { Text = "Auto Open Skull Chest", Default = false, Callback = function(value)
+ChestBox:AddToggle("AutoOpenSkullChest", { Text = "Open Skull Chest", Default = false, Callback = function(value)
 	enabled.skullChest = value
 end })
-ChestBox:AddToggle("AutoOpenSecretChest", { Text = "Auto Open Secret Chest", Default = false, Callback = function(value)
+ChestBox:AddToggle("AutoOpenSecretChest", { Text = "Open Secret Chest", Default = false, Callback = function(value)
 	enabled.secretChest = value
 end })
 ChestBox:AddToggle("AutoEnterSecretDoor", { Text = "Auto Enter Secret Door", Default = false, Callback = function(value)
@@ -1468,45 +1474,45 @@ RaceBox:AddToggle("AutoJoinRace", { Text = "Auto Join Race", Default = false, Ca
 end })
 
 local TailsBox = box(InventoryTab, "Monkey Tails", "shirt", "Left")
-TailsBox:AddToggle("AutoBuyTails", { Text = "Auto Buy Best Tail", Default = false, Callback = function(value)
+TailsBox:AddToggle("AutoBuyTails", { Text = "Buy Best Tail", Default = false, Callback = function(value)
 	enabled.tailsBuy = value
 end })
-TailsBox:AddToggle("AutoEquipBestTails", { Text = "Auto Equip Best Owned Tail", Default = false, Callback = function(value)
+TailsBox:AddToggle("AutoEquipBestTails", { Text = "Equip Best Tail", Default = false, Callback = function(value)
 	enabled.tailsEquip = value
 end })
 
 local TrailsBox = box(InventoryTab, "Trails", "wind", "Right")
-TrailsBox:AddToggle("AutoBuyTrail", { Text = "Auto Buy Next Trail", Default = false, Callback = function(value)
+TrailsBox:AddToggle("AutoBuyTrail", { Text = "Buy Best Trail", Default = false, Callback = function(value)
 	enabled.trailBuy = value
 end })
-TrailsBox:AddToggle("AutoEquipBestTrail", { Text = "Auto Equip Best Trail", Default = false, Callback = function(value)
+TrailsBox:AddToggle("AutoEquipBestTrail", { Text = "Equip Best Trail", Default = false, Callback = function(value)
 	enabled.trailEquip = value
 end })
 
 local AurasBox = box(InventoryTab, "Auras", "sparkles", "Left")
-AurasBox:AddToggle("AutoBuyAura", { Text = "Auto Buy Next Aura", Default = false, Callback = function(value)
+AurasBox:AddToggle("AutoBuyAura", { Text = "Buy Best Aura", Default = false, Callback = function(value)
 	enabled.auraBuy = value
 end })
-AurasBox:AddToggle("AutoEquipAura", { Text = "Auto Equip Best Aura", Default = false, Callback = function(value)
+AurasBox:AddToggle("AutoEquipAura", { Text = "Equip Best Aura", Default = false, Callback = function(value)
 	enabled.auraEquip = value
 end })
 
 local PotionBox = box(InventoryTab, "Potions", "flask-conical", "Right")
 PotionBox:AddDropdown("SelectedPotions", {
-	Text = "Potions",
+	Text = "Select Potions",
 	Values = POTION_LIST,
 	Default = 1,
 	Multi = true,
 	Searchable = true,
 	SelectAllButtons = true,
 })
-PotionBox:AddToggle("AutoUsePotions", { Text = "Auto Use Selected Potions", Default = false, Callback = function(value)
+PotionBox:AddToggle("AutoUsePotions", { Text = "Auto Use Potions", Default = false, Callback = function(value)
 	enabled.potions = value
 end })
 
 local CharmBuyBox = box(CharmsTab, "Charm Shop", "gem", "Left")
 CharmBuyBox:AddDropdown("CharmBuyRarity", {
-	Text = "Buy By Rarity",
+	Text = "Select Charm",
 	Values = {"Rare", "Epic", "Legendary", "Mythic", "Secret"},
 	Default = "Rare",
 })
@@ -1516,15 +1522,15 @@ end })
 
 local CharmManageBox = box(CharmsTab, "Charm Manage", "settings-2", "Right")
 CharmManageBox:AddDropdown("AutoEquipBestCharms_Mode", {
-	Text = "Equip Best Mode",
+	Text = "Equip Mode",
 	Values = {"Wins", "Speed"},
 	Default = "Wins",
 })
-CharmManageBox:AddToggle("AutoEquipBestCharms", { Text = "Auto Equip Best Charms", Default = false, Callback = function(value)
+CharmManageBox:AddToggle("AutoEquipBestCharms", { Text = "Equip Best Charms", Default = false, Callback = function(value)
 	enabled.charmEquip = value
 end })
 CharmManageBox:AddDropdown("AutoDeleteCharms_StopOn", {
-	Text = "Delete Stops On",
+	Text = "Select Rarity",
 	Values = {"Rare", "Epic", "Legendary", "Mythic"},
 	Default = "Rare",
 })
@@ -1533,11 +1539,6 @@ CharmManageBox:AddToggle("AutoDeleteCharms", { Text = "Auto Delete Charms", Defa
 end })
 CharmManageBox:AddToggle("AutoFuseCharms", { Text = "Auto Fuse Charms", Default = false, Callback = function(value)
 	enabled.charmFuse = value
-end })
-
-local RebirthBox = box(CharmsTab, "Rebirth", "refresh-cw", "Left")
-RebirthBox:AddToggle("AutoRebirth", { Text = "Auto Rebirth", Default = false, Callback = function(value)
-	enabled.rebirth = value
 end })
 
 local MenuBox = box(Tabs.Settings, "Menu", "wrench", "Left")
@@ -1650,13 +1651,6 @@ local function updateLabels()
 	setLabel("RebirthLabel", paint("Rebirths -", getRebirths(), COLORS.orange))
 	setLabel("WinsLabel", paint("Wins -", Formatter.Format(getWinsDigits()), COLORS.gold))
 	setLabel("MultiLabel", paint("Speed Multi -", getSpeedMulti(), COLORS.user))
-	local padChapter, padWorld, padStage = parseWinSelection(Options.AutoWins_Manual and Options.AutoWins_Manual.Value)
-	if not padChapter then
-		padChapter, padWorld, padStage = getBestUnlockedStage()
-	end
-	local padReq = stageWinsRequirement(padChapter, padWorld, padStage)
-	local padMet = winsGreaterEqual(padReq)
-	setLabel("WinReqLabel", paint("Win Req -", string.format("%s %s Stage%d - %s wins (%s)", padChapter, padWorld, padStage or 1, Formatter.Format(padReq), padMet and "met" or "not met"), padMet and COLORS.user or COLORS.orange))
 end
 
 local function refreshLists()
@@ -1698,11 +1692,11 @@ end
 chain({ doAutoWins }, 1)
 chain({ doAutoTrain }, 1)
 loop(doAutoCollectBananas, 0.5)
-loop(doAutoCollectShards, 1)
+loop(doAutoCollectShards, 0.5)
 loop(doAutoRace, 2)
 loop(doAutoRewards, 1)
-loop(doAutoRedeemCode, 3)
-loop(doAutoSpinWheel, 3)
+loop(doAutoRedeemCode, 0.3)
+loop(doAutoSpinWheel, 0.5)
 loop(doAutoChests, 1)
 loop(doAutoTails, 1)
 loop(doAutoTrails, 1)
@@ -1711,7 +1705,7 @@ loop(doAutoCharms, 1)
 loop(doAutoEquipCharms, 1)
 loop(doAutoDeleteCharms, 1)
 loop(doAutoFuseCharms, 1)
-loop(doAutoPotions, 2)
+loop(doAutoPotions, 0.2)
 loop(doAutoRebirth, 1)
 
 task.spawn(function()
