@@ -335,6 +335,18 @@ local MainCfg = {
 		World4 = {2000000000000000000, 10000000000000000000, 75000000000000000000, 350000000000000000000, 2000000000000000000000, 10000000000000000000000, 50000000000000000000000, 250000000000000000000000, 1000000000000000000000000},
 		World5 = {5000000000000000000000000, 25000000000000000000000000, 75000000000000000000000000, 250000000000000000000000000, 1000000000000000000000000000, 5000000000000000000000000000, 20000000000000000000000000000, 80000000000000000000000000000, 350000000000000000000000000000},
 	},
+	ChapterStageWins = {
+		C1 = {
+			W1 = {1, 5, 20, 100, 500, 3000, 15000, 50000, 200000},
+			W2 = {1000000, 5000000, 25000000, 100000000, 600000000, 3000000000, 25000000000, 150000000000, 1000000000000},
+			W3 = {5000000000000, 20000000000000, 75000000000000, 250000000000000, 1000000000000000, 5000000000000000, 25000000000000000, 100000000000000000, 400000000000000000},
+			W4 = {2000000000000000000, 10000000000000000000, 75000000000000000000, 350000000000000000000, 2000000000000000000000, 10000000000000000000000, 50000000000000000000000, 250000000000000000000000, 1000000000000000000000000},
+			W5 = {5000000000000000000000000, 25000000000000000000000000, 75000000000000000000000000, 250000000000000000000000000, 1000000000000000000000000000, 5000000000000000000000000000, 20000000000000000000000000000, 80000000000000000000000000000, 350000000000000000000000000000},
+		},
+		C2 = {
+			W1 = {1, 5, 20, 100, 500, 3000},
+		},
+	},
 }
 local TreadmillCfg = {Multis = {Basic = 1, Reward = 1.5, Golden = 3, Diamond = 9, Galaxy = 25, Emerald = 100, Void = 100, Celestial = 1000, Quantum = 10}}
 
@@ -542,74 +554,97 @@ local function doAutoTrain()
 	end
 end
 
--- Streaming-safe fixed win pad positions (per world/stage)
+-- Streaming-safe fixed win pad positions (per chapter/world/stage)
 local FixedWinPos = {
-	World1 = {
-		[1] = Vector3.new(-682.16, 23.04, -255.05),
-		[2] = Vector3.new(-935.66, 23.04, -255.05),
-		[3] = Vector3.new(-1214.16, 23.04, -255.05),
-		[4] = Vector3.new(-1569.16, 23.04, -255.05),
-		[5] = Vector3.new(-2183.16, 118.04, -255.05),
-		[6] = Vector3.new(-3046.41, 118.04, -255.05),
-		[7] = Vector3.new(-4318.16, 277.04, -255.05),
-		[8] = Vector3.new(-6158.66, 277.04, -254.66),
-		[9] = Vector3.new(-9459, 399, -255),
+	C1 = {
+		W1 = {
+			[1] = Vector3.new(-682.16, 23.04, -255.05),
+			[2] = Vector3.new(-935.66, 23.04, -255.05),
+			[3] = Vector3.new(-1214.16, 23.04, -255.05),
+			[4] = Vector3.new(-1569.16, 23.04, -255.05),
+			[5] = Vector3.new(-2183.16, 118.04, -255.05),
+			[6] = Vector3.new(-3046.41, 118.04, -255.05),
+			[7] = Vector3.new(-4318.16, 277.04, -255.05),
+			[8] = Vector3.new(-6158.66, 277.04, -254.66),
+			[9] = Vector3.new(-9459, 399, -255),
+		},
+		W2 = {
+			[1] = Vector3.new(-735.16, 23.04, -2565.05),
+			[2] = Vector3.new(-1095.01, 38.04, -2565.05),
+			[3] = Vector3.new(-1880.16, -51.96, -2565.05),
+			[4] = Vector3.new(-2400.16, 55.34, -2565.05),
+			[5] = Vector3.new(-3247.16, 55.34, -2565.05),
+			[6] = Vector3.new(-3605.38, 55.34, -3697.49),
+			[7] = Vector3.new(-3605.38, 55.34, -4607.49),
+			[8] = Vector3.new(-3605.38, 55.34, -5827.49),
+			[9] = Vector3.new(-3603, 164, -9379),
+		},
+		W3 = {
+			[1] = Vector3.new(-684.16, 22.54, 2740.95),
+			[2] = Vector3.new(-953.63, 22.54, 2740.95),
+			[3] = Vector3.new(-1286.63, 22.54, 2740.95),
+			[4] = Vector3.new(-1684.63, 22.54, 2740.95),
+			[5] = Vector3.new(-2240.63, 22.54, 2740.95),
+			[6] = Vector3.new(-2560.63, 278.54, 2740.95),
+			[7] = Vector3.new(-4208.63, 278.54, 2740.95),
+			[8] = Vector3.new(-5420.63, 278.54, 2740.95),
+			[9] = Vector3.new(-8077.63, 278.54, 2740.95),
+		},
+		W4 = {
+			[1] = Vector3.new(-684.16, 22.54, 5740.95),
+			[2] = Vector3.new(-892.16, 22.54, 5740.95),
+			[3] = Vector3.new(-1206.66, 22.54, 5740.95),
+			[4] = Vector3.new(-1592.66, 22.54, 5740.95),
+			[5] = Vector3.new(-1852.06, 172.54, 5740.95),
+			[6] = Vector3.new(-2718.06, 172.54, 5740.95),
+			[7] = Vector3.new(-3933.06, 172.54, 5740.95),
+			[8] = Vector3.new(-5663.06, 17.5, 5740.95),
+			[9] = Vector3.new(-7760.11, 17.5, 5740.95),
+		},
+		W5 = {
+			[1] = Vector3.new(-684.16, 22.54, 7561.95),
+			[2] = Vector3.new(-1005.16, 22.54, 7561.95),
+			[3] = Vector3.new(-1333.16, 22.54, 7561.95),
+			[4] = Vector3.new(-1778.15, 103.54, 7444.95),
+			[5] = Vector3.new(-2369.24, 103.54, 7444.95),
+			[6] = Vector3.new(-2828.45, 283.54, 7801.31),
+		},
 	},
-	World2 = {
-		[1] = Vector3.new(-735.16, 23.04, -2565.05),
-		[2] = Vector3.new(-1095.01, 38.04, -2565.05),
-		[3] = Vector3.new(-1880.16, -51.96, -2565.05),
-		[4] = Vector3.new(-2400.16, 55.34, -2565.05),
-		[5] = Vector3.new(-3247.16, 55.34, -2565.05),
-		[6] = Vector3.new(-3605.38, 55.34, -3697.49),
-		[7] = Vector3.new(-3605.38, 55.34, -4607.49),
-		[8] = Vector3.new(-3605.38, 55.34, -5827.49),
-		[9] = Vector3.new(-3603, 164, -9379),
-	},
-	World3 = {
-		[1] = Vector3.new(-684.16, 22.54, 2740.95),
-		[2] = Vector3.new(-953.63, 22.54, 2740.95),
-		[3] = Vector3.new(-1286.63, 22.54, 2740.95),
-		[4] = Vector3.new(-1684.63, 22.54, 2740.95),
-		[5] = Vector3.new(-2240.63, 22.54, 2740.95),
-		[6] = Vector3.new(-2560.63, 278.54, 2740.95),
-		[7] = Vector3.new(-4208.63, 278.54, 2740.95),
-		[8] = Vector3.new(-5420.63, 278.54, 2740.95),
-		[9] = Vector3.new(-8077.63, 278.54, 2740.95),
-	},
-	World4 = {
-		[1] = Vector3.new(-684.16, 22.54, 5740.95),
-		[2] = Vector3.new(-892.16, 22.54, 5740.95),
-		[3] = Vector3.new(-1206.66, 22.54, 5740.95),
-		[4] = Vector3.new(-1592.66, 22.54, 5740.95),
-		[5] = Vector3.new(-1852.06, 172.54, 5740.95),
-		[6] = Vector3.new(-2718.06, 172.54, 5740.95),
-		[7] = Vector3.new(-3933.06, 172.54, 5740.95),
-		[8] = Vector3.new(-5663.06, 17.5, 5740.95),
-		[9] = Vector3.new(-7760.11, 17.5, 5740.95),
-	},
-	World5 = {
-		[1] = Vector3.new(-684.16, 22.54, 7561.95),
-		[2] = Vector3.new(-1005.16, 22.54, 7561.95),
-		[3] = Vector3.new(-1333.16, 22.54, 7561.95),
-		[4] = Vector3.new(-1778.15, 103.54, 7444.95),
-		[5] = Vector3.new(-2369.24, 103.54, 7444.95),
-		[6] = Vector3.new(-2828.45, 283.54, 7801.31),
+	C2 = {
+		W1 = {
+			[1] = Vector3.new(-682.162, 23.04, -255.048),
+			[2] = Vector3.new(-936.65, 23.04, -255.048),
+			[3] = Vector3.new(-1367.412, 23.04, -255.048),
+			[4] = Vector3.new(-1663.412, 108.04, -255.048),
+			[5] = Vector3.new(-2513.412, 108.04, -255.048),
+			[6] = Vector3.new(-3548.412, 108.04, -255.048),
+		},
 	},
 }
 
 local winOptions = {}
 do
-	for world, stages in pairs(MainCfg.StageWins) do
-		for stage in ipairs(stages) do
-			table.insert(winOptions, string.format("%s Stage%d", world, stage))
+	for chapter, worlds in pairs(MainCfg.ChapterStageWins) do
+		for world, stages in pairs(worlds) do
+			for stage in ipairs(stages) do
+				table.insert(winOptions, string.format("%s %s Stage%d", chapter, world, stage))
+			end
 		end
 	end
 	table.sort(winOptions, function(a, b)
-		local wa, sa = string.match(a, "World(%d) Stage(%d+)")
-		local wb, sb = string.match(b, "World(%d) Stage(%d+)")
+		local ca, wa, sa = string.match(a, "([C%d]+) ([W%d]+) Stage(%d+)")
+		local cb, wb, sb = string.match(b, "([C%d]+) ([W%d]+) Stage(%d+)")
+		if ca ~= cb then
+			local cana, canb = tonumber(ca:sub(2)), tonumber(cb:sub(2))
+			if cana and canb and cana ~= canb then
+				return cana < canb
+			end
+		end
 		if wa ~= wb then
-			return tonumber(wa) < tonumber(wb)
+			local wana, wanb = tonumber(wa:sub(2)), tonumber(wb:sub(2))
+			if wana and wanb and wana ~= wanb then
+				return wana < wanb
+			end
 		end
 		return tonumber(sa) < tonumber(sb)
 	end)
@@ -653,65 +688,64 @@ end
 
 local function parseWinSelection(selection)
 	if type(selection) ~= "string" or selection == "" then
-		return nil, nil
+		return nil, nil, nil
 	end
-	local world = string.match(selection, "World(%d+)")
-	if not world then
-		return nil, nil
+	local chapter = string.match(selection, "(C%d+)")
+	local world = string.match(selection, "(W%d+)")
+	if not chapter or not world then
+		return nil, nil, nil
 	end
 	local stage = tonumber(string.match(selection, "Stage(%d+)")) or 1
-	return "World" .. world, stage
+	return chapter, world, stage
 end
 
-local function stageWinsRequirement(world, stage)
-	local stages = MainCfg.StageWins[world]
-	return (stages and stages[stage]) or 0
+local function stageWinsRequirement(chapter, world, stage)
+	if MainCfg.ChapterStageWins[chapter] and MainCfg.ChapterStageWins[chapter][world] then
+		local stages = MainCfg.ChapterStageWins[chapter][world]
+		return (stages and stages[stage]) or 0
+	end
+	return 0
 end
 
 local function getBestUnlockedStage()
-	-- highest world+stage that is rebirth-unlocked AND whose win requirement is met
-	local bestWorld, bestStage = nil, nil
+	-- highest chapter/world+stage whose win requirement is met
+	local bestChapter, bestWorld, bestStage = nil, nil, nil
 	for _, entry in ipairs(winOptions) do
-		local world, stage = parseWinSelection(entry)
-		if world and isWorldUnlocked(world) and winsGreaterEqual(stageWinsRequirement(world, stage)) then
-			bestWorld, bestStage = world, stage
+		local chapter, world, stage = parseWinSelection(entry)
+		if chapter and world and winsGreaterEqual(stageWinsRequirement(chapter, world, stage)) then
+			bestChapter, bestWorld, bestStage = chapter, world, stage
 		end
 	end
-	if bestWorld then
-		return bestWorld, bestStage
+	if bestChapter then
+		return bestChapter, bestWorld, bestStage
 	end
-	-- nothing affordable yet: fall back to highest rebirth-unlocked stage
+	-- nothing affordable yet: fall back to first available stage
 	for _, entry in ipairs(winOptions) do
-		local world, stage = parseWinSelection(entry)
-		if world and isWorldUnlocked(world) then
-			bestWorld, bestStage = world, stage
+		local chapter, world, stage = parseWinSelection(entry)
+		if chapter and world then
+			return chapter, world, stage
 		end
 	end
-	return bestWorld or "World1", bestStage or 1
+	return "C1", "W1", 1
 end
 
 local function doAutoWins()
 	if not enabled.wins then
 		return
 	end
-	local world, stage = parseWinSelection(Options.AutoWins_Manual and Options.AutoWins_Manual.Value)
-	if not world then
+	local chapter, world, stage = parseWinSelection(Options.AutoWins_Manual and Options.AutoWins_Manual.Value)
+	if not chapter then
 		-- default: best unlocked + affordable stage
-		world, stage = getBestUnlockedStage()
+		chapter, world, stage = getBestUnlockedStage()
 	end
-	if not isWorldUnlocked(world) then
-		local req = MainCfg.WorldRebirthsRequired[world]
-		setFarmStatus("locked (needs " .. tostring(req or "?") .. " rebirths)")
-		return
-	end
-	local winReq = stageWinsRequirement(world, stage or 1)
+	local winReq = stageWinsRequirement(chapter, world, stage or 1)
 	if not winsGreaterEqual(winReq) then
 		-- touching the pad without enough wins does nothing, so skip it
 		setFarmStatus("needs " .. Formatter.Format(winReq) .. " wins")
 		return
 	end
 	setFarmStatus("farming wins")
-	local fixedPos = FixedWinPos[world] and FixedWinPos[world][stage or 1]
+	local fixedPos = FixedWinPos[chapter] and FixedWinPos[chapter][world] and FixedWinPos[chapter][world][stage or 1]
 	if fixedPos then
 		teleportTo(fixedPos)
 		task.wait(0.15)
@@ -1616,13 +1650,13 @@ local function updateLabels()
 	setLabel("RebirthLabel", paint("Rebirths -", getRebirths(), COLORS.orange))
 	setLabel("WinsLabel", paint("Wins -", Formatter.Format(getWinsDigits()), COLORS.gold))
 	setLabel("MultiLabel", paint("Speed Multi -", getSpeedMulti(), COLORS.user))
-	local padWorld, padStage = parseWinSelection(Options.AutoWins_Manual and Options.AutoWins_Manual.Value)
-	if not padWorld then
-		padWorld, padStage = getBestUnlockedStage()
+	local padChapter, padWorld, padStage = parseWinSelection(Options.AutoWins_Manual and Options.AutoWins_Manual.Value)
+	if not padChapter then
+		padChapter, padWorld, padStage = getBestUnlockedStage()
 	end
-	local padReq = stageWinsRequirement(padWorld, padStage)
+	local padReq = stageWinsRequirement(padChapter, padWorld, padStage)
 	local padMet = winsGreaterEqual(padReq)
-	setLabel("WinReqLabel", paint("Win Req -", string.format("%s Stage%d - %s wins (%s)", padWorld, padStage or 1, Formatter.Format(padReq), padMet and "met" or "not met"), padMet and COLORS.user or COLORS.orange))
+	setLabel("WinReqLabel", paint("Win Req -", string.format("%s %s Stage%d - %s wins (%s)", padChapter, padWorld, padStage or 1, Formatter.Format(padReq), padMet and "met" or "not met"), padMet and COLORS.user or COLORS.orange))
 end
 
 local function refreshLists()
