@@ -4,7 +4,6 @@ local ThemeManager = loadstring(game:HttpGet(Repo .. "addons/ThemeManager.lua"))
 local SaveManager = loadstring(game:HttpGet(Repo .. "addons/SaveManager.lua"))()
 
 local Options = Library.Options
-
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -24,7 +23,7 @@ local CONFIG = {
 	Icon = 80985370671515,
 	Discord = "https://discord.gg/jdJvZm6VdK",
 	Website = "https://rscripts.net/@AntiGodHub",
-	Version = "v1.5",
+	Version = "v2.1",
 	Folder = "AntiGodHub",
 	CornerRadius = 20,
 	GameName = "Speed Monkey Escape",
@@ -34,9 +33,7 @@ local previous = getgenv().UnitGrinder
 if previous then
 	previous.running = false
 	if type(previous.lib) == "table" and type(previous.lib.Unload) == "function" then
-		pcall(function()
-			previous.lib:Unload()
-		end)
+		pcall(function() previous.lib:Unload() end)
 	end
 end
 
@@ -57,22 +54,17 @@ local function find(root, ...)
 end
 
 local function fire(remote, ...)
-	if remote then
-		pcall(remote.FireServer, remote, ...)
-	end
+	if remote then pcall(remote.FireServer, remote, ...) end
 end
 
 local function call(remote, ...)
 	if remote then
 		local ok, result = pcall(remote.InvokeServer, remote, ...)
-		if ok then
-			return result
-		end
+		if ok then return result end
 	end
 end
 
 local lastWarn = 0
-
 local function logError(err)
 	if tick() - lastWarn > 5 then
 		lastWarn = tick()
@@ -81,50 +73,37 @@ local function logError(err)
 end
 
 local function safeFire(remote, ...)
-	if not remote then
-		return false
-	end
+	if not remote then return false end
 	local className = remote.ClassName
 	if className == "RemoteFunction" then
 		local ok, err = pcall(remote.InvokeServer, remote, ...)
-		if not ok then
-			logError(remote.Name .. ": " .. tostring(err))
-		end
+		if not ok then logError(remote.Name .. ": " .. tostring(err)) end
 		return ok
 	end
 	local ok, err = pcall(remote.FireServer, remote, ...)
-	if not ok then
-		logError(remote.Name .. ": " .. tostring(err))
-	end
+	if not ok then logError(remote.Name .. ": " .. tostring(err)) end
 	return ok
 end
 
 local timers = {}
 local function ready(key, interval)
 	local now = tick()
-	if now - (timers[key] or 0) < interval then
-		return false
-	end
+	if now - (timers[key] or 0) < interval then return false end
 	timers[key] = now
 	return true
 end
 
 local function formatDuration(seconds)
 	seconds = math.floor(seconds)
-	if seconds < 60 then
-		return string.format("%ds", seconds)
-	end
+	if seconds < 60 then return string.format("%ds", seconds) end
 	return string.format("%dm %02ds", math.floor(seconds / 60), seconds % 60)
 end
 
 local StatusHoldUntil = 0
-
 local function setFarmStatus(text)
 	text = tostring(text or "idle")
 	if text == "idle" then
-		if tick() < StatusHoldUntil then
-			return
-		end
+		if tick() < StatusHoldUntil then return end
 	else
 		StatusHoldUntil = tick() + 2
 	end
@@ -133,29 +112,74 @@ end
 
 local Data
 do
-	local ok, folder = pcall(function()
-		return LocalPlayer:WaitForChild("Data", 10)
-	end)
+	local ok, folder = pcall(function() return LocalPlayer:WaitForChild("Data", 10) end)
 	Data = ok and folder or nil
 end
 
-local function dataChild(...)
-	return Data and find(Data, ...)
-end
+local function dataChild(...) return Data and find(Data, ...) end
 
 local Remotes
 do
-	local ok, folder = pcall(function()
-		return ReplicatedStorage:WaitForChild("Remotes", 10)
-	end)
+	local ok, folder = pcall(function() return ReplicatedStorage:WaitForChild("Remotes", 10) end)
 	Remotes = ok and folder or nil
 end
 
-local function remote(name)
-	return Remotes and Remotes:FindFirstChild(name) or nil
+local function remote(name) return Remotes and Remotes:FindFirstChild(name) or nil end
+
+-- Resolve exactly ONE remote per action at startup. No multi-remote/multi-arg fallbacks.
+local function pickRemote(...)
+	for _, name in ipairs({...}) do
+		local found = remote(name)
+		if found then return found end
+	end
+	return nil
 end
 
--- Real BigNum module if present, else a digit-based stub
+local TailRemote = pickRemote("SelectUpgrade", "BuyUpgrade", "BuyTail")
+local TrailBuyRemote = pickRemote("BuyTrail", "TrailBuy", "PurchaseTrail")
+local TrailEquipRemote = pickRemote("EquipTrail", "TrailEquip", "SelectTrail", "SetTrail")
+local AuraBuyRemote = pickRemote("BuyAura", "AuraBuy", "PurchaseAura")
+local AuraEquipRemote = pickRemote("EquipAura", "AuraEquip", "SelectAura", "SetAura")
+
+-- Ownership: strict check inside the Data unlock folder (true owned / false not / nil unknown)
+local UNLOCKED_EXACT = {
+	upgrade = {"UnlockedUpgrades", "UnlockedTails", "Upgrades"},
+	trail = {"UnlockedTrails", "Trails"},
+	aura = {"UnlockedAuras", "Auras"},
+}
+
+local function unlockedFolder(kind)
+	if not Data then return nil end
+	for _, name in ipairs(UNLOCKED_EXACT[kind]) do
+		local folder = find(Data, name)
+		if folder then return folder end
+	end
+	for _, child in ipairs(Data:GetChildren()) do
+		local lower = string.lower(child.Name)
+		if child:IsA("Folder") and string.find(lower, kind, 1, true) then
+			return child
+		end
+	end
+	return nil
+end
+
+local SELECTED_NAMES = {
+	upgrade = {"SelectedUpgrade", "SelectedTail", "EquippedUpgrade"},
+	trail = {"SelectedTrail", "EquippedTrail"},
+	aura = {"SelectedAura", "EquippedAura"},
+}
+
+local function selectedEntry(kind)
+	for _, name in ipairs(SELECTED_NAMES[kind]) do
+		local node = dataChild(name)
+		if node then
+			local ok, value = pcall(function() return tostring(node.Value) end)
+			if ok then return value end
+		end
+	end
+	return nil
+end
+
 local BigNum
 do
 	local module = find(ReplicatedStorage, "Util", "BigNum")
@@ -181,7 +205,6 @@ do
 	end
 end
 
--- Formatter: prefers the game's real Util.Formatter, else an exact embedded copy
 local Formatter
 do
 	local module = find(ReplicatedStorage, "Util", "Formatter")
@@ -210,20 +233,14 @@ do
 							break
 						end
 					end
-					if more then
-						out = out .. char
-					end
+					if more then out = out .. char end
 				else
-					if count >= maxChars then
-						break
-					end
+					if count >= maxChars then break end
 					out = out .. char
 					count = count + 1
 				end
 			end
-			if string.sub(out, -1) == "." then
-				out = string.sub(out, 1, -2)
-			end
+			if string.sub(out, -1) == "." then out = string.sub(out, 1, -2) end
 			return out
 		end
 		Formatter = { Suffixes = suffixes }
@@ -264,44 +281,22 @@ do
 	end
 end
 
-local function getLevel()
-	local level = dataChild("Level")
-	return level and tonumber(level.Value) or 0
-end
-
-local function getRebirths()
-	local rebirths = dataChild("Rebirths")
-	return rebirths and tonumber(rebirths.Value) or 0
-end
-
-local function getSpeedMulti()
-	local multi = dataChild("SpeedMulti")
-	return multi and tonumber(multi.Value) or 0
-end
+local function getLevel() local level = dataChild("Level") return level and tonumber(level.Value) or 0 end
+local function getRebirths() local rebirths = dataChild("Rebirths") return rebirths and tonumber(rebirths.Value) or 0 end
+local function getSpeedMulti() local multi = dataChild("SpeedMulti") return multi and tonumber(multi.Value) or 0 end
 
 local function getWinsDigits()
 	local wins = dataChild("Wins")
-	if not wins then
-		return 0
-	end
+	if not wins then return 0 end
 	if BigNum then
 		local ok, result = pcall(BigNum.ToNumber, wins)
-		if ok and type(result) == "number" then
-			return result
-		end
+		if ok and type(result) == "number" then return result end
 	end
 	local digits = wins:FindFirstChild("Digits")
-	if not digits then
-		return 0
-	end
+	if not digits then return 0 end
 	local raw = tostring(digits.Value)
-	if raw == "" then
-		return 0
-	end
-	if tonumber(raw) then
-		return tonumber(raw)
-	end
-	-- BigNum digit groups are comma-joined, least-significant first
+	if raw == "" then return 0 end
+	if tonumber(raw) then return tonumber(raw) end
 	local groups = {}
 	for group in string.gmatch(raw, "[^,]+") do
 		groups[#groups + 1] = tonumber(group) or 0
@@ -313,28 +308,40 @@ local function getWinsDigits()
 	return value
 end
 
--- Embedded game configs (avoids require of Plugin modules)
-local UpgradesCfg = {
-	{WinsRequirement = 0, Multi = 1, Skin = "Cubic"},
-	{WinsRequirement = 3, Multi = 2, Skin = "Portal"},
-	{WinsRequirement = 15, Multi = 4, Skin = "Bolt"},
-	{WinsRequirement = 100, Multi = 8, Skin = "Glitch"},
-	{WinsRequirement = 500, Multi = 16, Skin = "Fairy"},
-	{WinsRequirement = 2500, Multi = 32, Skin = "Forsaken"},
-	{WinsRequirement = 15000, Multi = 64, Skin = "Crystal"},
-	{WinsRequirement = 50000, Multi = 128, Skin = "Poison"},
-	{WinsRequirement = 250000, Multi = 256, Skin = "Angel"},
-	{WinsRequirement = 1000000, Multi = 512, Skin = "Haste"},
-}
+-- Tails = the game's "Upgrades": load the REAL Config.Upgrades so Skin names and
+-- WinsRequirements match the server exactly (the module pre-scales them with Balancing,
+-- which is why requirements are much higher in World 2+ than a hardcoded list).
+local UpgradesCfg
+do
+	local defaults = {
+		{WinsRequirement = 0, Multi = 1, Skin = "Cubic"},
+		{WinsRequirement = 3, Multi = 2, Skin = "Portal"},
+		{WinsRequirement = 15, Multi = 4, Skin = "Bolt"},
+		{WinsRequirement = 100, Multi = 8, Skin = "Glitch"},
+		{WinsRequirement = 500, Multi = 16, Skin = "Fairy"},
+		{WinsRequirement = 2500, Multi = 32, Skin = "Forsaken"},
+		{WinsRequirement = 15000, Multi = 64, Skin = "Crystal"},
+		{WinsRequirement = 50000, Multi = 128, Skin = "Poison"},
+		{WinsRequirement = 250000, Multi = 256, Skin = "Angel"},
+		{WinsRequirement = 1000000, Multi = 512, Skin = "Haste"},
+	}
+	local module = find(ReplicatedStorage, "Config", "Upgrades")
+	if module then
+		local ok, result = pcall(require, module)
+		if ok and type(result) == "table" and #result > 0 then
+			UpgradesCfg = result
+		end
+	end
+	UpgradesCfg = UpgradesCfg or defaults
+	for index, entry in ipairs(UpgradesCfg) do
+		entry.Index = index
+		entry.Skin = tostring(entry.Skin or ("Tail" .. index))
+		entry.WinsRequirement = tonumber(entry.WinsRequirement) or 0
+	end
+end
+
 local MainCfg = {
 	WorldRebirthsRequired = {World2 = 8, World3 = 16, World4 = 24, World5 = 32},
-	StageWins = {
-		World1 = {1, 5, 20, 100, 500, 3000, 15000, 50000, 200000},
-		World2 = {1000000, 5000000, 25000000, 100000000, 600000000, 3000000000, 25000000000, 150000000000, 1000000000000},
-		World3 = {5000000000000, 20000000000000, 75000000000000, 250000000000000, 1000000000000000, 5000000000000000, 25000000000000000, 100000000000000000, 400000000000000000},
-		World4 = {2000000000000000000, 10000000000000000000, 75000000000000000000, 350000000000000000000, 2000000000000000000000, 10000000000000000000000, 50000000000000000000000, 250000000000000000000000, 1000000000000000000000000},
-		World5 = {5000000000000000000000000, 25000000000000000000000000, 75000000000000000000000000, 250000000000000000000000000, 1000000000000000000000000000, 5000000000000000000000000000, 20000000000000000000000000000, 80000000000000000000000000000, 350000000000000000000000000000},
-	},
 	ChapterStageWins = {
 		C1 = {
 			W1 = {1, 5, 20, 100, 500, 3000, 15000, 50000, 200000},
@@ -343,86 +350,67 @@ local MainCfg = {
 			W4 = {2000000000000000000, 10000000000000000000, 75000000000000000000, 350000000000000000000, 2000000000000000000000, 10000000000000000000000, 50000000000000000000000, 250000000000000000000000, 1000000000000000000000000},
 			W5 = {5000000000000000000000000, 25000000000000000000000000, 75000000000000000000000000, 250000000000000000000000000, 1000000000000000000000000000, 5000000000000000000000000000, 20000000000000000000000000000, 80000000000000000000000000000, 350000000000000000000000000000},
 		},
-		C2 = {
-			W1 = {1, 5, 20, 100, 500, 3000},
-		},
+		C2 = {W1 = {1, 5, 20, 100, 500, 3000}},
 	},
 }
+
 local TreadmillCfg = {Multis = {Basic = 1, Reward = 1.5, Golden = 3, Diamond = 9, Galaxy = 25, Emerald = 100, Void = 100, Celestial = 1000, Quantum = 10}}
 
--- Real Balancing module if present, so tail requirements match the server scaling
-local Balancing
+-- Real Trails/Auras configs: their Price fields are already Balancing-scaled at module load
+local TrailsConfig, AurasConfig
 do
-	local module = find(ReplicatedStorage, "Util", "Balancing")
-	if module then
-		local ok, result = pcall(require, module)
-		if ok and type(result) == "table" and type(result.GetWinMultiAtLevel) == "function" then
-			Balancing = result
-		end
+	local trailsModule = find(ReplicatedStorage, "Config", "Trails")
+	if trailsModule then
+		local ok, result = pcall(require, trailsModule)
+		if ok and type(result) == "table" then TrailsConfig = result end
+	end
+	local aurasModule = find(ReplicatedStorage, "Config", "Auras")
+	if aurasModule then
+		local ok, result = pcall(require, aurasModule)
+		if ok and type(result) == "table" then AurasConfig = result end
 	end
 end
 
-local function tailRequirement(idx)
-	local base = UpgradesCfg[idx] and UpgradesCfg[idx].WinsRequirement or 0
-	if Balancing then
-		local ok, scaled = pcall(function()
-			return base * Balancing.GetWinMultiAtLevel(Balancing.GetUpgradeLevel(idx - 1))
-		end)
-		if ok and type(scaled) == "number" then
-			return scaled
+local function normName(value)
+	return string.lower(string.gsub(tostring(value or ""), "%s+", ""))
+end
+
+-- display name -> server API name (live config key when it matches, else display name)
+local function buildApiMap(config)
+	local map = {}
+	if type(config) == "table" then
+		for key in pairs(config) do
+			if type(key) == "string" then
+				map[normName(key)] = key
+			end
 		end
 	end
-	return base
+	return map
+end
+
+local trailApi = buildApiMap(TrailsConfig)
+local auraApi = buildApiMap(AurasConfig)
+
+local function apiName(map, display)
+	return map[normName(display)] or display
 end
 
 local function winsGreaterEqual(req)
 	local wins = dataChild("Wins")
 	if wins then
 		local ok, result = pcall(BigNum.GreaterEqual, wins, req)
-		if ok then
-			return result == true
-		end
+		if ok then return result == true end
 	end
 	return getWinsDigits() >= (tonumber(req) or 0)
 end
 
-local function getCharacter()
-	return LocalPlayer.Character
-end
-
-local function getHumanoid()
-	local character = getCharacter()
-	return character and character:FindFirstChildOfClass("Humanoid")
-end
-
-local function getRoot()
-	local character = getCharacter()
-	return character and character:FindFirstChild("HumanoidRootPart")
-end
-
-local function getHealth()
-	local humanoid = getHumanoid()
-	return humanoid and math.floor(humanoid.Health) or 0
-end
-
-local function getMaxHealth()
-	local humanoid = getHumanoid()
-	return humanoid and math.floor(humanoid.MaxHealth) or 0
-end
-
-local function getPing()
-	local ok, ping = pcall(LocalPlayer.GetNetworkPing, LocalPlayer)
-	if ok and type(ping) == "number" then
-		return math.floor(ping * 1000 + 0.5)
-	end
-	return 0
-end
+local function getCharacter() return LocalPlayer.Character end
+local function getHumanoid() local character = getCharacter() return character and character:FindFirstChildOfClass("Humanoid") end
+local function getRoot() local character = getCharacter() return character and character:FindFirstChild("HumanoidRootPart") end
 
 local function fireTouch(part)
 	local root = getRoot()
-	if not part or not root then
-		return false
-	end
+	if not part or not root then return false end
 	if firetouchinterest then
 		pcall(firetouchinterest, part, root, 0)
 		task.wait(0.05)
@@ -441,32 +429,14 @@ local function teleportTo(position)
 	return false
 end
 
-local function isWorldUnlocked(world)
-	local num = tonumber(string.match(world, "World(%d+)") or "0") or 0
-	if num <= 1 then
-		return true
-	end
-	local req = MainCfg.WorldRebirthsRequired[world]
-	if not req then
-		return true
-	end
-	return getRebirths() >= req
-end
-
 local function isTreadmillUnlocked(ttype)
 	if ttype == "Sunken" then
 		local shards = dataChild("CollectedShards")
-		if not shards or #shards:GetChildren() < 9 then
-			return false
-		end
+		if not shards or #shards:GetChildren() < 9 then return false end
 	end
-	if ttype == "Quantum" then
-		return false
-	end
+	if ttype == "Quantum" then return false end
 	local paidList = {Golden = true, Diamond = true, Galaxy = true, Void = true, Celestial = true, Emerald = true}
-	if not paidList[ttype] then
-		return true
-	end
+	if not paidList[ttype] then return true end
 	local passes = dataChild("Passes")
 	return passes and passes:FindFirstChild(ttype) ~= nil
 end
@@ -490,61 +460,39 @@ local function getTreadmillPart(preferred)
 			end
 		end
 	end
-	if best then
-		return best
-	end
+	if best then return best end
 	for _, part in ipairs(CollectionService:GetTagged("Treadmill")) do
 		if part:IsA("BasePart") and part:IsDescendantOf(Workspace) then
 			local ttype = part:GetAttribute("Type") or part.Name
-			if isTreadmillUnlocked(ttype) then
-				return part
-			end
+			if isTreadmillUnlocked(ttype) then return part end
 		end
 	end
 	return nil
 end
 
 local function treadmillSpot(part)
-	if not part or not part:IsA("BasePart") then
-		return nil
-	end
-	-- land just above the belt surface so the character never floats above it
+	if not part or not part:IsA("BasePart") then return nil end
 	return Vector3.new(part.Position.X, part.Position.Y + part.Size.Y / 2 + 1, part.Position.Z)
 end
 
 local function doAutoTrain()
-	if not enabled.train then
-		return
-	end
-	-- wins farming takes priority; never fight it over the character position
-	if enabled.wins then
-		return
-	end
+	if not enabled.train then return end
+	if enabled.wins then return end
 	local useBest = enabled.trainBest ~= false
 	local preferred = useBest and nil or (Options.TrainTreadmill_Select and Options.TrainTreadmill_Select.Value)
 	local part = getTreadmillPart(preferred)
-	if not part then
-		return
-	end
+	if not part then return end
 	local root = getRoot()
-	if not root then
-		return
-	end
+	if not root then return end
 	setFarmStatus("training")
 	local spot = treadmillSpot(part)
 	if spot and (root.Position - spot).Magnitude > 8 then
-		-- teleport at most once every 3s so it never thrashes
-		if not ready("treadmillTp", 3) then
-			return
-		end
+		if not ready("treadmillTp", 3) then return end
 		root.CFrame = CFrame.new(spot)
-		pcall(function()
-			root.AssemblyLinearVelocity = Vector3.zero
-		end)
+		pcall(function() root.AssemblyLinearVelocity = Vector3.zero end)
 		task.wait(0.25)
 		return
 	end
-	-- while standing on it, gently re-register the touch every 3s
 	if ready("treadmillTouch", 3) and firetouchinterest then
 		pcall(firetouchinterest, part, root, 0)
 		task.wait(0.05)
@@ -552,7 +500,6 @@ local function doAutoTrain()
 	end
 end
 
--- Streaming-safe fixed win pad positions (per chapter/world/stage)
 local FixedWinPos = {
 	C1 = {
 		W1 = {
@@ -633,15 +580,11 @@ do
 		local cb, wb = string.match(b, "([C%d]+) ([W%d]+)")
 		if ca ~= cb then
 			local cana, canb = tonumber(ca:sub(2)), tonumber(cb:sub(2))
-			if cana and canb and cana ~= canb then
-				return cana < canb
-			end
+			if cana and canb and cana ~= canb then return cana < canb end
 		end
 		if wa ~= wb then
 			local wana, wanb = tonumber(wa:sub(2)), tonumber(wb:sub(2))
-			if wana and wanb and wana ~= wanb then
-				return wana < wanb
-			end
+			if wana and wanb and wana ~= wanb then return wana < wanb end
 		end
 		return false
 	end)
@@ -674,9 +617,7 @@ end
 
 local function touchWinButton(part)
 	local root = getRoot()
-	if not root or not part then
-		return
-	end
+	if not root or not part then return end
 	if firetouchinterest then
 		pcall(firetouchinterest, part, root, 0)
 		task.wait(0.05)
@@ -687,14 +628,10 @@ local function touchWinButton(part)
 end
 
 local function parseWinSelection(selection)
-	if type(selection) ~= "string" or selection == "" then
-		return nil, nil
-	end
+	if type(selection) ~= "string" or selection == "" then return nil, nil end
 	local chapter = string.match(selection, "(C%d+)")
 	local world = string.match(selection, "(W%d+)")
-	if not chapter or not world then
-		return nil, nil
-	end
+	if not chapter or not world then return nil, nil end
 	return chapter, world
 end
 
@@ -707,7 +644,6 @@ local function stageWinsRequirement(chapter, world, stage)
 end
 
 local function getBestStageForChapterWorld(filterChapter, filterWorld)
-	-- find highest stage within chapter/world that meets win requirement
 	if not MainCfg.ChapterStageWins[filterChapter] or not MainCfg.ChapterStageWins[filterChapter][filterWorld] then
 		return nil
 	end
@@ -723,55 +659,43 @@ local function getBestStageForChapterWorld(filterChapter, filterWorld)
 end
 
 local function getBestUnlockedStage()
-	-- highest chapter/world+stage whose win requirement is met
 	local bestChapter, bestWorld, bestStage = nil, nil, nil
 	for _, entry in ipairs(winOptions) do
-		local chapter, world, stage = parseWinSelection(entry)
-		if chapter and world and winsGreaterEqual(stageWinsRequirement(chapter, world, stage)) then
-			bestChapter, bestWorld, bestStage = chapter, world, stage
-		end
-	end
-	if bestChapter then
-		return bestChapter, bestWorld, bestStage
-	end
-	-- nothing affordable yet: fall back to first available stage
-	for _, entry in ipairs(winOptions) do
-		local chapter, world, stage = parseWinSelection(entry)
+		local chapter, world = parseWinSelection(entry)
 		if chapter and world then
-			return chapter, world, stage
+			local stage = getBestStageForChapterWorld(chapter, world)
+			if stage and winsGreaterEqual(stageWinsRequirement(chapter, world, stage)) then
+				bestChapter, bestWorld, bestStage = chapter, world, stage
+			end
 		end
+	end
+	if bestChapter then return bestChapter, bestWorld, bestStage end
+	for _, entry in ipairs(winOptions) do
+		local chapter, world = parseWinSelection(entry)
+		if chapter and world then return chapter, world, 1 end
 	end
 	return "C1", "W1", 1
 end
 
 local function doAutoWins()
-	if not enabled.wins then
-		return
-	end
+	if not enabled.wins then return end
 	local manualSelection = Options.AutoWins_Manual and Options.AutoWins_Manual.Value
-	local chapter, world = parseWinSelection(manualSelection)
-	local stage
-	
-	-- if a chapter/world is selected, find the best stage within that chapter/world
+	local chapter, world, stage = parseWinSelection(manualSelection)
 	if chapter and world then
 		local bestStage = getBestStageForChapterWorld(chapter, world)
 		if bestStage then
 			stage = bestStage
 		else
-			-- no affordable stage in selected chapter/world, show status and return
 			local stages = MainCfg.ChapterStageWins[chapter] and MainCfg.ChapterStageWins[chapter][world]
 			if stages and stages[1] then
-				setFarmStatus("needs " .. Formatter.Format(stages[1]) .. " wins for " .. chapter .. " " .. world)
+				setFarmStatus("needs " .. Formatter.Format(stages[1]) .. " wins")
 			end
 			return
 		end
 	else
-		-- no manual selection: default to best unlocked + affordable stage globally
 		chapter, world, stage = getBestUnlockedStage()
 	end
-	
-	local winReq = stageWinsRequirement(chapter, world, stage or 1)
-	setFarmStatus("farming " .. chapter .. " " .. world .. " Stage" .. (stage or 1))
+	setFarmStatus("Farm Wins")
 	local fixedPos = FixedWinPos[chapter] and FixedWinPos[chapter][world] and FixedWinPos[chapter][world][stage or 1]
 	if fixedPos then
 		teleportTo(fixedPos)
@@ -789,14 +713,10 @@ local function doAutoWins()
 end
 
 local function doAutoCollectBananas()
-	if not enabled.bananas then
-		return
-	end
+	if not enabled.bananas then return end
 	setFarmStatus("Collect Bananas")
 	local root = getRoot()
-	if not root then
-		return
-	end
+	if not root then return end
 	for _, part in ipairs(Workspace:GetDescendants()) do
 		if part:IsA("BasePart") and string.find(string.lower(part.Name), "banana", 1, true) then
 			pcall(firetouchinterest, part, root, 0)
@@ -811,11 +731,8 @@ local function doAutoCollectBananas()
 end
 
 local function doAutoCollectShards()
-	if not enabled.shards then
-		return
-	end
+	if not enabled.shards then return end
 	setFarmStatus("Collect Shards")
-	-- automatically collect all shards
 	local allShards = {"Shard1", "Shard2", "Shard3", "Shard4", "Shard5", "Shard6", "Shard7", "Shard8", "Shard9"}
 	for _, name in ipairs(allShards) do
 		safeFire(remote("CollectShard"), name)
@@ -823,17 +740,13 @@ local function doAutoCollectShards()
 end
 
 local function doAutoRace()
-	if not enabled.race then
-		return
-	end
+	if not enabled.race then return end
 	setFarmStatus("joining race")
 	safeFire(remote("JoinRace"))
 end
 
 local function doAutoRewards()
-	if not enabled.freeReward and not enabled.streakReward and not enabled.offlineEarnings then
-		return
-	end
+	if not enabled.freeReward and not enabled.streakReward and not enabled.offlineEarnings then return end
 	if enabled.freeReward and ready("freeReward", 5) then
 		safeFire(remote("ClaimFreeReward"))
 	end
@@ -848,9 +761,7 @@ end
 local CODE_LIST = {"STREAK", "100MVISITS", "250KCCU", "1MCCU", "300MVISITS", "PULSEISANOOB", "50MVISITS", "CODESYAY", "80MVISITS"}
 
 local function doAutoRedeemCode()
-	if not enabled.codes then
-		return
-	end
+	if not enabled.codes then return end
 	if ready("codes", 3) then
 		for _, code in ipairs(CODE_LIST) do
 			safeFire(remote("RedeemCode"), code)
@@ -859,9 +770,7 @@ local function doAutoRedeemCode()
 end
 
 local function doAutoSpinWheel()
-	if not enabled.spin then
-		return
-	end
+	if not enabled.spin then return end
 	if ready("spin", 3) then
 		safeFire(remote("SpawnWheel"))
 		safeFire(remote("PlayLootBoxSpin"))
@@ -869,9 +778,7 @@ local function doAutoSpinWheel()
 end
 
 local function doAutoChests()
-	if not enabled.skullChest and not enabled.secretChest and not enabled.secretDoor then
-		return
-	end
+	if not enabled.skullChest and not enabled.secretChest and not enabled.secretDoor then return end
 	if enabled.skullChest and ready("skullChest", 1) then
 		safeFire(remote("OpenSkullChest"), 1)
 	end
@@ -883,110 +790,218 @@ local function doAutoChests()
 	end
 end
 
+-- ============ TAILS (Upgrades) — FIXED ============
+
+-- ownership: child named by index OR skin, or a value child holding the index/skin
+local function ownsTail(folder, index, skin)
+	if not folder then return nil end -- unknown
+	if folder:FindFirstChild(tostring(index)) or folder:FindFirstChild(skin) then return true end
+	for _, child in ipairs(folder:GetChildren()) do
+		local ok, value = pcall(function() return child.Value end)
+		if ok and value ~= nil then
+			if tonumber(value) == index or tostring(value) == tostring(index) or tostring(value) == skin then
+				return true
+			end
+		end
+	end
+	return false
+end
+
 local function doAutoTails()
-	if not enabled.tailsBuy and not enabled.tailsEquip then
-		return
-	end
-	local unlocked = dataChild("UnlockedUpgrades")
-	local selected = dataChild("SelectedUpgrade")
-	local selectedIdx = selected and tonumber(selected.Value) or 1
-	if enabled.tailsBuy and ready("tailsBuy", 1) then
-		local bestIdx, bestReq = nil, -1
-		for idx, cfg in ipairs(UpgradesCfg) do
-			local owned = unlocked and unlocked:FindFirstChild(tostring(idx))
-			local req = tailRequirement(idx)
-			if not owned and cfg.WinsRequirement and winsGreaterEqual(req) then
-				if req > bestReq then
-					bestReq = req
-					bestIdx = idx
+	if not enabled.tailsBuy and not enabled.tailsEquip then return end
+	local folder = unlockedFolder("upgrade")
+	local selectedIdx = tonumber(selectedEntry("upgrade"))
+
+	if enabled.tailsBuy and ready("tailsBuy", 1.5) then
+		-- buy the lowest not-owned tail you can actually afford (REAL scaled requirement)
+		local target, firstLocked = nil, nil
+		for _, entry in ipairs(UpgradesCfg) do
+			if ownsTail(folder, entry.Index, entry.Skin) ~= true then
+				if not firstLocked then firstLocked = entry end
+				if winsGreaterEqual(entry.WinsRequirement) then
+					target = entry
+					break
 				end
 			end
 		end
-		if bestIdx and bestIdx ~= selectedIdx then
-			setFarmStatus("buy tail " .. (UpgradesCfg[bestIdx].Skin or bestIdx))
-			safeFire(remote("SelectUpgrade"), bestIdx)
+		if target then
+			if TailRemote and selectedIdx ~= target.Index then
+				setFarmStatus("buy tail " .. target.Skin)
+				safeFire(TailRemote, target.Index)
+				task.wait(0.4)
+			end
+		elseif firstLocked then
+			setFarmStatus("tail " .. firstLocked.Skin .. " needs " .. Formatter.Format(firstLocked.WinsRequirement) .. " wins")
 		end
 	end
-	if enabled.tailsEquip and ready("tailsEquip", 1) then
-		local bestOwned = 1
-		if unlocked then
-			for _, child in ipairs(unlocked:GetChildren()) do
-				local num = tonumber(child.Name)
-				if num and num > bestOwned then
-					bestOwned = num
-				end
+
+	if enabled.tailsEquip and ready("tailsEquip", 2) then
+		local bestOwned = nil
+		for _, entry in ipairs(UpgradesCfg) do
+			if ownsTail(folder, entry.Index, entry.Skin) == true then
+				bestOwned = entry
 			end
 		end
-		if bestOwned ~= selectedIdx then
-			setFarmStatus("equip tail " .. (UpgradesCfg[bestOwned] and UpgradesCfg[bestOwned].Skin or bestOwned))
-			safeFire(remote("SelectUpgrade"), bestOwned)
+		if bestOwned and TailRemote and bestOwned.Index ~= selectedIdx then
+			setFarmStatus("equip tail " .. bestOwned.Skin)
+			safeFire(TailRemote, bestOwned.Index)
 		end
 	end
 end
 
-local TRAIL_LIST = {"Swamp", "TimeTraveler", "Golden", "Galactus", "FrostBorn", "Vaporwave", "Null"}
+-- ============ TRAILS — FIXED (real shop names) ============
+
+local TRAIL_LIST = {"Amber", "Ice Cold", "Nature", "Rainbow", "Lunar", "Sparkle", "Fairy", "Spectral", "Yin Yang", "Bloodmoon", "Sakura", "Electric", "Void", "Steampunk", "Honey"}
+
+do
+	-- merge the live Config.Trails keys (authoritative API names) and sort cheapest-first
+	local prices, seen = {}, {}
+	for _, name in ipairs(TRAIL_LIST) do seen[normName(name)] = true end
+	if type(TrailsConfig) == "table" then
+		for key, value in pairs(TrailsConfig) do
+			if type(value) == "table" then
+				prices[normName(key)] = value.Price
+				if not seen[normName(key)] then
+					seen[normName(key)] = true
+					table.insert(TRAIL_LIST, tostring(key))
+				end
+			end
+		end
+	end
+	table.sort(TRAIL_LIST, function(a, b)
+		local pa = prices[normName(a)]
+		local pb = prices[normName(b)]
+		if type(pa) ~= "number" then pa = math.huge end
+		if type(pb) ~= "number" then pb = math.huge end
+		if pa == pb then return normName(a) < normName(b) end
+		return pa < pb
+	end)
+end
 
 local function doAutoTrails()
-	if not enabled.trailBuy and not enabled.trailEquip then
-		return
-	end
-	local unlocked = dataChild("UnlockedTrails")
-	if enabled.trailBuy and ready("trailBuy", 1) then
+	if not enabled.trailBuy and not enabled.trailEquip then return end
+	local folder = unlockedFolder("trail")
+
+	if enabled.trailBuy and ready("trailBuy", 1.5) then
+		-- cheapest-first: buy the first shop trail not owned
+		local target = nil
 		for _, name in ipairs(TRAIL_LIST) do
-			if not unlocked or not unlocked:FindFirstChild(name) then
-				setFarmStatus("buy trail " .. name)
-				safeFire(remote("BuyTrail"), name)
+			local api = apiName(trailApi, name)
+			if not (folder and folder:FindFirstChild(api)) and not (folder and folder:FindFirstChild(name)) then
+				target = api
 				break
 			end
+		end
+		if target and TrailBuyRemote then
+			setFarmStatus("buy trail " .. target)
+			safeFire(TrailBuyRemote, target)
+			task.wait(0.4)
 		end
 	end
-	if enabled.trailEquip and ready("trailEquip", 1) then
-		local best
-		for index = #TRAIL_LIST, 1, -1 do
-			if not unlocked or unlocked:FindFirstChild(TRAIL_LIST[index]) then
-				best = TRAIL_LIST[index]
-				break
+
+	if enabled.trailEquip and ready("trailEquip", 2) then
+		local best = nil
+		if folder then
+			-- equip the best owned: walk the list from the top (most expensive) down
+			for index = #TRAIL_LIST, 1, -1 do
+				local api = apiName(trailApi, TRAIL_LIST[index])
+				if folder:FindFirstChild(api) or folder:FindFirstChild(TRAIL_LIST[index]) then
+					best = api
+					break
+				end
 			end
 		end
-		if best then
-			setFarmStatus("equip trail " .. best)
-			safeFire(remote("EquipTrail"), best)
+		if best and TrailEquipRemote then
+			local current = selectedEntry("trail")
+			if not current or normName(current) ~= normName(best) then
+				setFarmStatus("equip trail " .. best)
+				safeFire(TrailEquipRemote, best)
+			end
 		end
 	end
 end
 
-local AURA_LIST = {"Swamp", "TimeTraveler", "Golden", "Galactus", "FrostBorn", "Vaporwave", "Null"}
+-- ============ AURAS — FIXED (real shop names) ============
+
+local AURA_LIST = {"Amber", "Ice Cold", "Nature", "Rainbow", "Lunar", "Sparkle", "Fairy", "Spectral", "Yin Yang", "Bloodmoon", "Sakura", "Electric", "Void", "Steampunk", "Honey"}
+
+do
+	local prices, seen = {}, {}
+	for _, name in ipairs(AURA_LIST) do seen[normName(name)] = true end
+	if type(AurasConfig) == "table" then
+		for key, value in pairs(AurasConfig) do
+			if type(value) == "table" then
+				prices[normName(key)] = value.Price
+				if not seen[normName(key)] then
+					seen[normName(key)] = true
+					table.insert(AURA_LIST, tostring(key))
+				end
+			end
+		end
+	end
+	table.sort(AURA_LIST, function(a, b)
+		local pa = prices[normName(a)]
+		local pb = prices[normName(b)]
+		if type(pa) ~= "number" then pa = math.huge end
+		if type(pb) ~= "number" then pb = math.huge end
+		if pa == pb then return normName(a) < normName(b) end
+		return pa < pb
+	end)
+end
 
 local function doAutoAuras()
-	if not enabled.auraBuy and not enabled.auraEquip then
-		return
-	end
-	local unlocked = dataChild("UnlockedAuras")
-	if enabled.auraBuy and ready("auraBuy", 1) then
+	if not enabled.auraBuy and not enabled.auraEquip then return end
+	local folder = unlockedFolder("aura")
+
+	if enabled.auraBuy and ready("auraBuy", 1.5) then
+		local target = nil
 		for _, name in ipairs(AURA_LIST) do
-			if not unlocked or not unlocked:FindFirstChild(name) then
-				setFarmStatus("buy aura " .. name)
-				safeFire(remote("BuyAura"), name)
+			local api = apiName(auraApi, name)
+			if not (folder and folder:FindFirstChild(api)) and not (folder and folder:FindFirstChild(name)) then
+				target = api
 				break
 			end
+		end
+		if target and AuraBuyRemote then
+			setFarmStatus("buy aura " .. target)
+			safeFire(AuraBuyRemote, target)
+			task.wait(0.4)
 		end
 	end
-	if enabled.auraEquip and ready("auraEquip", 1) then
-		local best
-		for index = #AURA_LIST, 1, -1 do
-			if not unlocked or unlocked:FindFirstChild(AURA_LIST[index]) then
-				best = AURA_LIST[index]
-				break
+
+	if enabled.auraEquip and ready("auraEquip", 2) then
+		local best = nil
+		if folder then
+			for index = #AURA_LIST, 1, -1 do
+				local api = apiName(auraApi, AURA_LIST[index])
+				if folder:FindFirstChild(api) or folder:FindFirstChild(AURA_LIST[index]) then
+					best = api
+					break
+				end
 			end
 		end
-		if best then
-			setFarmStatus("equip aura " .. best)
-			safeFire(remote("EquipAura"), best)
+		if best and AuraEquipRemote then
+			local current = selectedEntry("aura")
+			if not current or normName(current) ~= normName(best) then
+				setFarmStatus("equip aura " .. best)
+				safeFire(AuraEquipRemote, best)
+			end
 		end
 	end
 end
 
-local CHARM_RARITY = {}
+task.spawn(function()
+	task.wait(4.5)
+	local tailLines = {}
+	for _, entry in ipairs(UpgradesCfg) do
+		table.insert(tailLines, entry.Index .. "=" .. entry.Skin .. "(" .. Formatter.Format(entry.WinsRequirement) .. ")")
+	end
+	local tailFolder = unlockedFolder("upgrade")
+	print("[AntiGodHub] tail remote: " .. (TailRemote and TailRemote.Name or "NONE") .. " | unlock folder: " .. (tailFolder and tailFolder.Name or "NONE"))
+	print("[AntiGodHub] tails (" .. #UpgradesCfg .. "): " .. table.concat(tailLines, ", "))
+	print("[AntiGodHub] trails (" .. #TRAIL_LIST .. "): " .. table.concat(TRAIL_LIST, ", "))
+	print("[AntiGodHub] auras (" .. #AURA_LIST .. "): " .. table.concat(AURA_LIST, ", "))
+end) local CHARM_RARITY = {}
 do
 	local charms = find(ReplicatedStorage, "Config", "Charms")
 	if charms then
@@ -1008,22 +1023,15 @@ end
 local RARITY_RANK = {Rare = 1, Epic = 2, Legendary = 3, Mythic = 4, Secret = 5}
 
 local function doAutoCharms()
-	if not enabled.charmBuy then
-		return
-	end
-	if not ready("charmBuy", 1) then
-		return
-	end
-	-- buy by rarity only: anything at or above the selected rarity
+	if not enabled.charmBuy then return end
+	if not ready("charmBuy", 1) then return end
 	local rarityFilter = (Options.CharmBuyRarity and Options.CharmBuyRarity.Value) or "Rare"
 	local minRank = RARITY_RANK[rarityFilter] or 1
 	local world = dataChild("World")
 	local worldName = world and tostring(world.Value) or "1"
 	local charmShop = dataChild("CharmShop")
 	local shopFolder = charmShop and charmShop:FindFirstChild("World" .. worldName)
-	if not shopFolder then
-		return
-	end
+	if not shopFolder then return end
 	for slot = 1, 3 do
 		local slotValue = shopFolder:FindFirstChild("Slot" .. slot)
 		local boughtValue = shopFolder:FindFirstChild("Bought" .. slot)
@@ -1040,38 +1048,24 @@ local function doAutoCharms()
 end
 
 local function doAutoEquipCharms()
-	if not enabled.charmEquip then
-		return
-	end
-	if not ready("charmEquip", 1) then
-		return
-	end
+	if not enabled.charmEquip then return end
+	if not ready("charmEquip", 1) then return end
 	local mode = (Options.AutoEquipBestCharms_Mode and Options.AutoEquipBestCharms_Mode.Value) or "Wins"
 	safeFire(remote("EquipBestCharms"), mode)
 end
 
 local function doAutoDeleteCharms()
-	if not enabled.charmDelete then
-		return
-	end
-	if not ready("charmDelete", 1) then
-		return
-	end
+	if not enabled.charmDelete then return end
+	if not ready("charmDelete", 1) then return end
 	local stopOn = (Options.AutoDeleteCharms_StopOn and Options.AutoDeleteCharms_StopOn.Value) or "Rare"
 	safeFire(remote("DeleteCharms"), stopOn)
 end
 
 local function doAutoFuseCharms()
-	if not enabled.charmFuse then
-		return
-	end
-	if not ready("charmFuse", 1) then
-		return
-	end
+	if not enabled.charmFuse then return end
+	if not ready("charmFuse", 1) then return end
 	local charmsFolder = dataChild("Charms")
-	if not charmsFolder then
-		return
-	end
+	if not charmsFolder then return end
 	local byKey = {}
 	for _, charm in ipairs(charmsFolder:GetChildren()) do
 		local charmName = charm:GetAttribute("CharmName") or charm:GetAttribute("Name") or ""
@@ -1096,19 +1090,13 @@ end
 local POTION_LIST = {"Speed Potion (10m)", "Speed Potion (30m)", "Speed Potion (1h)", "Wins Potion (10m)", "Wins Potion (30m)", "Wins Potion (1h)"}
 
 local function doAutoPotions()
-	if not enabled.potions then
-		return
-	end
-	if not ready("potions", 2) then
-		return
-	end
+	if not enabled.potions then return end
+	if not ready("potions", 2) then return end
 	local selected = Options.SelectedPotions and Options.SelectedPotions.Value or {}
 	local wanted = {}
 	if type(selected) == "table" then
 		for key, value in pairs(selected) do
-			if value then
-				wanted[key] = true
-			end
+			if value then wanted[key] = true end
 		end
 	elseif type(selected) == "string" and selected ~= "" then
 		wanted[selected] = true
@@ -1121,12 +1109,8 @@ local function doAutoPotions()
 end
 
 local function doAutoRebirth()
-	if not enabled.rebirth then
-		return
-	end
-	if not ready("rebirth", 1) then
-		return
-	end
+	if not enabled.rebirth then return end
+	if not ready("rebirth", 1) then return end
 	setFarmStatus("rebirth")
 	safeFire(remote("Rebirth"))
 end
@@ -1140,9 +1124,7 @@ local function reconnectServer()
 end
 
 local function serverHop()
-	if not httpRequest then
-		return reconnectServer()
-	end
+	if not httpRequest then return reconnectServer() end
 	task.spawn(function()
 		local best, bestCount = nil, math.huge
 		local ok, response = pcall(httpRequest, {
@@ -1185,13 +1167,9 @@ end
 
 local renderingDisabled = false
 local function setRendering(disable)
-	if disable == renderingDisabled then
-		return
-	end
+	if disable == renderingDisabled then return end
 	renderingDisabled = disable
-	pcall(function()
-		RunService:Set3dRenderingEnabled(not disable)
-	end)
+	pcall(function() RunService:Set3dRenderingEnabled(not disable) end)
 end
 
 local fpsOriginals
@@ -1302,20 +1280,12 @@ UserBox:AddLabel("ExecutorLabel", { Text = paint("Executor -", executorText, COL
 UserBox:AddDivider()
 UserBox:AddLabel("SessionTime", { Text = paint("Session -", "0s", COLORS.orange), DoesWrap = true })
 UserBox:AddButton({ Text = "Copy User ID", Func = function()
-	if copyText then
-		pcall(copyText, tostring(LocalPlayer.UserId))
-	end
-	pcall(function()
-		Library:Notify("Copied User ID")
-	end)
+	if copyText then pcall(copyText, tostring(LocalPlayer.UserId)) end
+	pcall(function() Library:Notify("Copied User ID") end)
 end })
 UserBox:AddButton({ Text = "Copy Username", Func = function()
-	if copyText then
-		pcall(copyText, tostring(LocalPlayer.Name))
-	end
-	pcall(function()
-		Library:Notify("Copied Username")
-	end)
+	if copyText then pcall(copyText, tostring(LocalPlayer.Name)) end
+	pcall(function() Library:Notify("Copied Username") end)
 end })
 
 local GameBox = box(Tabs.Info, "Game Info", "gamepad", "Right")
@@ -1326,9 +1296,7 @@ GameBox:AddButton({ Text = "Copy Join Script", Func = function()
 	if copyText then
 		pcall(copyText, string.format('game:GetService("TeleportService"):TeleportToPlaceInstance(%d, "%s")', game.PlaceId, game.JobId))
 	end
-	pcall(function()
-		Library:Notify("Copied join script")
-	end)
+	pcall(function() Library:Notify("Copied join script") end)
 end })
 
 do
@@ -1361,9 +1329,7 @@ do
 	end
 	task.spawn(function()
 		local universeId = universeIdForPlace(game.PlaceId)
-		if not universeId then
-			return
-		end
+		if not universeId then return end
 		local name = gameNameForUniverse(universeId)
 		if name then
 			pcall(function()
@@ -1375,20 +1341,12 @@ end
 
 local SocialsBox = box(Tabs.Info, "Socials", "link", "Right")
 SocialsBox:AddButton({ Text = "Copy Discord Invite", Func = function()
-	if copyText then
-		pcall(copyText, CONFIG.Discord)
-	end
-	pcall(function()
-		Library:Notify("Copied Discord invite")
-	end)
+	if copyText then pcall(copyText, CONFIG.Discord) end
+	pcall(function() Library:Notify("Copied Discord invite") end)
 end })
 SocialsBox:AddButton({ Text = "Copy Website", Func = function()
-	if copyText then
-		pcall(copyText, CONFIG.Website)
-	end
-	pcall(function()
-		Library:Notify("Copied website link")
-	end)
+	if copyText then pcall(copyText, CONFIG.Website) end
+	pcall(function() Library:Notify("Copied website link") end)
 end })
 
 local TrainTab = Tabs.Main:AddSubTab({ Name = "Train", Icon = "star" })
@@ -1430,7 +1388,6 @@ StatusBox:AddLabel("FarmStatusLabel", { Text = paint("Status -", "idle", COLORS.
 StatusBox:AddLabel("LevelLabel", { Text = paint("Level -", "0", COLORS.accent), DoesWrap = true })
 StatusBox:AddLabel("RebirthLabel", { Text = paint("Rebirths -", "0", COLORS.orange), DoesWrap = true })
 StatusBox:AddLabel("WinsLabel", { Text = paint("Wins -", "0", COLORS.gold), DoesWrap = true })
-StatusBox:AddLabel("MultiLabel", { Text = paint("Speed Multi -", "1", COLORS.user), DoesWrap = true })
 
 local CollectBox = box(CollectTab, "Collecting", "package", "Left")
 CollectBox:AddToggle("AutoCollectBananas", { Text = "Collect Bananas", Default = false, Callback = function(value)
@@ -1556,9 +1513,7 @@ MenuBox:AddDropdown("NotificationSide", {
 	Values = { "Left", "Right" },
 	Default = "Right",
 	Callback = function(value)
-		pcall(function()
-			Library:SetNotifySide(value)
-		end)
+		pcall(function() Library:SetNotifySide(value) end)
 	end,
 })
 MenuBox:AddDropdown("DPIScale", {
@@ -1650,13 +1605,6 @@ local function updateLabels()
 	setLabel("LevelLabel", paint("Level -", getLevel(), COLORS.accent))
 	setLabel("RebirthLabel", paint("Rebirths -", getRebirths(), COLORS.orange))
 	setLabel("WinsLabel", paint("Wins -", Formatter.Format(getWinsDigits()), COLORS.gold))
-	setLabel("MultiLabel", paint("Speed Multi -", getSpeedMulti(), COLORS.user))
-end
-
-local function refreshLists()
-	if not ready("lists", 15) then
-		return
-	end
 end
 
 local function chain(steps, interval)
@@ -1664,13 +1612,9 @@ local function chain(steps, interval)
 		while session.running do
 			setFarmStatus("idle")
 			for _, step in ipairs(steps) do
-				if not session.running then
-					break
-				end
+				if not session.running then break end
 				local ok, err = pcall(step)
-				if not ok then
-					logError(err)
-				end
+				if not ok then logError(err) end
 			end
 			task.wait(interval)
 		end
@@ -1681,9 +1625,7 @@ local function loop(func, interval)
 	task.spawn(function()
 		while session.running do
 			local ok, err = pcall(func)
-			if not ok then
-				logError(err)
-			end
+			if not ok then logError(err) end
 			task.wait(interval)
 		end
 	end)
@@ -1735,7 +1677,6 @@ end)
 task.spawn(function()
 	while session.running do
 		pcall(updateLabels)
-		pcall(refreshLists)
 		task.wait(1)
 	end
 end)
