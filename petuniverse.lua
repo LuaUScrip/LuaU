@@ -293,9 +293,9 @@ local function getGems()
 	return statValue("Gems")
 end
 
-local EGG_LIST = {"Basic Egg", "Sprout Egg", "Grassy Egg", "Dried Egg", "Frost Egg", "Zombie Egg", "Castle Egg", "Universe Egg"}
+local EGG_LIST = {"Basic Egg", "Sprout Egg", "Grassy Egg", "Dried Egg", "Frost Egg", "Zombie Egg", "Castle Egg", "Universe Egg", "Mushroom Egg"}
 local MODE_LIST = {"Single", "Half", "Max"}
-local WORLD_LIST = {"Spawn", "BirchForest", "TreasureDunes", "FrozenAlley", "HauntedHouse", "PetKingdom", "TheMoon"}
+local WORLD_LIST = {"Spawn", "BirchForest", "TreasureDunes", "FrozenAlley", "HauntedHouse", "PetKingdom", "TheMoon", "Enchanted Grave"}
 local UPGRADE_LIST = {"CoinsUpgrades", "RubiesUpgrades", "LuckUpgrades", "HatchSpeedUpgrades", "CriticalUpgrades", "PetSpeedUpgrades"}
 local MOON_INC_LIST = {"Damage", "MoreGems", "TapPower", "PetAttackSpeed", "CritDmg", "ChestTier", "AstralBeeChance", "AstralBeeVariant"}
 local MOON_PERM_LIST = {"CoinMultiplier", "RubiesMultiplier", "GemsMultiplier", "LuckMultiplier", "HatchSpeedMultiplier", "CritChance", "EggHatch", "PetEquip"}
