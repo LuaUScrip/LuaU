@@ -41,7 +41,7 @@ if previous then
 	end
 end
 
-local session = {running = true, lib = Library}
+local session = { running = true, lib = Library }
 getgenv().UnitGrinder = session
 
 local enabled = { equipBestPets = true, noPause = true }
@@ -80,6 +80,7 @@ local function call(remote, ...)
 			return result
 		end
 	end
+	return nil
 end
 
 local function read(value)
@@ -89,6 +90,7 @@ local function read(value)
 			return result
 		end
 	end
+	return nil
 end
 
 local timers = {}
@@ -133,7 +135,6 @@ local function numberFrom(value)
 	return nil
 end
 
---// callValue() calls anything callable (function / callable state table / userdata)
 local function callValue(value)
 	local valueType = type(value)
 	if valueType ~= "function" and valueType ~= "userdata" and valueType ~= "table" then
@@ -199,8 +200,6 @@ local function getCurrentWorld()
 	return tonumber(attr("CurrentWorld", 1)) or 1
 end
 
---// Rebirth requirement (real curve from the game):
---// rebirths <= 30 -> (rebirths + 1) * 25; after 30 -> 775 + 9 * (rebirths - 30)
 local function requiredRebirthLevel(rebirths)
 	if rebirths <= 30 then
 		return (rebirths + 1) * 25
@@ -208,7 +207,6 @@ local function requiredRebirthLevel(rebirths)
 	return 775 + (rebirths - 30) * 9
 end
 
---// Ownership attributes are stored as CSV strings ("RedTrail,BlueTrail,...")
 local function csvOwns(csv, name)
 	return ("," .. tostring(csv or "") .. ","):find("," .. name .. ",", 1, true) ~= nil
 end
@@ -217,10 +215,8 @@ local function ownsTrail(name)
 	return csvOwns(attr("OwnedTrails", ""), name)
 end
 
---// The game has 7 worlds
-local MAX_WORLDS = 7
+local MAX_WORLDS = 9
 
---// World unlock requirements (rebirths needed to teleport there)
 local WORLD_REBIRTHS = {
 	[1] = 0,
 	[2] = 14,
@@ -229,9 +225,10 @@ local WORLD_REBIRTHS = {
 	[5] = 69,
 	[6] = 89,
 	[7] = 169,
+	[8] = 289,
+	[9] = 417,
 }
 
---// Trails ordered by cost; Speed = the walkspeed each trail grants
 local TRAIL_ORDER = {
 	{ Name = "WhiteTrail", Cost = 5, Speed = 17 },
 	{ Name = "RedTrail", Cost = 100, Speed = 22 },
@@ -247,15 +244,10 @@ local TRAIL_ORDER = {
 	{ Name = "DiamondTrail", Cost = 1e15, Speed = 65 },
 }
 
---// WIN PADS (two sources, route first):
---//   1. AutoWinsRoute/W1..W7 — Vector3Value children named by level
---//   2. Fallback — Workspace WinZoneLevel* models: level requirement is in the
---//      name ("WinZoneLevel300Model" = W1, "WinZoneLevel300ModelW4" = W4) and
---//      TouchWin sits inside the WinModel child
 local function bestPadFromRoute(world, level)
 	local folder = AutoWinsRoute and AutoWinsRoute:FindFirstChild("W" .. tostring(world))
 	if not folder then
-		return nil
+		return nil, nil
 	end
 	local bestLevel, bestPos = -1, nil
 	for _, child in ipairs(folder:GetChildren()) do
@@ -266,7 +258,7 @@ local function bestPadFromRoute(world, level)
 		end
 	end
 	if not bestPos then
-		return nil
+		return nil, nil
 	end
 	return bestLevel, bestPos
 end
@@ -291,12 +283,11 @@ local function bestPadFromWorkspace(world, level)
 		end
 	end
 	if not bestPos then
-		return nil
+		return nil, nil
 	end
 	return bestLevel, bestPos
 end
 
---// Best (highest) pad inside ONE world that the player's level can reach
 local function bestPadInWorld(world)
 	local level = getLevel()
 	local routeLevel, routePos = bestPadFromRoute(world, level)
@@ -306,10 +297,6 @@ local function bestPadInWorld(world)
 	return bestPadFromWorkspace(world, level)
 end
 
---// ALWAYS "Best" — scans ALL 7 worlds but ONLY counts pads in worlds you can
---// legally reach (your current world + worlds unlocked by rebirths), so Auto Win
---// never stalls waiting on a locked world. Ties prefer staying in the current
---// world (no pointless teleports between worlds with equal pads).
 local function resolveWinTarget()
 	local currentWorld = getCurrentWorld()
 	local rebirths = getRebirths()
@@ -323,15 +310,13 @@ local function resolveWinTarget()
 		end
 	end
 	if not bestWorld then
-		return nil
+		return nil, nil, nil
 	end
 	return bestWorld, bestLevel, bestPos
 end
 
 local worldTeleportAt = 0
 
---// SAFETY: fires the world teleport only when the rebirth requirement is met
---// and at most once every 2s (the loop would otherwise spam the remote)
 local function ensureWorld(world)
 	if getCurrentWorld() == world then
 		return true
@@ -380,10 +365,6 @@ local function retriggerWinTouch(touch)
 	pcall(firetouchinterest, root, touch, 1)
 end
 
---// Auto Win — TELEPORT mode: snaps straight onto the best pad's TouchWin part
---// (no walking, no control takeover), then retriggers the touch so the server
---// registers the win. If the best reachable pad lives in another unlocked world,
---// ensureWorld teleports there first (gated by rebirths + 2s throttle).
 local function autoWinStep()
 	local world, level, position = resolveWinTarget()
 	if not world or not position then
@@ -408,8 +389,6 @@ local function autoWinStep()
 	retriggerWinTouch(touch)
 end
 
---// TREADMILLS: Workspace models named "*Treadmill" with Multiplier /
---// RequiredRebirths attributes; stand on the Conveyor part to train
 local function isTreadmillModel(inst)
 	return inst:IsA("Model") and inst.Name:find("Treadmill") and inst.Name ~= "TreadmillsGUI"
 end
@@ -471,8 +450,6 @@ local function getTreadmills()
 	return list
 end
 
---// SAFETY: gamepass treadmills only count as unlocked when the flag attribute
---// is actually set; rebirth treadmills compare against RequiredRebirths
 local function treadmillUnlocked(entry)
 	local name = entry.Model.Name
 	if name == "HackerTreadmill" then
@@ -496,7 +473,6 @@ local function treadmillUnlocked(entry)
 	return getRebirths() >= entry.Required
 end
 
---// ALWAYS "Best": highest-multiplier treadmill that is unlocked and not Robux-gated
 local function resolveTreadmill()
 	for _, entry in ipairs(getTreadmills()) do
 		if not isRobuxTreadmill(entry.Model) and treadmillUnlocked(entry) then
@@ -544,12 +520,6 @@ local function fireBuyPrompt(model)
 	return true
 end
 
---// FOODS: food models (Apple1Thin, Carrot10Thin, RainbowApple, ...) are NESTED
---// in the Workspace, so we scan GetDescendants (cached, refreshed every 5s) for
---// Models with a RequiredWins attribute + a BuyPrompt.
---// Ownership / equipped state is name-format agnostic: model names may appear in
---// OwnedFruits / EquippedItem as "Apple1Thin", "Apple1" or "Apple", so every
---// variant is checked.
 local FoodCache = {}
 
 local function foodNameVariants(name)
@@ -615,14 +585,6 @@ local lastFoodActionAt = 0
 local lastEquipAttempt = ""
 local lastEquipAttemptAt = 0
 
---// Auto Buy & Equip Best Food:
---//   1. Buys the best affordable food you DON'T own — but ONLY if it's an
---//      upgrade (better than the best food you already own)
---//   2. Equips the best owned food when EquippedItem doesn't match it
---//   3. SAFETY: if the best owned food is ALREADY equipped and there's nothing
---//      better to buy -> does NOTHING: no teleport, no prompt fire, no repeat buy
---//   4. Equip attempts are remembered for 10s so a mismatched EquippedItem name
---//      can never cause an infinite teleport/prompt loop
 local function autoBuyFoodsOnce()
 	if #FoodCache == 0 or ready("foodscan", 5) then
 		buildFoodCache()
@@ -634,6 +596,7 @@ local function autoBuyFoodsOnce()
 	local equipped = tostring(attr("EquippedItem", "") or "")
 	local buyTarget = nil
 	local bestOwned = nil
+	
 	for _, food in ipairs(FoodCache) do
 		if ownsFoodName(food.Name) then
 			if not bestOwned or food.Required > bestOwned.Required then
@@ -645,19 +608,21 @@ local function autoBuyFoodsOnce()
 			end
 		end
 	end
-	--// only an UPGRADE is worth buying (better than the best food we already own)
+
 	if buyTarget and bestOwned and buyTarget.Required <= bestOwned.Required then
 		buyTarget = nil
 	end
-	--// SAFETY: best owned already equipped AND nothing better to buy -> idle
+
 	if not buyTarget and bestOwned and equippedFoodName(bestOwned.Name, equipped) then
 		return
 	end
+
 	if buyTarget then
 		lastFoodActionAt = os.clock()
 		fireBuyPrompt(buyTarget.Model)
 		return
 	end
+
 	if bestOwned
 		and not equippedFoodName(bestOwned.Name, equipped)
 		and not (lastEquipAttempt == bestOwned.Name and os.clock() - lastEquipAttemptAt < 10)
@@ -669,7 +634,6 @@ local function autoBuyFoodsOnce()
 	end
 end
 
---// EGGS: Resources/Eggs children each hold a Cost value; BuyEgg is a RemoteFunction
 local function buildEggValues()
 	local values = {}
 	if not EggsFolder then
@@ -698,8 +662,6 @@ local function eggCost(name)
 	return cost and tonumber(cost.Value) or 0
 end
 
---// Auto Train — ALWAYS the best unlocked treadmill; once OnTreadmill is true it
---// only corrects position when it drifts off the conveyor
 local function autoTrainOnce()
 	local entry = resolveTreadmill()
 	if not entry then
@@ -724,11 +686,11 @@ local function autoRebirthOnce()
 	fire(RebirthRequest)
 end
 
---// Trails: buys the most expensive affordable trail, then equips the fastest owned
 local function autoBuyTrailsOnce()
 	local wins = getWins()
 	local bestOwned = nil
 	local bestSpeed = -1
+	
 	for _, trail in ipairs(TRAIL_ORDER) do
 		if ownsTrail(trail.Name) then
 			if trail.Speed > bestSpeed then
@@ -744,14 +706,13 @@ local function autoBuyTrailsOnce()
 			end
 		end
 	end
+	
 	local equipped = tostring(attr("EquippedTrail", "") or "")
 	if bestOwned and equipped ~= bestOwned then
 		fire(TrailEquipRequest, bestOwned)
 	end
 end
 
---// Auto Hatch — fixed 0.2s pacing (loop interval), hatches the selected egg from
---// the dropdown when you can afford it, optionally re-equips best pets
 local function autoHatchOnce()
 	local eggName = settings.egg
 	if type(eggName) ~= "string" or eggName == "" then
@@ -814,7 +775,7 @@ local function serverHop()
 			Url = string.format("https://games.roblox.com/v1/games/%d/servers/Public?sortOrder=Asc&limit=100", game.PlaceId),
 			Method = "GET",
 		})
-		if ok and response.Body then
+		if ok and response and response.Body then
 			local okDecode, decoded = pcall(HttpService.JSONDecode, HttpService, response.Body)
 			if okDecode and type(decoded.data) == "table" then
 				for _, server in ipairs(decoded.data) do
@@ -843,7 +804,9 @@ local function setAntiAfk(state)
 			end)
 		end)
 	elseif not state and afkConnection then
-		afkConnection:Disconnect()
+		if afkConnection then
+			afkConnection:Disconnect()
+		end
 		afkConnection = nil
 	end
 end
@@ -1049,9 +1012,7 @@ if #EggsValues == 0 then
 end
 settings.egg = EggsValues[1] or ""
 
---// Pets group sits BELOW the Farming group (left column)
 local PetsBox = box(FarmTab, "Pets", "paw-print", "Left")
---// EGG DROPDOWN first
 PetsBox:AddDropdown("HatchEgg", {
 	Text = "Select Egg",
 	Values = EggsValues,
@@ -1061,7 +1022,6 @@ PetsBox:AddDropdown("HatchEgg", {
 		settings.egg = value or ""
 	end,
 })
---// Auto Hatch below the dropdown
 PetsBox:AddToggle("AutoHatch", { Text = "Hatch Egg", Default = false, Callback = function(value)
 	enabled.hatch = value
 end })
@@ -1141,7 +1101,6 @@ ServerTools:AddButton({ Text = "Server Hop (Lowest Players)", Func = serverHop }
 SaveManager:SetLibrary(Library)
 ThemeManager:SetLibrary(Library)
 
---// "Dark Silver" monochrome theme
 ThemeManager.BuiltInThemes["Dark Silver"] = {
 	999,
 	{
@@ -1167,13 +1126,12 @@ Tabs.Settings.AddGroupbox = function(self, info)
 	return SettingsAddGroupbox(self, info)
 end
 SaveManager:BuildConfigSection(Tabs.Settings)
-ThemeManager:ApplyTheme("Dark Silver") --// default look; user can still switch themes in the dropdown
+ThemeManager:ApplyTheme("Dark Silver")
 ThemeManager:ApplyToTab(Tabs.Settings)
 Tabs.Settings.AddGroupbox = SettingsAddGroupbox
 
---// Remove the "Contrast check" label that ThemeManager adds
 pcall(function()
-	ThemeManager.UpdateContrastWarning = function() end --// nothing re-renders it
+	ThemeManager.UpdateContrastWarning = function() end
 	local ContrastLabel = ThemeManager.ContrastLabel
 	if ContrastLabel and not ContrastLabel.Destroyed and type(ContrastLabel.Destroy) == "function" then
 		ContrastLabel:Destroy()
@@ -1206,8 +1164,6 @@ end
 
 --// ═══════════════════════════════════════════════════════════
 --// LOOPS — every toggle runs in its OWN loop with its OWN speed.
---// To change a feature's speed, edit the task.wait(<seconds>) at
---// the bottom of its loop below. That's it — no other changes needed.
 --// ═══════════════════════════════════════════════════════════
 
 local function loop(name, func, interval)
@@ -1221,23 +1177,14 @@ local function loop(name, func, interval)
 	end)
 end
 
---// Auto Win (Teleport) — 0.1s (touch retrigger throttled to 0.2s inside)
 loop("win", autoWinStep, 0.1)
---// Auto Train — 0.35s
 loop("train", autoTrainOnce, 0.35)
---// Auto Rebirth — 1s
 loop("rebirth", autoRebirthOnce, 1)
---// Auto Buy Best Trail — 1s
 loop("trails", autoBuyTrailsOnce, 1)
---// Auto Buy & Equip Best Food — 1.25s (cache rescans every 5s, action throttle 1.5s,
---// idle when the best owned food is already equipped)
 loop("foods", autoBuyFoodsOnce, 1.25)
---// Auto Hatch — fixed 0.2s
 loop("hatch", autoHatchOnce, 0.2)
---// No Gameplay Paused — 1s
 loop("noPause", autoNoGameplayPause, 1)
 
---// UI refresh (labels + dropdown lists) — 1s, always runs, not tied to a toggle
 task.spawn(function()
 	while session.running do
 		updateLabels()
