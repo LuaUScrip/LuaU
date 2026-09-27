@@ -1075,7 +1075,7 @@ local function depositAll()
 	playerDataAt = 0
 end
 
-local CUT_QUALITY = 4
+local CUT_QUALITY = 3
 local DEFAULT_FISH_CF = "baby_shark"
 local DEFAULT_FISH_WEIGHT = 4.1222655608094581
 
@@ -1184,7 +1184,11 @@ local function customerPrompt(customer)
 	if not part then
 		return nil
 	end
-	return part:FindFirstChild("ProximityPrompt")
+	local prompt = part:FindFirstChild("ProximityPrompt", true)
+	if prompt then
+		return prompt
+	end
+	return customer:FindFirstChildWhichIsA("ProximityPrompt", true)
 end
 
 local function pressPrompt(prompt)
@@ -1380,9 +1384,9 @@ local function buildCookedFish(fish, dish)
 		Name = "Fish Filet",
 		Amount = 1,
 		Value = value,
-		Mutations = type(entry.Mutations) == "table" and entry.Mutations or {},
-		Data = CUT_QUALITY,
-		ID = entry.ID or 2,
+		ID = tonumber(entry.ID) or 1,
+		Data = tonumber(entry.Data) or CUT_QUALITY,
+		CookedAt = os.time(),
 	}
 end
 
@@ -1407,15 +1411,15 @@ local function cookPass(fish, dish)
 	end
 	call(StartCutSession)
 	task.wait(0.15)
-	fire(CutAction, 1)
-	task.wait(0.15)
-	fire(CutAction, 2)
-	task.wait(0.15)
 	if ServerAnims and board then
-		fire(ServerAnims, "CuttingBoard", board, false)
+		fire(ServerAnims, "CuttingBoard", board, true)
 	end
 	task.wait(0.15)
-	call(CutFish, 1, 1.85)
+	fire(CutAction, 1, 0.5 + math.random() * 4.2)
+	task.wait(0.15)
+	fire(CutAction, 2, 0.5 + math.random() * 1.6)
+	task.wait(0.15)
+	call(CutFish, os.time(), 0.8 + math.random())
 	task.wait(0.15)
 	if RequestRestaurauntData then
 		call(RequestRestaurauntData)
@@ -1756,6 +1760,7 @@ local function setLabel(idx, text)
 		end
 	end)
 end
+
 local FISH_SPOTS = {
 	{ Name = "No TP (Stay Here)", Position = nil },
 	{ Name = "Moon Tuna Hunt", Position = Vector3.new(60, 10, -858) },
@@ -2031,8 +2036,29 @@ local function doAutoCook()
 	task.wait(0.5)
 end
 
+local function serveAttempt(customer)
+	local prompt = customerPrompt(customer)
+	local position = safePivot(customer)
+	local root = getRoot()
+	if position and root and (position - root.Position).Magnitude > 9 then
+		teleportTo(position)
+		task.wait(0.1)
+	end
+	if pressPrompt(prompt) then
+		return true
+	end
+	if prompt and prompt.Enabled == false then
+		prompt.Enabled = true
+	end
+	if pressPrompt(prompt) then
+		return true
+	end
+	fire(StoreFood, customer)
+	return false
+end
+
 local function doAutoServe()
-	if not enabled.serve or not StoreFood then
+	if not enabled.serve then
 		return
 	end
 	if not ready("serve", 1) then
@@ -2044,16 +2070,24 @@ local function doAutoServe()
 	local customer = cooked.customer
 	if not customer or not customer.Parent then
 		cooked.dish = nil
+		cooked.customer = nil
 		return
 	end
 	local current = orderedDishes(customer)
-	if #current == 0 or current[1] ~= cooked.dish then
+	if #current > 0 and current[1] ~= cooked.dish then
 		cooked.dish = nil
+		cooked.customer = nil
 		return
 	end
 	setFarmStatus("serving " .. tostring(cooked.dish))
-	if not pressPrompt(customerPrompt(customer)) then
-		fire(StoreFood, customer)
+	for attempt = 1, 3 do
+		if not session.running or not customer.Parent then
+			break
+		end
+		if serveAttempt(customer) then
+			break
+		end
+		task.wait(0.15)
 	end
 	cooked.dish = nil
 	cooked.customer = nil
@@ -2319,6 +2353,7 @@ QuestBox:AddButton({ Text = "Claim Daily Reward", Func = claimDailyReward })
 local QuestInfoBox = box(QuestTab, "Quest Info", "book", "Right")
 QuestInfoBox:AddLabel("QuestLabel", { Text = paint("Quest -", "none", COLORS.accent), DoesWrap = true })
 QuestInfoBox:AddLabel("QuestDayLabel", { Text = paint("Day -", "0", COLORS.orange), DoesWrap = true })
+
 local TitleBox = box(TitleTab, "Custom Title", "crown", "Left")
 TitleBox:AddInput("CustomLevel", {
 	Text = "Custom Level",
