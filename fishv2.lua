@@ -340,10 +340,34 @@ local function getRoot()
 end
 
 local function teleportTo(position)
-	local root = getRoot()
-	if root and position then
-		root.CFrame = CFrame.new(position + Vector3.new(0, 3, 0))
-		return true
+	if not position then
+		return false
+	end
+	local character = getCharacter()
+	local root = character and character:FindFirstChild("HumanoidRootPart")
+	if not character or not root then
+		return false
+	end
+	local target = position + Vector3.new(0, 4, 0)
+	for attempt = 1, 3 do
+		if root and root.Parent then
+			pcall(function()
+				root.CFrame = CFrame.new(target)
+			end)
+			pcall(function()
+				character:PivotTo(CFrame.new(target))
+			end)
+			pcall(function()
+				root.AssemblyLinearVelocity = Vector3.zero
+			end)
+			pcall(function()
+				root.AssemblyAngularVelocity = Vector3.zero
+			end)
+			if (root.Position - target).Magnitude < 12 then
+				return true
+			end
+		end
+		task.wait(0.05)
 	end
 	return false
 end
@@ -728,6 +752,25 @@ local function zoneTarget(zone)
 		return direct
 	end
 	local lowered = string.lower(zone)
+	local partial
+	for _, child in ipairs(Workspace:GetDescendants()) do
+		if child:IsA("Model") or child:IsA("BasePart") then
+			local name = string.lower(child.Name)
+			if name == lowered then
+				return child
+			end
+			local value = attributeOf(child, "Zone", "ZoneName", "Island", "Biome", "Area", "DisplayName", "Name")
+			if value ~= nil and string.lower(tostring(value)) == lowered then
+				return child
+			end
+			if not partial and string.find(name, lowered, 1, true) then
+				partial = child
+			end
+		end
+	end
+	if partial then
+		return partial
+	end
 	for _, part in ipairs(fishingParts()) do
 		if string.find(string.lower(part.Name), lowered, 1, true) then
 			return part
@@ -810,32 +853,22 @@ local function productCount()
 	return count
 end
 
-local function spinRemotes()
-	local found
+local function openCrates()
+	local remote
 	for _, service in ipairs(SPIN_SERVICES) do
 		for _, method in ipairs(SPIN_METHODS) do
-			if not found then
-				found = findKnitRemote(service, method)
+			if not remote then
+				remote = findKnitRemote(service, method)
 			end
 		end
 	end
-	return found
-end
-
-local function doAutoSpin()
-	if not enabled.spin then
-		return
-	end
-	if not ready("spin", 2) then
-		return
-	end
-	local remote = spinRemotes()
 	if not remote then
-		return
+		return false
 	end
 	setFarmStatus("spinning")
 	call(remote)
 	playerDataAt = 0
+	return true
 end
 
 local function showOverhead(text)
@@ -1449,21 +1482,29 @@ local function inventoryFish()
 	return values
 end
 
-local function questRemotes()
-	local data, claim
-	for _, service in ipairs(QUEST_SERVICES) do
-		for _, method in ipairs(QUEST_DATA_METHODS) do
-			if not data then
-				data = findKnitRemote(service, method)
-			end
-		end
-		for _, method in ipairs(QUEST_CLAIM_METHODS) do
-			if not claim then
-				claim = findKnitRemote(service, method)
-			end
+local function addRemote(list, remote)
+	if not remote then
+		return
+	end
+	for _, existing in ipairs(list) do
+		if existing == remote then
+			return
 		end
 	end
-	return data, claim
+	table.insert(list, remote)
+end
+
+local function questRemotes()
+	local data, claims = {}, {}
+	for _, service in ipairs(QUEST_SERVICES) do
+		for _, method in ipairs(QUEST_DATA_METHODS) do
+			addRemote(data, findKnitRemote(service, method))
+		end
+		for _, method in ipairs(QUEST_CLAIM_METHODS) do
+			addRemote(claims, findKnitRemote(service, method))
+		end
+	end
+	return data, claims
 end
 
 local function activeQuest()
@@ -1486,36 +1527,55 @@ local function questDay()
 	return 0
 end
 
+local function currentQuestId()
+	local questId = tonumber(statValue("Quest", "QuestID", "QuestId", "CurrentQuest", "QuestIndex"))
+	if questId then
+		return questId
+	end
+	local quest = activeQuest()
+	if type(quest) == "table" then
+		return tonumber(quest.ID or quest.Id or quest.Index or quest.Key)
+	end
+	return nil
+end
+
 local function doAutoQuest()
 	if not enabled.quest then
 		return
 	end
-	if not ready("quest", 3) then
+	if not ready("quest", 2) then
 		return
 	end
-	local data, claim = questRemotes()
+	local data, claims = questRemotes()
+	if #data == 0 and #claims == 0 then
+		return
+	end
 	setFarmStatus("questing")
-	if data then
-		call(data)
+	for _, remote in ipairs(data) do
+		call(remote)
 	end
-	if claim then
-		local questId = tonumber(statValue("Quest", "QuestID", "QuestId", "CurrentQuest"))
+	if #claims == 0 then
+		return
+	end
+	local questId = currentQuestId()
+	for _, remote in ipairs(claims) do
 		if questId then
-			call(claim, questId)
-		else
-			call(claim)
+			call(remote, questId)
 		end
-		playerDataAt = 0
+		call(remote)
 	end
+	playerDataAt = 0
 end
 
 local function claimDailyReward()
-	local _, claim = questRemotes()
-	if not claim then
+	local _, claims = questRemotes()
+	if #claims == 0 then
 		return
 	end
 	setFarmStatus("claiming")
-	call(claim)
+	for _, remote in ipairs(claims) do
+		call(remote)
+	end
 	playerDataAt = 0
 end
 
@@ -1553,11 +1613,16 @@ end
 local function teleportToIsland(value)
 	local target = islandTarget(value)
 	local position = safePivot(target)
+	if not position and target and target:IsA("BasePart") then
+		position = target.Position
+	end
 	if not position then
 		return false
 	end
 	setFarmStatus("teleporting")
-	return teleportTo(position)
+	local moved = teleportTo(position)
+	task.wait(0.15)
+	return moved
 end
 
 local function doAutoHome()
@@ -1777,16 +1842,28 @@ local FISH_SPOTS = {
 }
 
 local function teleportToSpot(value)
-	local index = tonumber(value)
-	if not index or index < 1 or index > #FISH_SPOTS then
+	if value == nil then
 		return false
 	end
-	local position = FISH_SPOTS[index].Position
+	local position
+	local index = tonumber(value)
+	if index and FISH_SPOTS[index] then
+		position = FISH_SPOTS[index].Position
+	else
+		for _, entry in ipairs(FISH_SPOTS) do
+			if entry.Name == value then
+				position = entry.Position
+				break
+			end
+		end
+	end
 	if not position then
 		return false
 	end
 	setFarmStatus("teleporting")
-	return teleportTo(position)
+	local moved = teleportTo(position)
+	task.wait(0.15)
+	return moved
 end
 
 local lightOriginals
@@ -1883,6 +1960,7 @@ local function setFly(state)
 			if UserInputService:IsKeyDown(Enum.KeyCode.S) then
 				direction = direction - camera.CFrame.LookVector
 			end
+
 			if UserInputService:IsKeyDown(Enum.KeyCode.A) then
 				direction = direction - camera.CFrame.RightVector
 			end
@@ -2007,35 +2085,6 @@ local function bestCustomer()
 	return best, bestWant
 end
 
-local function doAutoCook()
-	if not enabled.cook then
-		return
-	end
-	if not ready("cook", 1) then
-		return
-	end
-	local customer, want = bestCustomer()
-	if not want then
-		return
-	end
-	local list = inventoryFish()
-	if #list == 0 then
-		if cookPass(nil, want) then
-			cooked.dish = want
-			cooked.customer = customer
-			cooked.at = tick()
-		end
-		return
-	end
-	cookIndex = (cookIndex % #list) + 1
-	if cookPass(list[cookIndex], want) then
-		cooked.dish = want
-		cooked.customer = customer
-		cooked.at = tick()
-	end
-	task.wait(0.5)
-end
-
 local function serveAttempt(customer)
 	local prompt = customerPrompt(customer)
 	local position = safePivot(customer)
@@ -2057,29 +2106,16 @@ local function serveAttempt(customer)
 	return false
 end
 
-local function doAutoServe()
-	if not enabled.serve then
-		return
-	end
-	if not ready("serve", 1) then
-		return
-	end
-	if not cooked.dish then
-		return
-	end
+local function serveReady()
 	local customer = cooked.customer
 	if not customer or not customer.Parent then
-		cooked.dish = nil
-		cooked.customer = nil
+		customer = bestCustomer()
+	end
+	if not customer then
 		return
 	end
-	local current = orderedDishes(customer)
-	if #current > 0 and current[1] ~= cooked.dish then
-		cooked.dish = nil
-		cooked.customer = nil
-		return
-	end
-	setFarmStatus("serving " .. tostring(cooked.dish))
+	cooked.customer = customer
+	setFarmStatus("serving")
 	for attempt = 1, 3 do
 		if not session.running or not customer.Parent then
 			break
@@ -2241,13 +2277,6 @@ StatusBox:AddLabel("StockLabel", { Text = paint("Stock -", "0", COLORS.orange), 
 StatusBox:AddLabel("StallLevelLabel", { Text = paint("Stall Level -", "0", COLORS.accent), DoesWrap = true })
 
 local CookBox = box(KitchenTab, "Auto Kitchen", "zap", "Left")
-CookBox:AddToggle("AutoCook", { Text = "Auto Cook", Default = false, Callback = function(value)
-	enabled.cook = value
-end })
-CookBox:AddToggle("AutoServe", { Text = "Auto Serve Customer", Default = false, Callback = function(value)
-	enabled.serve = value
-end })
-CookBox:AddDivider()
 CookBox:AddButton({ Text = "Cook Once", Func = function()
 	task.spawn(function()
 		local customer, want = bestCustomer()
@@ -2271,7 +2300,7 @@ CookBox:AddButton({ Text = "Cook Once", Func = function()
 		end
 	end)
 end })
-CookBox:AddButton({ Text = "Serve Customer", Func = doAutoServe })
+CookBox:AddButton({ Text = "Serve Customer", Func = serveReady })
 CookBox:AddButton({ Text = "Debug Customer Order", Func = debugOrders })
 
 local KitchenInfoBox = box(KitchenTab, "Kitchen Info", "activity", "Right")
@@ -2297,15 +2326,14 @@ end })
 KnifeBox:AddButton({ Text = "Get All Knives", Func = getAllKnives })
 
 local CrateBox = box(GearTab, "Crates", "gift", "Left")
-CrateBox:AddToggle("AutoSpin", { Text = "Auto Open Crates", Default = false, Callback = function(value)
-	enabled.spin = value
-end })
 CrateBox:AddButton({ Text = "Open All Crates", Func = function()
 	task.spawn(function()
-		local previousState = enabled.spin
-		enabled.spin = true
-		doAutoSpin()
-		enabled.spin = previousState
+		for index = 1, 10 do
+			if not openCrates() then
+				break
+			end
+			task.wait(0.2)
+		end
 	end)
 end })
 
@@ -2662,14 +2690,11 @@ end
 chain({ doAutoFish }, 0.2)
 chain({ doAutoSell }, 0.2)
 chain({ doAutoDeposit }, 0.5)
-chain({ doAutoCook }, 0.3)
-chain({ doAutoServe }, 0.5)
 loop(doAutoBuyRods, 3)
 loop(doAutoBuyKnives, 3)
 loop(doAutoQuest, 1)
 loop(doAutoHome, 2)
 loop(doAutoSpot, 2)
-loop(doAutoSpin, 2)
 loop(applyTitle, 0.05)
 
 task.spawn(function()
