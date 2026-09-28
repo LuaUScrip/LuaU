@@ -77,6 +77,7 @@ local games = {
     [33723232] = 'zombieinvasion.lua',
     [1088504022] = 'kittenfarm.lua',
     [71248701] = 'spinanimal.lua',
+    [473699786] = 'shufegg.lua',
 }
 
 if identifyexecutor then
