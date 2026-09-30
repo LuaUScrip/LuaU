@@ -1810,7 +1810,6 @@ end })
 local StatusBox = box(FarmTab, "Farm Status", "activity", "Right")
 StatusBox:AddLabel("FarmStatusLabel", { Text = paint("Status -", "idle", COLORS.accent), DoesWrap = true })
 StatusBox:AddLabel("CashLabel", { Text = paint("Cash -", "0", COLORS.gold), DoesWrap = true })
-StatusBox:AddLabel("BasketLabel", { Text = paint("Basket -", "0/0", COLORS.user), DoesWrap = true })
 StatusBox:AddLabel("RebirthsLabel", { Text = paint("Rebirths -", "0", COLORS.accent), DoesWrap = true })
 
 local UpgradeBox = box(FarmTab, "Upgrade", "trending-up", "Right")
@@ -1987,7 +1986,6 @@ local function updateLabels()
 	setLabel("ServerPlayersLabel", paint("Players -", string.format("%d/%d", #Players:GetPlayers(), Players.MaxPlayers), COLORS.user))
 	setLabel("FarmStatusLabel", paint("Status -", farmStatus, COLORS.accent))
 	setLabel("CashLabel", paint("Cash -", abbreviateNumber(getCash()), COLORS.gold))
-	setLabel("BasketLabel", paint("Basket -", basketCount() .. "/" .. basketCapacity(), COLORS.user))
 	setLabel("RebirthsLabel", paint("Rebirths -", tostring(tonumber(getSaved("Rebirths")) or 0), COLORS.accent))
 end
 
